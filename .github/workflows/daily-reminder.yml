@@ -1,0 +1,28 @@
+name: Daily health reminder
+
+on:
+  schedule:
+    # 19:00 UTC = 19:00 UK winter / 20:00 UK summer.
+    # GitHub cron uses UTC and may run a little late under load.
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - run: uv run python scripts/send_reminder.py
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          REMINDER_FROM: ${{ secrets.REMINDER_FROM }}
+          REMINDER_TO: ${{ secrets.REMINDER_TO }}
+          APP_URL: ${{ secrets.APP_URL }}
+

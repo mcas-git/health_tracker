@@ -1,0 +1,57 @@
+from datetime import date, timedelta
+
+import pandas as pd
+
+from health_tracker.analytics import current_streak
+from health_tracker.auth import hash_password
+from health_tracker.config import PROFILE
+from health_tracker.db import calculate_targets
+from health_tracker.nutrition import DailyNutritionEstimate
+
+
+def test_profile_target_date_is_uk_interpretation():
+    assert PROFILE.target_date == date(2027, 9, 1)
+
+
+def test_target_calculation_is_sensible():
+    targets = calculate_targets()
+    assert 1500 <= targets["calories"] <= 3000
+    assert targets["protein"] >= 100
+    assert targets["carbs"] >= 50
+
+
+def test_password_hash_is_deterministic_and_not_plaintext():
+    assert hash_password("secret") == hash_password("secret")
+    assert hash_password("secret") != "secret"
+
+
+def test_nutrition_schema_parses():
+    estimate = DailyNutritionEstimate.model_validate(
+        {
+            "meals": [
+                {
+                    "label": "Lunch",
+                    "foods": ["soup"],
+                    "calories": 200,
+                    "protein_g": 10,
+                    "carbs_g": 30,
+                    "fat_g": 4,
+                    "fibre_g": 5,
+                }
+            ],
+            "summary": "Typical bowl assumed",
+            "calories": 200,
+            "protein_g": 10,
+            "carbs_g": 30,
+            "fat_g": 4,
+            "fibre_g": 5,
+            "confidence": "medium",
+        }
+    )
+    assert estimate.calories == 200
+
+
+def test_streak_uses_yesterday_if_today_missing():
+    today = date.today()
+    df = pd.DataFrame({"entry_date": [today - timedelta(days=2), today - timedelta(days=1)]})
+    assert current_streak(df) == 2
