@@ -326,6 +326,26 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             color:{neutral_icon} !important; fill:{neutral_icon} !important;
             stroke:{neutral_icon} !important;
         }}
+        [data-testid="stTextInput"] [data-baseweb="input"],
+        [data-testid="stTextInput"] [data-baseweb="base-input"],
+        [data-testid="stTextInput"] input {{
+            background:{surface} !important; color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+            caret-color:{text} !important; border-color:{neutral_border} !important;
+            opacity:1 !important;
+        }}
+        [data-testid="stTextInput"] input::placeholder {{
+            color:{muted} !important; -webkit-text-fill-color:{muted} !important;
+            opacity:1 !important;
+        }}
+        [data-testid="stTextInput"] input::selection {{
+            background:{accent} !important; color:{accent_text} !important;
+            -webkit-text-fill-color:{accent_text} !important;
+        }}
+        [data-testid="stTextInput"] input:disabled {{
+            color:{muted} !important; -webkit-text-fill-color:{muted} !important;
+            opacity:1 !important;
+        }}
         [data-testid="stTextArea"] [data-baseweb="textarea"],
         [data-testid="stTextArea"] textarea {{
             background:{surface} !important; color:{text} !important;
