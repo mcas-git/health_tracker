@@ -580,36 +580,6 @@ def nutrition_insights():
             unit = "kcal" if label == "Calories" else "g"
             col.metric(label, f"{actual:.0f} {unit}", f"{ratio * 100:.0f}% · {status}")
 
-    rows = []
-    for _, row in nutrition.iterrows():
-        for label, field in fields.items():
-            if pd.notna(row[field]):
-                rows.append(
-                    {
-                        "Date": row.entry_date,
-                        "Nutrient": label,
-                        "% of target": float(row[field]) / targets[label] * 100,
-                    }
-                )
-    long = pd.DataFrame(rows)
-    st.subheader("Daily target balance")
-    palette = derived_palette(*_theme_values[:2])
-    daily_chart = (
-        alt.Chart(long)
-        .mark_rect(cornerRadius=3)
-        .encode(
-            x=alt.X("Date:T", title=None),
-            y=alt.Y("Nutrient:N", title=None),
-            color=alt.Color(
-                "% of target:Q",
-                scale=alt.Scale(domain=[50, 100, 150], range=palette["scale"]),
-                legend=alt.Legend(orient="bottom"),
-            ),
-            tooltip=["Date:T", "Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
-        )
-    )
-    st.altair_chart(style_chart(daily_chart), use_container_width=True, theme=None)
-
     nutrition["week"] = nutrition.entry_date.dt.to_period("W").dt.start_time
     weekly = nutrition.groupby("week", as_index=False)[list(fields.values())].mean()
     weekly_rows = [
@@ -617,6 +587,7 @@ def nutrition_insights():
         for _, row in weekly.iterrows()
         for label, field in fields.items()
     ]
+    palette = derived_palette(*_theme_values[:2])
     st.subheader("Weekly average vs target")
     smooth_weekly = st.checkbox(
         "Smooth weekly nutrition (3-week rolling average)", key="smooth_weekly_nutrition"
