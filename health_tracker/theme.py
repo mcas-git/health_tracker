@@ -382,6 +382,8 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         {dark_overrides}
 
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
+        [data-testid="stExpandSidebarButton"],
+        [data-testid="stExpandSidebarButton"] *,
         [data-testid="stSidebarCollapsedControl"] button,
         [data-testid="stSidebarCollapsedControl"] button *,
         [data-testid="stSidebarCollapseButton"] button,
@@ -391,6 +393,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             color:{sidebar_icon} !important;
             -webkit-text-fill-color:{sidebar_icon} !important;
         }}
+        [data-testid="stExpandSidebarButton"] svg,
         [data-testid="stSidebarCollapsedControl"] button svg,
         [data-testid="stSidebarCollapseButton"] button svg,
         [data-testid="stSidebarHeader"] button svg {{
