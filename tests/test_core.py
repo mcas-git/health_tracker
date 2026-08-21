@@ -8,6 +8,7 @@ from health_tracker.auth import hash_password
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.nutrition import DailyNutritionEstimate
+from health_tracker.quotes import QUOTES, quote_count
 from scripts.send_reminder import reminder_copy, should_send
 
 
@@ -74,3 +75,9 @@ def test_morning_and_evening_reminders_are_distinct():
     assert morning != evening
     assert "intention" in morning[2]
     assert "food note" in evening[2]
+
+
+def test_motivational_library_has_60_unique_short_entries():
+    assert quote_count() == 60
+    assert len(set(QUOTES)) == 60
+    assert max(map(len, QUOTES)) < 100

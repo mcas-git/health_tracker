@@ -76,3 +76,12 @@ class GoalSettings(Base):
     fasting_target_hours: Mapped[float] = mapped_column(Float, default=16)
     sleep_target_hours: Mapped[float] = mapped_column(Float, default=8)
     water_target_litres: Mapped[float] = mapped_column(Float, default=2.5)
+
+
+class AppPreferences(Base):
+    __tablename__ = "app_preferences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    color_mode: Mapped[str] = mapped_column(String(20), default="light")
+    accent: Mapped[str] = mapped_column(String(20), default="#2A9D8F")
+    font_family: Mapped[str] = mapped_column(String(40), default="Modern sans")

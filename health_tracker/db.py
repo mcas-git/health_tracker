@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from health_tracker.config import PROFILE, database_url
-from health_tracker.models import Base, DailyEntry, GoalSettings, NutritionLog
+from health_tracker.models import AppPreferences, Base, DailyEntry, GoalSettings, NutritionLog
 
 engine = create_engine(database_url(), pool_pre_ping=True)
 
@@ -37,6 +37,9 @@ def init_db() -> None:
                     fibre_target_g=30,
                 )
             )
+            session.commit()
+        if session.get(AppPreferences, 1) is None:
+            session.add(AppPreferences(id=1))
             session.commit()
 
 

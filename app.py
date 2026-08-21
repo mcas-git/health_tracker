@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import secrets
 from datetime import date, datetime, time
 
 import altair as alt
@@ -14,17 +15,41 @@ from health_tracker.auth import require_login
 from health_tracker.config import LONDON, PROFILE, setting
 from health_tracker.db import engine, get_daily, get_nutrition, init_db, upsert_daily
 from health_tracker.garmin import sync_day
-from health_tracker.models import GoalSettings
+from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
+from health_tracker.quotes import QUOTES
+from health_tracker.theme import ACCENTS, FONTS, apply_theme
 
 st.set_page_config(page_title="Health Journey", page_icon="🌿", layout="wide")
 init_db()
 require_login()
 
+with Session(engine) as _theme_session:
+    _preferences = _theme_session.get(AppPreferences, 1)
+    _theme_values = (_preferences.color_mode, _preferences.accent, _preferences.font_family)
+apply_theme(*_theme_values)
+
 
 def value(item, name, default=None):
     result = getattr(item, name, None) if item else None
     return default if result is None else result
+
+
+def home():
+    if "opening_quote" not in st.session_state:
+        st.session_state.opening_quote = secrets.choice(QUOTES)
+    st.title("Welcome back")
+    st.caption("Your private space for a stronger, healthier year")
+    st.markdown(
+        f"""
+        <div class="quote-card">
+          <div class="quote-label">TODAY'S THOUGHT</div>
+          <div class="quote-text">“{st.session_state.opening_quote}”</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.info("Use the menu to complete today's check-in, log food, and review your progress.")
 
 
 def dashboard():
@@ -290,6 +315,149 @@ def food_log():
         st.warning("AI nutrition values are estimates and are not medical advice.")
 
 
+def nutrition_insights():
+    st.title("Nutrition insights")
+    st.caption("Daily estimates compared with your adjustable targets")
+    df = load_data()
+    with Session(engine) as session:
+        goals = session.get(GoalSettings, 1)
+        targets = {
+            "Calories": goals.calorie_target,
+            "Protein": goals.protein_target_g,
+            "Carbs": goals.carbs_target_g,
+            "Fat": goals.fat_target_g,
+            "Fibre": goals.fibre_target_g,
+        }
+    fields = {
+        "Calories": "calories",
+        "Protein": "protein_g",
+        "Carbs": "carbs_g",
+        "Fat": "fat_g",
+        "Fibre": "fibre_g",
+    }
+    if df.empty or "calories" not in df or df["calories"].dropna().empty:
+        st.info("Add food-journal estimates to unlock nutrition charts.")
+        return
+    nutrition = df[["entry_date", *fields.values()]].dropna(subset=["calories"]).copy()
+    nutrition["entry_date"] = pd.to_datetime(nutrition["entry_date"])
+    selected = st.date_input("Inspect a day", nutrition.entry_date.max().date())
+    day = nutrition[nutrition.entry_date.dt.date == selected]
+    st.subheader("Selected day")
+    if day.empty:
+        st.info("No food estimate exists for this day.")
+    else:
+        cols = st.columns(5)
+        for col, (label, field) in zip(cols, fields.items(), strict=True):
+            actual = float(day.iloc[-1][field])
+            ratio = actual / targets[label] if targets[label] else 0
+            status = "Low" if ratio < 0.8 else "High" if ratio > 1.2 else "On target"
+            unit = "kcal" if label == "Calories" else "g"
+            col.metric(label, f"{actual:.0f} {unit}", f"{ratio * 100:.0f}% · {status}")
+
+    rows = []
+    for _, row in nutrition.iterrows():
+        for label, field in fields.items():
+            if pd.notna(row[field]):
+                rows.append(
+                    {
+                        "Date": row.entry_date,
+                        "Nutrient": label,
+                        "% of target": float(row[field]) / targets[label] * 100,
+                    }
+                )
+    long = pd.DataFrame(rows)
+    st.subheader("Daily target balance")
+    st.altair_chart(
+        alt.Chart(long)
+        .mark_rect(cornerRadius=3)
+        .encode(
+            x=alt.X("Date:T", title=None),
+            y=alt.Y("Nutrient:N", title=None),
+            color=alt.Color(
+                "% of target:Q",
+                scale=alt.Scale(domain=[50, 100, 150], range=["#D8664F", "#2A9D8F", "#7057C7"]),
+            ),
+            tooltip=["Date:T", "Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
+        ),
+        use_container_width=True,
+    )
+
+    nutrition["week"] = nutrition.entry_date.dt.to_period("W").dt.start_time
+    weekly = nutrition.groupby("week", as_index=False)[list(fields.values())].mean()
+    weekly_rows = [
+        {"Week": row.week, "Nutrient": label, "% of target": row[field] / targets[label] * 100}
+        for _, row in weekly.iterrows()
+        for label, field in fields.items()
+    ]
+    st.subheader("Weekly average vs target")
+    weekly_chart = (
+        alt.Chart(pd.DataFrame(weekly_rows))
+        .mark_line(point=True)
+        .encode(
+            x=alt.X("Week:T", title=None),
+            y=alt.Y("% of target:Q", title="Target %"),
+            color="Nutrient:N",
+            tooltip=["Week:T", "Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
+        )
+    )
+    target_line = alt.Chart(pd.DataFrame({"y": [100]})).mark_rule(strokeDash=[5, 5]).encode(y="y:Q")
+    st.altair_chart(weekly_chart + target_line, use_container_width=True)
+
+    overall = [
+        {"Nutrient": label, "% of target": nutrition[field].mean() / targets[label] * 100}
+        for label, field in fields.items()
+    ]
+    st.subheader("Overall average")
+    st.altair_chart(
+        alt.Chart(pd.DataFrame(overall))
+        .mark_bar(cornerRadiusEnd=8)
+        .encode(
+            x=alt.X("% of target:Q", title="Average target achievement (%)"),
+            y=alt.Y("Nutrient:N", sort=None, title=None),
+            color=alt.condition(
+                "datum['% of target'] >= 80 && datum['% of target'] <= 120",
+                alt.value("#2A9D8F"),
+                alt.value("#D8664F"),
+            ),
+            tooltip=["Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
+        ),
+        use_container_width=True,
+    )
+    st.warning("Indicators use AI food estimates and are informational, not medical advice.")
+
+
+def appearance_page():
+    st.title("Appearance")
+    st.caption("Make the tracker feel like your own")
+    with Session(engine) as session:
+        prefs = session.get(AppPreferences, 1)
+        with st.form("appearance"):
+            mode = st.segmented_control(
+                "Mode", ["light", "dark"], default=prefs.color_mode, format_func=str.title
+            )
+            accent_name = st.selectbox(
+                "Main accent colour",
+                list(ACCENTS),
+                index=(
+                    list(ACCENTS.values()).index(prefs.accent)
+                    if prefs.accent in ACCENTS.values()
+                    else 0
+                ),
+            )
+            font = st.selectbox(
+                "Font",
+                list(FONTS),
+                index=(list(FONTS).index(prefs.font_family) if prefs.font_family in FONTS else 0),
+            )
+            st.color_picker("Selected accent", ACCENTS[accent_name], disabled=True)
+            if st.form_submit_button("Save appearance", type="primary", use_container_width=True):
+                prefs.color_mode = mode or "light"
+                prefs.accent = ACCENTS[accent_name]
+                prefs.font_family = font
+                session.commit()
+                st.rerun()
+
+
 def settings_page():
     st.title("Targets, backup and privacy")
     with Session(engine) as session:
@@ -340,9 +508,12 @@ def settings_page():
 
 page = st.navigation(
     [
-        st.Page(dashboard, title="Dashboard", icon="📊", default=True),
+        st.Page(home, title="Home", icon="🌿", default=True),
+        st.Page(dashboard, title="Dashboard", icon="📊"),
         st.Page(daily_entry, title="Daily check-in", icon="✅"),
         st.Page(food_log, title="Food journal", icon="🍽️"),
+        st.Page(nutrition_insights, title="Nutrition insights", icon="🥗"),
+        st.Page(appearance_page, title="Appearance", icon="🎨"),
         st.Page(settings_page, title="Targets & export", icon="⚙️"),
     ]
 )

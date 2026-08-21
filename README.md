@@ -70,6 +70,13 @@ server and is never sent to browser code.
 Check the current free-tier and private-repository availability of each hosting provider before
 committing to it; service limits change. Database tables and default targets are created on first run.
 
+### Change the app password
+
+Generate a replacement hash locally with `uv run python scripts/make_password_hash.py`. In Streamlit
+Community Cloud, open the app's **Settings → Secrets**, replace only `APP_PASSWORD_HASH`, and save.
+After Streamlit restarts, sign in with the new plain-text password. Never paste the plain password or
+its hash into GitHub files.
+
 ## Daily email reminder
 
 The workflow defaults to 19:00 UTC: 19:00 in UK winter and 20:00 in UK summer. GitHub cron is UTC,
@@ -108,4 +115,3 @@ regularly. Hosted Postgres providers usually also offer database backups, subjec
 uv run ruff check .
 uv run pytest
 ```
-
