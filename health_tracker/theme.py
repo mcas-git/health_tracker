@@ -138,7 +138,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stCaptionContainer"],
         [data-testid="stMarkdownContainer"] small {{ color:{muted} !important; }}
 
-        button[kind="secondary"], button[data-baseweb="button"] {{
+        button[kind="secondary"] {{
             background-color:{surface}; color:{text}; border-color:{muted};
         }}
         button[kind="primary"] {{ color:#ffffff !important; }}
@@ -212,19 +212,6 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stAlert"] svg,
         [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
         [data-testid="stProgress"] [role="progressbar"] > div {{ background:{accent} !important; }}
-        [data-testid="stElementToolbar"] button,
-        [data-testid="stElementToolbar"] svg {{
-            color:{neutral_icon} !important; fill:{neutral_icon} !important;
-        }}
-        [data-testid="stHeaderActionElements"] button,
-        [data-testid="stHeaderActionElements"] a,
-        [data-testid="stHeaderActionElements"] svg,
-        [data-testid="stToolbar"] button,
-        [data-testid="stToolbar"] a,
-        [data-testid="stToolbar"] svg {{
-            color:{neutral_icon} !important; fill:{neutral_icon} !important;
-            stroke:{neutral_icon} !important;
-        }}
         [data-testid="stSlider"] [role="slider"] {{
             background:{accent} !important; border-color:{accent} !important;
         }}
@@ -394,51 +381,22 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         a {{ color:{accent}; }}
         {dark_overrides}
 
-        /* Keep Streamlit's own controls neutral and independent from the app palette. */
-        [data-testid="stHeaderActionElements"] button,
-        [data-testid="stHeaderActionElements"] button:hover,
-        [data-testid="stHeaderActionElements"] button:focus,
-        [data-testid="stHeaderActionElements"] button:active,
-        [data-testid="stHeaderActionElements"] a,
-        [data-testid="stHeaderActionElements"] a:hover,
-        [data-testid="stHeaderActionElements"] a:focus,
-        [data-testid="stToolbar"] button,
-        [data-testid="stToolbar"] button:hover,
-        [data-testid="stToolbar"] button:focus,
-        [data-testid="stToolbar"] button:active,
-        [data-testid="stToolbar"] a,
-        [data-testid="stToolbar"] a:hover,
-        [data-testid="stToolbar"] a:focus,
-        [data-testid="stStatusWidget"] button,
-        [data-testid="stStatusWidget"] button:hover,
-        [data-testid="stStatusWidget"] button:focus,
-        [data-testid="stStatusWidget"] button:active,
-        [data-testid="stAppDeployButton"] button,
-        [data-testid="stAppDeployButton"] button:hover,
-        [data-testid="stAppDeployButton"] button:focus,
-        [data-testid="stAppDeployButton"] button:active {{
-            background:transparent !important;
-            background-color:transparent !important;
-            background-image:none !important;
-            border:0 !important;
-            border-color:transparent !important;
-            border-radius:0 !important;
-            outline:0 !important;
-            box-shadow:none !important;
-            color:{neutral_icon} !important;
+        /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
+        [data-testid="stSidebarCollapsedControl"] button,
+        [data-testid="stSidebarCollapsedControl"] button *,
+        [data-testid="stSidebarCollapseButton"] button,
+        [data-testid="stSidebarCollapseButton"] button *,
+        [data-testid="stSidebarHeader"] button,
+        [data-testid="stSidebarHeader"] button * {{
+            color:{sidebar_icon} !important;
+            -webkit-text-fill-color:{sidebar_icon} !important;
         }}
-        [data-testid="stHeaderActionElements"] svg,
-        [data-testid="stToolbar"] svg,
-        [data-testid="stStatusWidget"] svg,
-        [data-testid="stAppDeployButton"] svg,
-        [data-testid="stSpinner"] svg {{
-            color:{neutral_icon} !important;
-            fill:{neutral_icon} !important;
-            stroke:{neutral_icon} !important;
-        }}
-        [data-testid="stSpinner"] {{
-            color:{neutral_icon} !important;
-            --primary-color:{neutral_icon} !important;
+        [data-testid="stSidebarCollapsedControl"] button svg,
+        [data-testid="stSidebarCollapseButton"] button svg,
+        [data-testid="stSidebarHeader"] button svg {{
+            color:{sidebar_icon} !important;
+            fill:{sidebar_icon} !important;
+            stroke:{sidebar_icon} !important;
         }}
         </style>
         """,
