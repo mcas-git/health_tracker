@@ -26,6 +26,51 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     text = "#EDF6F2" if dark else "#16302B"
     muted = "#A9BBB5" if dark else "#63736F"
     font = FONTS.get(font_name, FONTS["Modern sans"])
+    dark_overrides = (
+        f"""
+        [data-testid="stAppViewContainer"] h1,
+        [data-testid="stAppViewContainer"] h2,
+        [data-testid="stAppViewContainer"] h3,
+        [data-testid="stAppViewContainer"] h4,
+        [data-testid="stAppViewContainer"] p,
+        [data-testid="stAppViewContainer"] label,
+        [data-testid="stAppViewContainer"] li,
+        [data-testid="stMetricValue"],
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetricDelta"],
+        [data-testid="stSidebar"] * {{ color:{text} !important; }}
+
+        [data-baseweb="input"] > div,
+        [data-baseweb="base-input"],
+        [data-baseweb="textarea"],
+        [data-baseweb="select"] > div,
+        [data-baseweb="popover"] > div,
+        [role="listbox"],
+        [role="option"] {{ background-color:{surface} !important; color:{text} !important; }}
+
+        input, textarea,
+        [data-baseweb="select"] input {{
+            color:{text} !important; -webkit-text-fill-color:{text} !important;
+        }}
+        input::placeholder, textarea::placeholder {{
+            color:{muted} !important; -webkit-text-fill-color:{muted} !important;
+        }}
+        [data-testid="stWidgetLabel"] p,
+        [data-testid="stCaptionContainer"],
+        [data-testid="stMarkdownContainer"] small {{ color:{muted} !important; }}
+
+        button[kind="secondary"], button[data-baseweb="button"] {{
+            background-color:{surface}; color:{text}; border-color:{muted};
+        }}
+        button[kind="primary"] {{ color:#ffffff !important; }}
+        [data-testid="stHeader"], [data-testid="stToolbar"] {{
+            background-color:{background} !important;
+        }}
+        hr {{ border-color:{muted}55; }}
+        """
+        if dark
+        else ""
+    )
     st.markdown(
         f"""
         <style>
@@ -42,6 +87,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         .quote-label {{ color:{accent}; letter-spacing:.12em; font-size:.75rem; font-weight:700; }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
         a {{ color:{accent}; }}
+        {dark_overrides}
         </style>
         """,
         unsafe_allow_html=True,

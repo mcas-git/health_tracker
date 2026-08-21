@@ -20,7 +20,7 @@ from health_tracker.nutrition import analyse_day, save_estimate
 from health_tracker.quotes import QUOTES
 from health_tracker.theme import ACCENTS, FONTS, apply_theme
 
-st.set_page_config(page_title="Health Journey", page_icon="🌿", layout="wide")
+st.set_page_config(page_title="Health Journey", layout="wide")
 init_db()
 require_login()
 
@@ -508,13 +508,13 @@ def settings_page():
 
 page = st.navigation(
     [
-        st.Page(home, title="Home", icon="🌿", default=True),
-        st.Page(dashboard, title="Dashboard", icon="📊"),
-        st.Page(daily_entry, title="Daily check-in", icon="✅"),
-        st.Page(food_log, title="Food journal", icon="🍽️"),
-        st.Page(nutrition_insights, title="Nutrition insights", icon="🥗"),
-        st.Page(appearance_page, title="Appearance", icon="🎨"),
-        st.Page(settings_page, title="Targets & export", icon="⚙️"),
+        st.Page(home, title="Home", default=True),
+        st.Page(dashboard, title="Dashboard"),
+        st.Page(daily_entry, title="Daily check-in"),
+        st.Page(food_log, title="Food journal"),
+        st.Page(nutrition_insights, title="Nutrition insights"),
+        st.Page(appearance_page, title="Appearance"),
+        st.Page(settings_page, title="Targets & export"),
     ]
 )
 page.run()
