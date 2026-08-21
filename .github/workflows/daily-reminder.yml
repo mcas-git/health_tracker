@@ -2,9 +2,9 @@ name: Daily health reminder
 
 on:
   schedule:
-    # 19:00 UTC = 19:00 UK winter / 20:00 UK summer.
-    # GitHub cron uses UTC and may run a little late under load.
-    - cron: "0 19 * * *"
+    # Run at both possible UTC offsets; the script keeps only 05:00 and 21:00
+    # Europe/London. This remains correct across GMT/BST clock changes.
+    - cron: "0 4,5,20,21 * * *"
   workflow_dispatch:
 
 jobs:
@@ -23,5 +23,6 @@ jobs:
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           REMINDER_FROM: ${{ secrets.REMINDER_FROM }}
+          REMINDER_FROM_NAME: ${{ secrets.REMINDER_FROM_NAME }}
           REMINDER_TO: ${{ secrets.REMINDER_TO }}
           APP_URL: ${{ secrets.APP_URL }}

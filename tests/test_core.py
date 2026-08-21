@@ -1,4 +1,5 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -7,6 +8,7 @@ from health_tracker.auth import hash_password
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.nutrition import DailyNutritionEstimate
+from scripts.send_reminder import reminder_copy, should_send
 
 
 def test_profile_target_date_is_uk_interpretation():
@@ -55,3 +57,20 @@ def test_streak_uses_yesterday_if_today_missing():
     today = date.today()
     df = pd.DataFrame({"entry_date": [today - timedelta(days=2), today - timedelta(days=1)]})
     assert current_streak(df) == 2
+
+
+def test_reminder_schedule_handles_bst_and_gmt():
+    london = ZoneInfo("Europe/London")
+    assert should_send(datetime(2026, 7, 1, 5, tzinfo=london), "schedule")
+    assert should_send(datetime(2026, 12, 1, 21, tzinfo=london), "schedule")
+    assert not should_send(datetime(2026, 7, 1, 6, tzinfo=london), "schedule")
+    assert should_send(datetime(2026, 7, 1, 6, tzinfo=london), "workflow_dispatch")
+
+
+def test_morning_and_evening_reminders_are_distinct():
+    london = ZoneInfo("Europe/London")
+    morning = reminder_copy(datetime(2026, 7, 1, 5, tzinfo=london))
+    evening = reminder_copy(datetime(2026, 7, 1, 21, tzinfo=london))
+    assert morning != evening
+    assert "intention" in morning[2]
+    assert "food note" in evening[2]
