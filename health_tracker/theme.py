@@ -389,6 +389,53 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         a {{ color:{accent}; }}
         {dark_overrides}
+
+        /* Keep Streamlit's own controls neutral and independent from the app palette. */
+        [data-testid="stHeaderActionElements"] button,
+        [data-testid="stHeaderActionElements"] button:hover,
+        [data-testid="stHeaderActionElements"] button:focus,
+        [data-testid="stHeaderActionElements"] button:active,
+        [data-testid="stHeaderActionElements"] a,
+        [data-testid="stHeaderActionElements"] a:hover,
+        [data-testid="stHeaderActionElements"] a:focus,
+        [data-testid="stToolbar"] button,
+        [data-testid="stToolbar"] button:hover,
+        [data-testid="stToolbar"] button:focus,
+        [data-testid="stToolbar"] button:active,
+        [data-testid="stToolbar"] a,
+        [data-testid="stToolbar"] a:hover,
+        [data-testid="stToolbar"] a:focus,
+        [data-testid="stStatusWidget"] button,
+        [data-testid="stStatusWidget"] button:hover,
+        [data-testid="stStatusWidget"] button:focus,
+        [data-testid="stStatusWidget"] button:active,
+        [data-testid="stAppDeployButton"] button,
+        [data-testid="stAppDeployButton"] button:hover,
+        [data-testid="stAppDeployButton"] button:focus,
+        [data-testid="stAppDeployButton"] button:active {{
+            background:transparent !important;
+            background-color:transparent !important;
+            background-image:none !important;
+            border:0 !important;
+            border-color:transparent !important;
+            border-radius:0 !important;
+            outline:0 !important;
+            box-shadow:none !important;
+            color:{neutral_icon} !important;
+        }}
+        [data-testid="stHeaderActionElements"] svg,
+        [data-testid="stToolbar"] svg,
+        [data-testid="stStatusWidget"] svg,
+        [data-testid="stAppDeployButton"] svg,
+        [data-testid="stSpinner"] svg {{
+            color:{neutral_icon} !important;
+            fill:{neutral_icon} !important;
+            stroke:{neutral_icon} !important;
+        }}
+        [data-testid="stSpinner"] {{
+            color:{neutral_icon} !important;
+            --primary-color:{neutral_icon} !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
