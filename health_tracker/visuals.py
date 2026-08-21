@@ -4,8 +4,6 @@ from pathlib import Path
 
 import streamlit as st
 
-from health_tracker.theme import OLIVE_ACCENT
-
 ICONS = {
     "home": """
         <path d="M45 82 C55 62 68 62 80 78 C92 62 108 64 114 82
@@ -63,7 +61,7 @@ PAGE_FOLDERS = {
 }
 
 
-def page_watermark(icon: str) -> None:
+def page_watermark(icon: str, accent: str) -> None:
     custom_logo = (
         Path(__file__).resolve().parents[1]
         / "assets"
@@ -81,7 +79,7 @@ def page_watermark(icon: str) -> None:
     st.markdown(
         f"""
         <div class="sport-watermark" aria-hidden="true">
-          <svg viewBox="0 0 160 160" role="presentation" style="color:{OLIVE_ACCENT}">
+          <svg viewBox="0 0 160 160" role="presentation" style="color:{accent}">
             <g fill="none" stroke="currentColor" stroke-width="5"
                stroke-linecap="round" stroke-linejoin="round">{paths}</g>
           </svg>

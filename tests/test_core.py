@@ -3,12 +3,13 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from health_tracker.analytics import current_streak, excel_safe_data
+from health_tracker.analytics import current_streak, daily_health_score, excel_safe_data
 from health_tracker.auth import create_remember_token, hash_password, valid_remember_token
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.nutrition import DailyNutritionEstimate
 from health_tracker.quotes import QUOTES, quote_count
+from health_tracker.theme import normalize_color
 from scripts.send_reminder import reminder_copy, should_send
 
 
@@ -75,6 +76,32 @@ def test_excel_export_removes_timezone_information():
     exported = excel_safe_data(data)
 
     assert exported.loc[0, "created_at"].tzinfo is None
+
+
+def test_daily_health_score_is_deterministic_and_uses_available_measurements():
+    item = type(
+        "Entry",
+        (),
+        {
+            "bmi": 24,
+            "waist_cm": 80,
+            "systolic": 120,
+            "diastolic": 80,
+            "sleep_hours": 8,
+            "steps": 9000,
+            "mood": 8,
+            "energy": 7,
+        },
+    )()
+    score, label, included = daily_health_score(item)
+    assert score == 93
+    assert label == "Strong"
+    assert len(included) == 7
+
+
+def test_palette_colour_accepts_hex_and_rgb():
+    assert normalize_color("#7b8451") == "#7B8451"
+    assert normalize_color("rgb(123, 132, 81)") == "#7B8451"
 
 
 def test_reminder_schedule_handles_bst_and_gmt():

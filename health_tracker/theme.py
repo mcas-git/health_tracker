@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import streamlit as st
 
 FONTS = {
@@ -7,19 +9,44 @@ FONTS = {
     "Classic serif": "Georgia, 'Times New Roman', serif",
     "Clean rounded": "Avenir, 'Trebuchet MS', sans-serif",
     "Focused mono": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    "Editorial": "Baskerville, 'Palatino Linotype', Palatino, serif",
+    "Humanist": "Optima, Candara, 'Segoe UI', sans-serif",
+    "Geometric": "Futura, 'Century Gothic', Avenir, sans-serif",
+    "Compact": "'Arial Narrow', 'Helvetica Neue', Arial, sans-serif",
+    "Friendly": "Verdana, Geneva, sans-serif",
 }
 
 OLIVE_ACCENT = "#7B8451"
 
 
-def apply_theme(mode: str, font_name: str) -> None:
+def normalize_color(value: str) -> str:
+    value = value.strip()
+    if re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+        return value.upper()
+    match = re.fullmatch(r"rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)", value, re.I)
+    if match and all(0 <= int(part) <= 255 for part in match.groups()):
+        return "#" + "".join(f"{int(part):02X}" for part in match.groups())
+    raise ValueError("Use #RRGGBB or rgb(0–255, 0–255, 0–255).")
+
+
+def _mix(color: str, target: str, amount: float) -> str:
+    source = tuple(int(color[index : index + 2], 16) for index in (1, 3, 5))
+    destination = tuple(int(target[index : index + 2], 16) for index in (1, 3, 5))
+    values = tuple(
+        round(left * (1 - amount) + right * amount)
+        for left, right in zip(source, destination, strict=True)
+    )
+    return "#" + "".join(f"{value:02X}" for value in values)
+
+
+def apply_theme(mode: str, accent: str, font_name: str) -> None:
     dark = mode == "dark"
-    accent = OLIVE_ACCENT
-    background = "#161811" if dark else "#F5F5EE"
-    surface = "#22251A" if dark else "#FCFCF7"
-    secondary = "#292D1F" if dark else "#E9EAD8"
-    text = "#EFF0E5" if dark else "#2C3023"
-    muted = "#B1B59A" if dark else "#6E7359"
+    accent = normalize_color(accent)
+    background = _mix(accent, "#000000", 0.84) if dark else _mix(accent, "#FFFFFF", 0.93)
+    surface = _mix(accent, "#000000", 0.72) if dark else _mix(accent, "#FFFFFF", 0.98)
+    secondary = _mix(accent, "#000000", 0.66) if dark else _mix(accent, "#FFFFFF", 0.84)
+    text = _mix(accent, "#FFFFFF", 0.9) if dark else _mix(accent, "#000000", 0.76)
+    muted = _mix(accent, "#FFFFFF", 0.55) if dark else _mix(accent, "#000000", 0.48)
     font = FONTS.get(font_name, FONTS["Modern sans"])
     dark_overrides = (
         f"""
@@ -104,7 +131,7 @@ def apply_theme(mode: str, font_name: str) -> None:
         [data-testid="stMarkdownContainer"],
         [data-testid="stWidgetLabel"],
         [data-testid="stMetric"],
-        input, textarea {{ font-family:{font}; }}
+        [data-baseweb="select"], input, textarea {{ font-family:{font}; }}
         [data-testid="stSidebar"] {{ background:{secondary}; }}
         div[data-testid="stMetric"], .quote-card {{
             background:{surface}; border:1px solid {accent}33; border-radius:16px; padding:18px;
@@ -123,6 +150,15 @@ def apply_theme(mode: str, font_name: str) -> None:
             background:{surface}; color:{text}; border-left:4px solid {accent};
             border-radius:10px; padding:16px 18px; margin:12px 0;
         }}
+        .health-score {{
+            width:100%; box-sizing:border-box; background:{surface};
+            border:2px solid var(--score-color); border-radius:14px;
+            padding:16px 20px; margin:10px 0 18px; display:grid;
+            grid-template-columns:1fr auto; gap:4px 18px;
+        }}
+        .health-score span {{ color:{muted}; font-weight:600; }}
+        .health-score strong {{ color:var(--score-color); font-size:1.25rem; }}
+        .health-score small {{ color:{muted}; grid-column:1/-1; }}
         .quote-text {{ font-size:clamp(1.35rem,3vw,2rem); line-height:1.4; font-weight:600; }}
         .quote-label {{ color:{accent}; letter-spacing:.12em; font-size:.75rem; font-weight:700; }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
@@ -136,6 +172,13 @@ def apply_theme(mode: str, font_name: str) -> None:
         [data-testid="stAlert"] svg,
         [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
         [data-testid="stProgress"] [role="progressbar"] > div {{ background:{accent} !important; }}
+        [data-testid="stSlider"] [role="slider"] {{
+            background:{accent} !important; border-color:{accent} !important;
+        }}
+        [data-testid="stSlider"] [data-testid="stTickBar"] + div,
+        [data-testid="stToggle"] [role="switch"][aria-checked="true"] {{
+            background:{accent} !important;
+        }}
         [data-testid="stSidebarCollapsedControl"] {{
             display:flex !important; visibility:visible !important; opacity:1 !important;
             background:{surface} !important; color:{text} !important;

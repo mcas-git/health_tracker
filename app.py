@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from health_tracker.analytics import (
     current_streak,
+    daily_health_score,
     excel_safe_data,
     load_data,
     projected_target_date,
@@ -23,7 +24,7 @@ from health_tracker.garmin import sync_day
 from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
 from health_tracker.quotes import QUOTES
-from health_tracker.theme import FONTS, OLIVE_ACCENT, apply_theme
+from health_tracker.theme import FONTS, apply_theme, normalize_color
 from health_tracker.visuals import optional_home_logo, page_watermark
 
 st.set_page_config(page_title="Health Journey", layout="wide")
@@ -32,8 +33,8 @@ require_login()
 
 with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
-    _theme_values = (_preferences.color_mode, OLIVE_ACCENT, _preferences.font_family)
-apply_theme(_theme_values[0], _theme_values[2])
+    _theme_values = (_preferences.color_mode, _preferences.accent, _preferences.font_family)
+apply_theme(*_theme_values)
 
 
 def value(item, name, default=None):
@@ -69,7 +70,7 @@ def style_chart(chart):
 
 
 def home():
-    page_watermark("home")
+    page_watermark("home", _theme_values[1])
     optional_home_logo()
     if "opening_quote" not in st.session_state:
         st.session_state.opening_quote = secrets.choice(QUOTES)
@@ -92,7 +93,7 @@ def home():
 
 
 def dashboard():
-    page_watermark("runner")
+    page_watermark("runner", _theme_values[1])
     st.title("Your health journey")
     st.caption(f"One calm day at a time · Goal: {PROFILE.target_weight_kg:g} kg by 1 Sep 2027")
     df = load_data()
@@ -255,10 +256,28 @@ def dashboard():
 
 
 def daily_entry():
-    page_watermark("barbell")
+    page_watermark("barbell", _theme_values[1])
     st.title("Daily check-in")
+    if st.session_state.pop("daily_checkin_saved", False):
+        st.success("Daily check-in saved.")
     selected = st.date_input("Date", date.today())
     item = get_daily(selected)
+    indicator = daily_health_score(item) if item else None
+    if indicator:
+        score, score_label, included = indicator
+        score_color = "#4F8A55" if score >= 75 else "#C5A33B" if score >= 45 else "#B64B4B"
+        st.markdown(
+            f"<div class='health-score' style='--score-color:{score_color}'>"
+            f"<span>Daily health indicator</span><strong>{score}/100 · {score_label}</strong>"
+            f"<small>Based on {', '.join(included)}. This is not a diagnosis.</small></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            "<div class='neutral-note'>Save measurements for this date to calculate the daily "
+            "health indicator.</div>",
+            unsafe_allow_html=True,
+        )
     with st.expander("Garmin sync", expanded=False):
         st.caption("Imports steps, calories burned, sleep, resting heart rate, and activity data.")
         if st.button("Sync Garmin for this date", use_container_width=True):
@@ -285,7 +304,7 @@ def daily_entry():
             "Waist (cm)", 30.0, 250.0, float(value(item, "waist_cm", 100.0)), 0.1
         )
         bmi = weight / ((PROFILE.height_cm / 100) ** 2)
-        c3.metric("BMI (calculated)", f"{bmi:.1f}")
+        c3.number_input("BMI (calculated)", value=round(bmi, 1), disabled=True)
         c1, c2, c3 = st.columns(3)
         resting_hr = c1.number_input(
             "Resting heart rate",
@@ -382,11 +401,12 @@ def daily_entry():
                 **habits,
             }
         )
-        st.success("Daily check-in saved.")
+        st.session_state["daily_checkin_saved"] = True
+        st.rerun()
 
 
 def food_log():
-    page_watermark("cycling")
+    page_watermark("cycling", _theme_values[1])
     st.title("Food journal")
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     selected = st.date_input("Date", date.today(), key="food_date")
@@ -453,7 +473,7 @@ def food_log():
 
 
 def nutrition_insights():
-    page_watermark("swim")
+    page_watermark("swim", _theme_values[1])
     st.title("Nutrition insights")
     st.caption("Daily estimates compared with your adjustable targets")
     df = load_data()
@@ -576,30 +596,43 @@ def nutrition_insights():
 
 
 def appearance_page():
-    page_watermark("stretch")
+    page_watermark("stretch", _theme_values[1])
     st.title("Appearance")
     st.caption("Make the tracker feel like your own")
     with Session(engine) as session:
         prefs = session.get(AppPreferences, 1)
-        with st.form("appearance"):
-            mode = st.segmented_control(
-                "Mode", ["light", "dark"], default=prefs.color_mode, format_func=str.title
-            )
-            font = st.selectbox(
-                "Font",
-                list(FONTS),
-                index=(list(FONTS).index(prefs.font_family) if prefs.font_family in FONTS else 0),
-            )
-            if st.form_submit_button("Save appearance", type="primary", use_container_width=True):
+        mode = st.segmented_control(
+            "Mode", ["light", "dark"], default=prefs.color_mode, format_func=str.title
+        )
+        picked_color = st.color_picker("Base palette colour", prefs.accent)
+        typed_color = st.text_input(
+            "RGB or HEX override (optional)",
+            placeholder="rgb(123, 132, 81) or #7B8451",
+            help="Leave blank to use the colour picker above.",
+        )
+        font = st.selectbox(
+            "Font",
+            list(FONTS),
+            index=(list(FONTS).index(prefs.font_family) if prefs.font_family in FONTS else 0),
+        )
+        st.markdown(
+            f'<div style="font-family:{FONTS[font]};font-size:1.15rem;padding:.5rem 0">'
+            f"Selected: {font} — The quick brown fox — 0123456789</div>",
+            unsafe_allow_html=True,
+        )
+        if st.button("Save appearance", type="primary", use_container_width=True):
+            try:
+                prefs.accent = normalize_color(typed_color or picked_color)
                 prefs.color_mode = mode or "light"
-                prefs.accent = OLIVE_ACCENT
                 prefs.font_family = font
                 session.commit()
                 st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
 
 
 def settings_page():
-    page_watermark("target")
+    page_watermark("target", _theme_values[1])
     st.title("Targets, backup and privacy")
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)

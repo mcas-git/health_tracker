@@ -57,6 +57,56 @@ def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def daily_health_score(item) -> tuple[int, str, list[str]] | None:
+    """Create a non-diagnostic indicator from the measurements recorded for one day."""
+    components: list[tuple[str, float]] = []
+    bmi = getattr(item, "bmi", None)
+    if bmi:
+        components.append(
+            ("BMI", 100 if 18.5 <= bmi < 25 else 65 if 25 <= bmi < 30 else 35 if bmi < 35 else 15)
+        )
+    waist = getattr(item, "waist_cm", None)
+    if waist:
+        ratio = waist / PROFILE.height_cm
+        components.append(("Waist-to-height", 100 if ratio < 0.5 else 55 if ratio < 0.6 else 20))
+    systolic = getattr(item, "systolic", None)
+    diastolic = getattr(item, "diastolic", None)
+    if systolic and diastolic:
+        components.append(
+            (
+                "Blood pressure",
+                100
+                if 90 <= systolic < 135 and 60 <= diastolic < 85
+                else 65
+                if 90 <= systolic < 140 and 60 <= diastolic < 90
+                else 25,
+            )
+        )
+    resting_hr = getattr(item, "resting_heart_rate", None)
+    if resting_hr is not None:
+        components.append(
+            (
+                "Resting heart rate",
+                100 if 50 <= resting_hr <= 90 else 65 if 40 <= resting_hr <= 100 else 25,
+            )
+        )
+    sleep = getattr(item, "sleep_hours", None)
+    if sleep is not None:
+        components.append(("Sleep", 100 if 7 <= sleep <= 9 else 65 if 6 <= sleep <= 10 else 30))
+    steps = getattr(item, "steps", None)
+    if steps is not None:
+        components.append(("Activity", 100 if steps >= 8000 else 70 if steps >= 5000 else 40))
+    for field, label in (("mood", "Mood"), ("energy", "Energy")):
+        rating = getattr(item, field, None)
+        if rating is not None:
+            components.append((label, rating * 10))
+    if not components:
+        return None
+    score = round(sum(value for _, value in components) / len(components))
+    label = "Strong" if score >= 75 else "Watch" if score >= 45 else "Needs attention"
+    return score, label, [name for name, _ in components]
+
+
 def current_streak(df: pd.DataFrame) -> int:
     if df.empty or "entry_date" not in df:
         return 0
