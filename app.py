@@ -10,7 +10,12 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy.orm import Session
 
-from health_tracker.analytics import current_streak, load_data, projected_target_date
+from health_tracker.analytics import (
+    current_streak,
+    excel_safe_data,
+    load_data,
+    projected_target_date,
+)
 from health_tracker.auth import require_login
 from health_tracker.config import LONDON, PROFILE, setting
 from health_tracker.db import engine, get_daily, get_nutrition, init_db, upsert_daily
@@ -620,7 +625,7 @@ def settings_page():
     )
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        data.to_excel(writer, index=False, sheet_name="Journey")
+        excel_safe_data(data).to_excel(writer, index=False, sheet_name="Journey")
     st.download_button(
         "Download all data as Excel",
         buffer.getvalue(),

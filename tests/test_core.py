@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from health_tracker.analytics import current_streak
+from health_tracker.analytics import current_streak, excel_safe_data
 from health_tracker.auth import create_remember_token, hash_password, valid_remember_token
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
@@ -66,6 +66,15 @@ def test_streak_uses_yesterday_if_today_missing():
     today = date.today()
     df = pd.DataFrame({"entry_date": [today - timedelta(days=2), today - timedelta(days=1)]})
     assert current_streak(df) == 2
+
+
+def test_excel_export_removes_timezone_information():
+    aware = datetime(2026, 8, 21, 12, tzinfo=ZoneInfo("Europe/London"))
+    data = pd.DataFrame({"created_at": [aware], "value": [1]})
+
+    exported = excel_safe_data(data)
+
+    assert exported.loc[0, "created_at"].tzinfo is None
 
 
 def test_reminder_schedule_handles_bst_and_gmt():

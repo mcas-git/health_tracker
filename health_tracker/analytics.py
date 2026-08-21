@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pandas as pd
 from sqlalchemy import select
@@ -37,6 +37,24 @@ def load_data() -> pd.DataFrame:
     if right.empty:
         return left
     return left.merge(right, on="entry_date", how="outer").sort_values("entry_date")
+
+
+def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Return an Excel-compatible copy with timezone information removed."""
+    result = df.copy()
+    for column in result.columns:
+        series = result[column]
+        if isinstance(series.dtype, pd.DatetimeTZDtype):
+            result[column] = series.dt.tz_localize(None)
+        elif series.dtype == "object":
+            result[column] = series.map(
+                lambda item: (
+                    item.replace(tzinfo=None)
+                    if isinstance(item, datetime) and item.tzinfo is not None
+                    else item
+                )
+            )
+    return result
 
 
 def current_streak(df: pd.DataFrame) -> int:
