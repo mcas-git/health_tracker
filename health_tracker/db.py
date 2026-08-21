@@ -48,6 +48,17 @@ def init_db() -> None:
                 connection.execute(
                     text(f"ALTER TABLE daily_entries ADD COLUMN {column} {sql_type}")
                 )
+    preference_columns = {
+        column["name"] for column in inspect(engine).get_columns("app_preferences")
+    }
+    if "smooth_charts" not in preference_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE app_preferences ADD COLUMN smooth_charts "
+                    "BOOLEAN NOT NULL DEFAULT TRUE"
+                )
+            )
     with Session(engine) as session:
         if session.get(GoalSettings, 1) is None:
             targets = calculate_targets()

@@ -43,6 +43,7 @@ require_login()
 with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
     _theme_values = (_preferences.color_mode, _preferences.accent, _preferences.font_family)
+    _smooth_charts = bool(_preferences.smooth_charts)
 apply_theme(*_theme_values)
 
 
@@ -184,11 +185,12 @@ def dashboard():
     hidden_axis = alt.Axis(labels=False, ticks=False, domain=False, title=None)
 
     st.subheader("Weight trend")
-    smooth_weight = st.checkbox("Smooth weight (7-entry rolling average)", key="smooth_weight")
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
         weight["display_value"] = (
-            weight.weight_kg.rolling(7, min_periods=1).mean() if smooth_weight else weight.weight_kg
+            weight.weight_kg.rolling(7, min_periods=1).mean()
+            if _smooth_charts
+            else weight.weight_kg
         )
         weight_line = (
             alt.Chart(weight)
@@ -197,7 +199,7 @@ def dashboard():
                     alt.OverlayMarkDef(
                         filled=True, fill=accent, stroke=accent, strokeWidth=2, size=72
                     )
-                    if not smooth_weight
+                    if not _smooth_charts
                     else False
                 ),
                 color=accent,
@@ -229,9 +231,6 @@ def dashboard():
         st.caption("No weight entries yet.")
 
     st.subheader("Calories and activity")
-    smooth_calories = st.checkbox(
-        "Smooth calories and activity (7-entry rolling average)", key="smooth_calories"
-    )
     fields = [
         field
         for field in ["calories", "calories_burned"]
@@ -239,12 +238,12 @@ def dashboard():
     ]
     if fields:
         calories = df[["entry_date", *fields]].copy()
-        if smooth_calories:
+        if _smooth_charts:
             calories[fields] = calories[fields].rolling(7, min_periods=1).mean()
         melted = calories.melt("entry_date", fields, var_name="measure", value_name="kcal").dropna()
         chart = (
             alt.Chart(melted)
-            .mark_line(point=not smooth_calories, strokeWidth=4)
+            .mark_line(point=not _smooth_charts, strokeWidth=4)
             .encode(
                 x=alt.X("entry_date:T", axis=hidden_axis),
                 y=alt.Y("kcal:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
@@ -269,9 +268,6 @@ def dashboard():
         st.caption("No nutrition or calorie-burn data yet.")
 
     st.subheader("Recent KPI view")
-    smooth_kpi = st.checkbox(
-        "Smooth selected KPI (7-entry rolling average)", key="smooth_recent_kpi"
-    )
     kpis = [
         col
         for col in [
@@ -308,7 +304,7 @@ def dashboard():
         recent = df[["entry_date", selected_kpi]].dropna().tail(30).copy()
         recent["display_value"] = (
             recent[selected_kpi].rolling(7, min_periods=1).mean()
-            if smooth_kpi
+            if _smooth_charts
             else recent[selected_kpi]
         )
         kpi_chart = (
@@ -318,7 +314,7 @@ def dashboard():
                     alt.OverlayMarkDef(
                         filled=True, fill=accent, stroke=accent, strokeWidth=2, size=72
                     )
-                    if not smooth_kpi
+                    if not _smooth_charts
                     else False
                 ),
                 color=accent,
@@ -691,17 +687,14 @@ def nutrition_insights():
     ]
     palette = derived_palette(*_theme_values[:2])
     st.subheader("Weekly average vs target")
-    smooth_weekly = st.checkbox(
-        "Smooth weekly nutrition (3-week rolling average)", key="smooth_weekly_nutrition"
-    )
     weekly_frame = pd.DataFrame(weekly_rows)
-    if smooth_weekly:
+    if _smooth_charts:
         weekly_frame["% of target"] = weekly_frame.groupby("Nutrient")["% of target"].transform(
             lambda values: values.rolling(3, min_periods=1).mean()
         )
     weekly_chart = (
         alt.Chart(weekly_frame)
-        .mark_line(point=not smooth_weekly, strokeWidth=3)
+        .mark_line(point=not _smooth_charts, strokeWidth=3)
         .encode(
             x=alt.X("Week:T", title=None),
             y=alt.Y("% of target:Q", title="Target %"),
@@ -765,6 +758,11 @@ def appearance_page():
             list(FONTS),
             index=(list(FONTS).index(prefs.font_family) if prefs.font_family in FONTS else 0),
         )
+        smooth_charts = st.toggle(
+            "Smooth line graphs",
+            value=bool(prefs.smooth_charts),
+            help="Use rolling averages for clearer trends. Turn off to show every recorded value.",
+        )
         st.markdown(
             f'<div style="font-family:{FONTS[font]};font-size:1.15rem;padding:.5rem 0">'
             f"Selected: {font} — The quick brown fox — 0123456789</div>",
@@ -775,6 +773,7 @@ def appearance_page():
                 prefs.accent = normalize_color(typed_color or picked_color)
                 prefs.color_mode = mode or "light"
                 prefs.font_family = font
+                prefs.smooth_charts = smooth_charts
                 session.commit()
                 st.rerun()
             except ValueError as exc:

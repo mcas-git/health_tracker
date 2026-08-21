@@ -93,6 +93,7 @@ class AppPreferences(Base):
     color_mode: Mapped[str] = mapped_column(String(20), default="light")
     accent: Mapped[str] = mapped_column(String(20), default="#7B8451")
     font_family: Mapped[str] = mapped_column(String(40), default="Modern sans")
+    smooth_charts: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class WeeklyPlan(Base):
