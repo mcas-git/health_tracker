@@ -326,6 +326,21 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             color:{neutral_icon} !important; fill:{neutral_icon} !important;
             stroke:{neutral_icon} !important;
         }}
+        [data-testid="stTextArea"] [data-baseweb="textarea"],
+        [data-testid="stTextArea"] textarea {{
+            background:{surface} !important; color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+            caret-color:{text} !important; border-color:{neutral_border} !important;
+            opacity:1 !important;
+        }}
+        [data-testid="stTextArea"] textarea::placeholder {{
+            color:{neutral_icon} !important; -webkit-text-fill-color:{neutral_icon} !important;
+            opacity:.8 !important;
+        }}
+        [data-testid="stTextArea"] textarea::selection {{
+            background:{accent} !important; color:{accent_text} !important;
+            -webkit-text-fill-color:{accent_text} !important;
+        }}
         input[type="date"]::-webkit-calendar-picker-indicator {{
             opacity:1; accent-color:{neutral_icon};
         }}
