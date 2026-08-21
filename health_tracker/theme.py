@@ -222,6 +222,12 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-baseweb="slider"] div[style*="background"] {{
             background-color:{accent} !important;
         }}
+        [data-testid="stSlider"] [role="group"] > div:first-child > div:first-child {{
+            background:{secondary} !important; background-image:none !important;
+        }}
+        [data-testid="stSlider"] [role="group"] > div:first-child > div:has(input[type="range"]) {{
+            background:{accent} !important; background-image:none !important;
+        }}
         [data-testid="stSlider"] [data-testid="stTickBar"] + div,
         [data-testid="stToggle"] [role="switch"][aria-checked="true"] {{
             background:{accent} !important;
@@ -232,6 +238,9 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         [data-testid="stCheckbox"] label:has(input:checked) span:first-of-type,
         [data-baseweb="checkbox"] label:has(input:checked) span:first-of-type {{
+            background:{accent} !important; border-color:{accent} !important;
+        }}
+        [data-testid="stCheckbox"] label:has(input:checked) > span + div {{
             background:{accent} !important; border-color:{accent} !important;
         }}
         [data-testid="stSegmentedControl"] button[aria-pressed="true"],
@@ -249,6 +258,13 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         button[kind="segmented_controlActive"] {{
             background:{accent} !important; border-color:{accent} !important;
             color:#FFFFFF !important;
+        }}
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] {{
+            background:{accent}22 !important; border-color:{accent} !important;
+            color:{accent} !important;
+        }}
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] * {{
+            color:{accent} !important;
         }}
         [data-testid="stDateInput"] [data-baseweb="input"],
         [data-testid="stDateInput"] input {{
