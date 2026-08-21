@@ -49,7 +49,11 @@ def home():
         """,
         unsafe_allow_html=True,
     )
-    st.info("Use the menu to complete today's check-in, log food, and review your progress.")
+    st.markdown(
+        "<div class='neutral-note'>Use the menu to complete today's check-in, log food, "
+        "and review your progress.</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def dashboard():

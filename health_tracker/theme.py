@@ -76,16 +76,36 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         <style>
         :root {{ --accent:{accent}; --surface:{surface}; --muted:{muted}; }}
         .stApp, [data-testid="stAppViewContainer"] {{ background:{background}; color:{text}; }}
-        html, body, [class*="st-"] {{ font-family:{font}; }}
+        [data-testid="stMarkdownContainer"],
+        [data-testid="stWidgetLabel"],
+        [data-testid="stMetric"],
+        input, textarea {{ font-family:{font}; }}
         [data-testid="stSidebar"] {{ background:{secondary}; }}
         div[data-testid="stMetric"], .quote-card {{
             background:{surface}; border:1px solid {accent}33; border-radius:16px; padding:18px;
             box-shadow:0 5px 20px #0000000d;
         }}
         .quote-card {{ padding:32px; margin:12px 0 28px; }}
+        .neutral-note {{
+            background:{surface}; color:{text}; border-left:4px solid {accent};
+            border-radius:10px; padding:16px 18px; margin:12px 0;
+        }}
         .quote-text {{ font-size:clamp(1.35rem,3vw,2rem); line-height:1.4; font-weight:600; }}
         .quote-label {{ color:{accent}; letter-spacing:.12em; font-size:.75rem; font-weight:700; }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
+        [data-testid="stAlert"] {{
+            background:{surface} !important; color:{text} !important;
+            border-color:{accent} !important;
+        }}
+        [data-testid="stSidebarCollapsedControl"] {{
+            display:flex !important; visibility:visible !important; opacity:1 !important;
+            background:{surface} !important; color:{text} !important;
+            border:1px solid {accent}55 !important; border-radius:9px !important;
+        }}
+        [data-testid="stSidebarCollapsedControl"] span,
+        [data-testid="stSidebarCollapseButton"] span {{
+            font-family:"Material Symbols Rounded", "Material Symbols Outlined" !important;
+        }}
         a {{ color:{accent}; }}
         {dark_overrides}
         </style>

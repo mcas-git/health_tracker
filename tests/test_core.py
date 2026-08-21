@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from health_tracker.analytics import current_streak
-from health_tracker.auth import hash_password
+from health_tracker.auth import create_remember_token, hash_password, valid_remember_token
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.nutrition import DailyNutritionEstimate
@@ -26,6 +26,14 @@ def test_target_calculation_is_sensible():
 def test_password_hash_is_deterministic_and_not_plaintext():
     assert hash_password("secret") == hash_password("secret")
     assert hash_password("secret") != "secret"
+
+
+def test_remember_token_is_signed_and_bound_to_current_password():
+    current_hash = hash_password("current")
+    token = create_remember_token(current_hash)
+    assert valid_remember_token(token, current_hash)
+    assert not valid_remember_token(token, hash_password("changed"))
+    assert not valid_remember_token(f"{token}x", current_hash)
 
 
 def test_nutrition_schema_parses():
