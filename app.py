@@ -353,7 +353,20 @@ def daily_entry():
     st.title("Daily check-in")
     if st.session_state.pop("daily_checkin_saved", False):
         st.success("Daily check-in saved.")
-    selected = st.date_input("Date", date.today())
+    london_now = datetime.now(LONDON)
+    yesterday = london_now.date() - timedelta(days=1)
+    if "daily_entry_date" not in st.session_state:
+        st.session_state.daily_entry_date = yesterday if london_now.hour < 12 else london_now.date()
+    if st.button("Load yesterday from Garmin", use_container_width=True):
+        try:
+            with st.spinner("Loading yesterday from Garmin…"):
+                yesterday_data = sync_day(yesterday)
+            st.session_state.daily_entry_date = yesterday
+            st.session_state.garmin_sync = {"date": yesterday, "data": yesterday_data}
+            st.success(f"Loaded yesterday · {len(yesterday_data['activities'])} activities.")
+        except Exception as exc:
+            st.error(f"Garmin sync failed: {exc}")
+    selected = st.date_input("Date", key="daily_entry_date")
     item = get_daily(selected)
     with st.expander("Garmin sync", expanded=False):
         st.caption("Imports steps, calories burned, sleep, resting heart rate, and activity data.")
@@ -361,11 +374,12 @@ def daily_entry():
             try:
                 with st.spinner("Connecting to Garmin…"):
                     synced = sync_day(selected)
-                st.session_state["garmin_sync"] = synced
+                st.session_state.garmin_sync = {"date": selected, "data": synced}
                 st.success(f"Synced {len(synced['activities'])} activities.")
             except Exception as exc:
                 st.error(f"Garmin sync failed: {exc}")
-    synced = st.session_state.get("garmin_sync", {})
+    sync_record = st.session_state.get("garmin_sync", {})
+    synced = sync_record.get("data", {}) if sync_record.get("date") == selected else {}
 
     with st.form("daily_form"):
         st.subheader("Measurements")
@@ -490,6 +504,7 @@ def daily_entry():
                 **habits,
             }
         )
+        st.session_state.pop("garmin_sync", None)
         st.session_state["daily_checkin_saved"] = True
         st.rerun()
 
