@@ -198,6 +198,10 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stAlert"] svg,
         [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
         [data-testid="stProgress"] [role="progressbar"] > div {{ background:{accent} !important; }}
+        [data-testid="stElementToolbar"] button,
+        [data-testid="stElementToolbar"] svg {{
+            color:{accent} !important; fill:{accent} !important;
+        }}
         [data-testid="stSlider"] [role="slider"] {{
             background:{accent} !important; border-color:{accent} !important;
         }}

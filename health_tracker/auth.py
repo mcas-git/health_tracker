@@ -64,8 +64,8 @@ def require_login() -> None:
             st.session_state.authenticated = False
             st.rerun()
         return
-    st.title("Health Journey")
-    st.caption("Private sign in")
+    st.title("Welcome back")
+    st.caption("Your private space for a stronger, healthier year")
     with st.form("login"):
         password = st.text_input("Password", type="password")
         remember = st.checkbox("Remember me on this device for 30 days", value=True)

@@ -46,9 +46,14 @@ def style_chart(chart):
     palette = derived_palette(_theme_values[0], _theme_values[1])
     foreground = palette["foreground"]
     grid = palette["grid"]
+    accent = palette["accent"]
+    secondary = palette["series"][1]
     return (
         chart.configure(background="transparent")
         .configure_view(strokeOpacity=0)
+        .configure_line(color=accent)
+        .configure_point(filled=True, fill=accent, stroke=accent, strokeWidth=2, size=72)
+        .configure_rule(color=secondary)
         .configure_axis(
             labelColor=foreground,
             titleColor=foreground,
@@ -72,8 +77,6 @@ def style_chart(chart):
 def home():
     page_watermark("home", _theme_values[1])
     optional_home_logo()
-    st.title("Welcome back")
-    st.caption("Your private space for a stronger, healthier year")
     london_day = datetime.now(LONDON).date()
     if st.session_state.get("home_research", False):
         research = daily_item(RESEARCH_INSIGHTS, london_day)
@@ -145,7 +148,17 @@ def dashboard():
         )
         weight_line = (
             alt.Chart(weight)
-            .mark_line(point=not smooth_weight, color=accent, strokeWidth=4)
+            .mark_line(
+                point=(
+                    alt.OverlayMarkDef(
+                        filled=True, fill=accent, stroke=accent, strokeWidth=2, size=72
+                    )
+                    if not smooth_weight
+                    else False
+                ),
+                color=accent,
+                strokeWidth=4,
+            )
             .encode(
                 x=alt.X("entry_date:T", axis=hidden_axis),
                 y=alt.Y("display_value:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
@@ -157,7 +170,7 @@ def dashboard():
         )
         goal_line = (
             alt.Chart(pd.DataFrame({"goal": [PROFILE.target_weight_kg]}))
-            .mark_rule(color=accent, strokeWidth=3, strokeDash=[8, 5], opacity=0.65)
+            .mark_rule(color=series_colors[1], strokeWidth=3, strokeDash=[8, 5], opacity=0.8)
             .encode(
                 y="goal:Q",
                 tooltip=[alt.Tooltip("goal:Q", title="Goal weight (kg)", format=".1f")],
@@ -256,7 +269,17 @@ def dashboard():
         )
         kpi_chart = (
             alt.Chart(recent)
-            .mark_line(point=not smooth_kpi, color=accent, strokeWidth=4)
+            .mark_line(
+                point=(
+                    alt.OverlayMarkDef(
+                        filled=True, fill=accent, stroke=accent, strokeWidth=2, size=72
+                    )
+                    if not smooth_kpi
+                    else False
+                ),
+                color=accent,
+                strokeWidth=4,
+            )
             .encode(
                 x=alt.X("entry_date:T", axis=hidden_axis),
                 y=alt.Y("display_value:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
