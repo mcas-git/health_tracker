@@ -67,6 +67,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     secondary = _mix(accent, "#000000", 0.66) if dark else _mix(accent, "#FFFFFF", 0.84)
     text = _mix(accent, "#FFFFFF", 0.9) if dark else _mix(accent, "#000000", 0.76)
     muted = _mix(accent, "#FFFFFF", 0.55) if dark else _mix(accent, "#000000", 0.48)
+    accent_rgb = ", ".join(str(int(accent[index : index + 2], 16)) for index in (1, 3, 5))
     font = FONTS.get(font_name, FONTS["Modern sans"])
     dark_overrides = (
         f"""
@@ -146,7 +147,12 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     st.markdown(
         f"""
         <style>
-        :root {{ --accent:{accent}; --surface:{surface}; --muted:{muted}; }}
+        :root, .stApp {{
+            --accent:{accent}; --surface:{surface}; --muted:{muted};
+            --primary-color:{accent} !important;
+            --primary-color-rgb:{accent_rgb} !important;
+        }}
+        input, button {{ accent-color:{accent} !important; }}
         .stApp, [data-testid="stAppViewContainer"] {{ background:{background}; color:{text}; }}
         [data-testid="stMarkdownContainer"],
         [data-testid="stWidgetLabel"],
@@ -213,12 +219,19 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-baseweb="slider"] > div > div:nth-child(3) {{
             background:{accent} !important;
         }}
+        [data-baseweb="slider"] div[style*="background"] {{
+            background-color:{accent} !important;
+        }}
         [data-testid="stSlider"] [data-testid="stTickBar"] + div,
         [data-testid="stToggle"] [role="switch"][aria-checked="true"] {{
             background:{accent} !important;
         }}
         [data-baseweb="checkbox"] input:checked + div,
         [data-testid="stCheckbox"] input:checked + div {{
+            background:{accent} !important; border-color:{accent} !important;
+        }}
+        [data-testid="stCheckbox"] label:has(input:checked) span:first-of-type,
+        [data-baseweb="checkbox"] label:has(input:checked) span:first-of-type {{
             background:{accent} !important; border-color:{accent} !important;
         }}
         [data-testid="stSegmentedControl"] button[aria-pressed="true"],
@@ -231,6 +244,18 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stSegmentedControl"] button[aria-pressed="true"] *,
         [data-testid="stSegmentedControl"] label:has(input:checked) * {{
             color:#FFFFFF !important;
+        }}
+        [data-testid="stBaseButton-segmented_controlActive"],
+        button[kind="segmented_controlActive"] {{
+            background:{accent} !important; border-color:{accent} !important;
+            color:#FFFFFF !important;
+        }}
+        [data-testid="stDateInput"] [data-baseweb="input"],
+        [data-testid="stDateInput"] input {{
+            border-color:{accent} !important; caret-color:{accent} !important;
+        }}
+        input[type="date"]::-webkit-calendar-picker-indicator {{
+            opacity:1; accent-color:{accent};
         }}
         [data-testid="stSidebarCollapsedControl"] {{
             display:flex !important; visibility:visible !important; opacity:1 !important;

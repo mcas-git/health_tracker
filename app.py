@@ -75,6 +75,33 @@ def style_chart(chart):
     )
 
 
+def health_status_cards(item) -> None:
+    indicator = daily_health_score(item) if item is not None else None
+    if indicator:
+        score, score_label, included = indicator
+        score_color = "#4F8A55" if score >= 75 else "#C5A33B" if score >= 45 else "#B64B4B"
+        st.markdown(
+            f"<div class='health-score' style='--score-color:{score_color}'>"
+            f"<span>Daily health indicator</span><strong>{score}/100 · {score_label}</strong>"
+            f"<small>Based on {', '.join(included)}. This is not a diagnosis.</small></div>",
+            unsafe_allow_html=True,
+        )
+    weight_status = bmi_status(value(item, "bmi")) if item is not None else None
+    if weight_status:
+        status_label, status_tone, status_context = weight_status
+        status_color = {
+            "strong": "#4F8A55",
+            "watch": "#C5A33B",
+            "attention": "#B64B4B",
+        }[status_tone]
+        st.markdown(
+            f"<div class='health-score' style='--score-color:{status_color}'>"
+            f"<span>BMI weight status</span><strong>{status_label}</strong>"
+            f"<small>BMI {item.bmi:.1f} · {status_context}. This is not a diagnosis.</small></div>",
+            unsafe_allow_html=True,
+        )
+
+
 def home():
     page_watermark("home", _theme_values[1])
     optional_home_logo()
@@ -129,6 +156,13 @@ def dashboard():
     c.metric("Logging streak", f"{current_streak(df)} days")
     d.metric("Projected goal", projection.strftime("%d %b %Y") if projection else "Need more data")
     st.progress(max(0.0, min(1.0, progress)))
+
+    latest_measurements = (
+        df.dropna(subset=["bmi"]).sort_values("entry_date").iloc[-1]
+        if "bmi" in df and df["bmi"].notna().any()
+        else None
+    )
+    health_status_cards(latest_measurements)
 
     if df.empty:
         st.info("Add your first daily entry to begin the dashboard.")
@@ -312,36 +346,6 @@ def daily_entry():
         st.success("Daily check-in saved.")
     selected = st.date_input("Date", date.today())
     item = get_daily(selected)
-    indicator = daily_health_score(item) if item else None
-    if indicator:
-        score, score_label, included = indicator
-        score_color = "#4F8A55" if score >= 75 else "#C5A33B" if score >= 45 else "#B64B4B"
-        st.markdown(
-            f"<div class='health-score' style='--score-color:{score_color}'>"
-            f"<span>Daily health indicator</span><strong>{score}/100 · {score_label}</strong>"
-            f"<small>Based on {', '.join(included)}. This is not a diagnosis.</small></div>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            "<div class='neutral-note'>Save measurements for this date to calculate the daily "
-            "health indicator.</div>",
-            unsafe_allow_html=True,
-        )
-    weight_status = bmi_status(value(item, "bmi")) if item else None
-    if weight_status:
-        status_label, status_tone, status_context = weight_status
-        status_color = {
-            "strong": "#4F8A55",
-            "watch": "#C5A33B",
-            "attention": "#B64B4B",
-        }[status_tone]
-        st.markdown(
-            f"<div class='health-score' style='--score-color:{status_color}'>"
-            f"<span>BMI weight status</span><strong>{status_label}</strong>"
-            f"<small>BMI {item.bmi:.1f} · {status_context}. This is not a diagnosis.</small></div>",
-            unsafe_allow_html=True,
-        )
     with st.expander("Garmin sync", expanded=False):
         st.caption("Imports steps, calories burned, sleep, resting heart rate, and activity data.")
         if st.button("Sync Garmin for this date", use_container_width=True):
