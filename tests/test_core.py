@@ -105,6 +105,12 @@ def test_bmi_status_uses_standard_adult_bands():
     assert bmi_status(30.0)[0] == "Obesity"
 
 
+def test_pandas_measurement_row_supports_health_indicators():
+    item = pd.Series({"bmi": 31.2, "waist_cm": 101.0, "mood": 7, "energy": 6})
+    assert bmi_status(item.bmi)[0] == "Obesity"
+    assert daily_health_score(item) is not None
+
+
 def test_palette_colour_accepts_hex_and_rgb():
     assert normalize_color("#7b8451") == "#7B8451"
     assert normalize_color("rgb(123, 132, 81)") == "#7B8451"

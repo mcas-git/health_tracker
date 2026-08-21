@@ -39,7 +39,7 @@ apply_theme(*_theme_values)
 
 
 def value(item, name, default=None):
-    result = getattr(item, name, None) if item else None
+    result = getattr(item, name, None) if item is not None else None
     return default if result is None else result
 
 
