@@ -79,6 +79,16 @@ def main() -> None:
     if not should_send(now, setting("GITHUB_EVENT_NAME")):
         print(f"Skipping duplicate daylight-saving cron at {now:%H:%M %Z}.")
         return
+    if now.hour >= 12 and setting("DATABASE_URL"):
+        from health_tracker.analytics import load_data
+
+        data = load_data()
+        if not data.empty and any(
+            datetime.fromisoformat(str(entry)).date() == now.date()
+            for entry in data.entry_date.dropna()
+        ):
+            print("Today's entry already exists; skipping the evening reminder.")
+            return
     message = build_message(now)
     host = setting("SMTP_HOST", "smtp.gmail.com")
     port = int(setting("SMTP_PORT", "587"))

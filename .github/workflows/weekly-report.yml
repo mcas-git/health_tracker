@@ -1,14 +1,13 @@
-name: Daily health reminder
+name: Weekly health report
 
 on:
   schedule:
-    # Run at both possible UTC offsets; the script keeps only 05:00 and 21:00
-    # Europe/London. This remains correct across GMT/BST clock changes.
-    - cron: "0 4,5,20,21 * * *"
+    # Sunday at 19:00 Europe/London across GMT and BST.
+    - cron: "0 18,19 * * 0"
   workflow_dispatch:
 
 jobs:
-  remind:
+  report:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -16,8 +15,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version-file: .python-version
-      - run: uv run python scripts/send_reminder.py
+      - run: uv run python scripts/send_weekly_report.py
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
@@ -26,4 +26,3 @@ jobs:
           REMINDER_FROM_NAME: ${{ secrets.REMINDER_FROM_NAME }}
           REMINDER_TO: ${{ secrets.REMINDER_TO }}
           APP_URL: ${{ secrets.APP_URL }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}

@@ -16,7 +16,8 @@ OpenAI API; manually syncs selected Garmin data; displays progress KPIs; and exp
 - **Food analysis:** OpenAI Responses API with Pydantic structured output. Only the food note is sent.
 - **Garmin:** user-triggered sync through the unofficial `garminconnect` package.
 - **Authentication:** a single password, stored only as a SHA-256 hash in server secrets.
-- **Reminder:** a scheduled GitHub Actions email over SMTP, independent of Streamlit uptime.
+- **Reminders and report:** scheduled GitHub Actions emails over SMTP, independent of Streamlit
+  uptime.
 - **Timezone:** Europe/London. Target date is interpreted as 1 September 2027.
 
 SQLite is intentionally limited to local development. Streamlit Community Cloud does not provide a
@@ -77,10 +78,12 @@ Community Cloud, open the app's **Settings → Secrets**, replace only `APP_PASS
 After Streamlit restarts, sign in with the new plain-text password. Never paste the plain password or
 its hash into GitHub files.
 
-## Daily email reminder
+## Email reminders and weekly report
 
-The workflow defaults to 19:00 UTC: 19:00 in UK winter and 20:00 in UK summer. GitHub cron is UTC,
-so exact fixed UK clock time would require changing the cron when daylight saving changes.
+Daily reminders run at 05:00 and 21:00 Europe/London. The evening email is skipped when that day's
+check-in already exists. A weekly coaching report is sent each Sunday at 19:00 Europe/London. The
+workflows run at both possible UTC offsets and the Python scripts suppress the duplicate, so the
+times remain stable across GMT and BST.
 
 For a no-extra-service option, use a Gmail account with 2-step verification and an app password. Add
 these GitHub repository secrets:
@@ -94,8 +97,11 @@ these GitHub repository secrets:
 | `REMINDER_FROM` | sender Gmail address |
 | `REMINDER_TO` | destination email |
 | `APP_URL` | deployed Streamlit URL |
+| `DATABASE_URL` | the same hosted Postgres URL used by Streamlit |
 
-Run **Actions → Daily health reminder → Run workflow** once to test it.
+Run **Actions → Daily health reminder → Run workflow** and **Actions → Weekly health report → Run
+workflow** once to test both. For GitHub Actions, use a Supabase connection URL that is reachable
+over IPv4 (normally the session pooler URL) if the direct database hostname is IPv6-only.
 
 ## Garmin limitations
 

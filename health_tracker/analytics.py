@@ -122,6 +122,80 @@ def bmi_status(bmi: float | None) -> tuple[str, str, str] | None:
     return "Severe obesity", "attention", "Within the standard severe-obesity range"
 
 
+def weekly_coaching_summary(df: pd.DataFrame, end_date: date | None = None) -> dict:
+    end_date = end_date or date.today()
+    if df.empty:
+        return {"logged_days": 0, "completion": 0, "recommendation": "Log the first day."}
+    data = df.copy()
+    data["entry_date"] = pd.to_datetime(data["entry_date"])
+    end = pd.Timestamp(end_date)
+    six_days = pd.Timedelta(6, unit="D")
+    thirteen_days = pd.Timedelta(13, unit="D")
+    current = data[(data.entry_date >= end - six_days) & (data.entry_date <= end)]
+    previous = data[(data.entry_date >= end - thirteen_days) & (data.entry_date < end - six_days)]
+    logged_days = int(current.entry_date.dt.date.nunique())
+    weights = current.weight_kg.dropna() if "weight_kg" in current else pd.Series(dtype=float)
+    previous_weights = (
+        previous.weight_kg.dropna() if "weight_kg" in previous else pd.Series(dtype=float)
+    )
+    weight_change = (
+        float(weights.mean() - previous_weights.mean())
+        if not weights.empty and not previous_weights.empty
+        else None
+    )
+    averages = {}
+    for field in ("calories", "protein_g", "fibre_g", "steps", "sleep_hours"):
+        if field in current and current[field].notna().any():
+            averages[field] = float(current[field].mean())
+    habits = {
+        field: int(current[field].fillna(False).sum())
+        for field in ("gym", "cardio", "alcohol_free")
+        if field in current
+    }
+    recent_weights = data.dropna(subset=["weight_kg"]).tail(28)
+    plateau = False
+    if len(recent_weights) >= 14:
+        midpoint = len(recent_weights) // 2
+        plateau = (
+            abs(
+                recent_weights.iloc[midpoint:].weight_kg.mean()
+                - recent_weights.iloc[:midpoint].weight_kg.mean()
+            )
+            < 0.4
+        )
+    recommendation = "Protect logging consistency: aim for at least 5 complete days."
+    if logged_days >= 5:
+        if averages.get("protein_g", 10**9) < PROFILE.target_weight_kg * 1.5:
+            recommendation = "Prioritise a clear protein source at each main meal."
+        elif averages.get("steps", 10**9) < 7000:
+            recommendation = "Raise the daily movement floor with one planned walk."
+        elif averages.get("sleep_hours", 10**9) < 7:
+            recommendation = "Protect a consistent sleep window before changing calories."
+        else:
+            recommendation = "Keep the current routine repeatable for another week."
+    if plateau and logged_days >= 5:
+        recommendation = "Review portions, weekends and activity before adjusting calorie targets."
+    start_weight = PROFILE.start_weight_kg
+    latest_weight = (
+        float(data.weight_kg.dropna().iloc[-1])
+        if "weight_kg" in data and data.weight_kg.notna().any()
+        else None
+    )
+    loss_percent = ((start_weight - latest_weight) / start_weight * 100) if latest_weight else 0
+    milestone = max((level for level in (5, 10, 15, 20) if loss_percent >= level), default=0)
+    return {
+        "logged_days": logged_days,
+        "completion": round(logged_days / 7 * 100),
+        "weight_change": weight_change,
+        "averages": averages,
+        "habits": habits,
+        "plateau": plateau,
+        "recommendation": recommendation,
+        "loss_percent": loss_percent,
+        "milestone": milestone,
+    }
+
+
 def current_streak(df: pd.DataFrame) -> int:
     if df.empty or "entry_date" not in df:
         return 0

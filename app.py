@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import json
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 import altair as alt
 import pandas as pd
@@ -11,15 +11,23 @@ from sqlalchemy.orm import Session
 
 from health_tracker.analytics import (
     bmi_status,
-    current_streak,
     daily_health_score,
     excel_safe_data,
     load_data,
     projected_target_date,
+    weekly_coaching_summary,
 )
 from health_tracker.auth import require_login
 from health_tracker.config import LONDON, PROFILE, setting
-from health_tracker.db import engine, get_daily, get_nutrition, init_db, upsert_daily
+from health_tracker.db import (
+    engine,
+    get_daily,
+    get_nutrition,
+    get_weekly_plan,
+    init_db,
+    upsert_daily,
+    upsert_weekly_plan,
+)
 from health_tracker.garmin import sync_day
 from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
@@ -150,10 +158,11 @@ def dashboard():
         else 0
     )
     projection = projected_target_date(df)
+    recent_completion = weekly_coaching_summary(df)["completion"]
     a, b, c, d = st.columns(4)
     a.metric("Current weight", f"{latest_weight:.1f} kg" if latest_weight else "—")
     b.metric("Goal progress", f"{max(0, min(100, progress * 100)):.0f}%")
-    c.metric("Logging streak", f"{current_streak(df)} days")
+    c.metric("7-day completion", f"{recent_completion}%")
     d.metric("Projected goal", projection.strftime("%d %b %Y") if projection else "Need more data")
     st.progress(max(0.0, min(1.0, progress)))
 
@@ -406,6 +415,12 @@ def daily_entry():
         )
         mood = st.slider("Mood", 1, 10, int(value(item, "mood", 5)))
         energy = st.slider("Energy level", 1, 10, int(value(item, "energy", 5)))
+        c1, c2, c3 = st.columns(3)
+        hunger = c1.slider("Hunger", 1, 10, int(value(item, "hunger", 5)))
+        cravings = c2.slider("Cravings", 1, 10, int(value(item, "cravings", 5)))
+        satisfaction = c3.slider(
+            "Diet satisfaction", 1, 10, int(value(item, "diet_satisfaction", 7))
+        )
 
         st.subheader("Habits")
         cols = st.columns(4)
@@ -420,6 +435,9 @@ def daily_entry():
                 ("physio", "Physio"),
                 ("drugs", "Drugs"),
                 ("sleep_target", "Sleep target"),
+                ("illness", "Illness"),
+                ("injury", "Injury"),
+                ("unusual_day", "Unusual day"),
             ]
         ):
             habits[key] = cols[idx % 4].checkbox(label, value=bool(value(item, key, False)))
@@ -461,6 +479,9 @@ def daily_entry():
                 "calories_burned": burned,
                 "mood": mood,
                 "energy": energy,
+                "hunger": hunger,
+                "cravings": cravings,
+                "diet_satisfaction": satisfaction,
                 "fasted": fasted,
                 "fast_start": fast_start,
                 "fast_end": fast_end,
@@ -471,6 +492,87 @@ def daily_entry():
         )
         st.session_state["daily_checkin_saved"] = True
         st.rerun()
+
+
+def weekly_coaching():
+    page_watermark("kettlebell", _theme_values[1])
+    st.title("Weekly coaching")
+    st.caption("Review the trend, choose one focus, and plan around real-life barriers")
+    today = datetime.now(LONDON).date()
+    week_start = today - timedelta(days=today.weekday())
+    df = load_data()
+    summary = weekly_coaching_summary(df, today)
+
+    cols = st.columns(4)
+    cols[0].metric("Days logged", f"{summary['logged_days']}/7")
+    cols[1].metric("Completion", f"{summary['completion']}%")
+    change = summary.get("weight_change")
+    cols[2].metric("Weekly weight trend", f"{change:+.1f} kg" if change is not None else "—")
+    cols[3].metric("Weight lost", f"{summary.get('loss_percent', 0):.1f}%")
+    if summary.get("milestone"):
+        st.success(f"Milestone reached: {summary['milestone']}% of starting weight lost.")
+    if summary.get("plateau"):
+        st.markdown(
+            "<div class='neutral-note'>The four-week weight trend is broadly flat. Review "
+            "logging completeness, portions, weekends and activity before lowering calories.</div>",
+            unsafe_allow_html=True,
+        )
+    st.subheader("This week's evidence")
+    averages = summary.get("averages", {})
+    habits = summary.get("habits", {})
+    evidence = st.columns(4)
+    evidence[0].metric("Average steps", f"{averages.get('steps', 0):,.0f}")
+    evidence[1].metric("Average sleep", f"{averages.get('sleep_hours', 0):.1f} h")
+    evidence[2].metric("Gym sessions", habits.get("gym", 0))
+    evidence[3].metric("Alcohol-free days", habits.get("alcohol_free", 0))
+    st.markdown(
+        f"<div class='neutral-note'><strong>Suggested next action:</strong> "
+        f"{summary['recommendation']}</div>",
+        unsafe_allow_html=True,
+    )
+
+    saved = get_weekly_plan(week_start)
+    with st.form("weekly_plan"):
+        st.subheader("Plan this week")
+        focus = st.text_input(
+            "One behaviour to focus on",
+            value=value(saved, "focus", summary["recommendation"]),
+        )
+        c1, c2, c3 = st.columns(3)
+        gym_sessions = c1.number_input(
+            "Planned gym sessions", 0, 7, int(value(saved, "planned_gym_sessions", 3))
+        )
+        cardio_sessions = c2.number_input(
+            "Planned cardio sessions", 0, 7, int(value(saved, "planned_cardio_sessions", 2))
+        )
+        minimum_steps = c3.number_input(
+            "Daily step floor", 0, 50000, int(value(saved, "minimum_steps", 7000)), 500
+        )
+        barrier = st.text_input(
+            "Anticipated barrier", value=value(saved, "anticipated_barrier", "")
+        )
+        if_then = st.text_input(
+            "If–then response",
+            value=value(saved, "if_then_plan", ""),
+            placeholder="If work runs late, then I will use the prepared dinner.",
+        )
+        maintenance = st.toggle(
+            "Maintenance mode", value=bool(value(saved, "maintenance_mode", False))
+        )
+        if st.form_submit_button("Save weekly plan", type="primary", use_container_width=True):
+            upsert_weekly_plan(
+                {
+                    "week_start": week_start,
+                    "focus": focus,
+                    "planned_gym_sessions": gym_sessions,
+                    "planned_cardio_sessions": cardio_sessions,
+                    "minimum_steps": minimum_steps,
+                    "anticipated_barrier": barrier,
+                    "if_then_plan": if_then,
+                    "maintenance_mode": maintenance,
+                }
+            )
+            st.success("Weekly plan saved.")
 
 
 def food_log():
@@ -735,6 +837,7 @@ page = st.navigation(
         st.Page(daily_entry, title="Daily check-in"),
         st.Page(food_log, title="Food journal"),
         st.Page(nutrition_insights, title="Nutrition insights"),
+        st.Page(weekly_coaching, title="Weekly coaching"),
         st.Page(appearance_page, title="Appearance"),
         st.Page(settings_page, title="Targets & export"),
     ]

@@ -7,7 +7,14 @@ from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.orm import Session
 
 from health_tracker.config import PROFILE, database_url
-from health_tracker.models import AppPreferences, Base, DailyEntry, GoalSettings, NutritionLog
+from health_tracker.models import (
+    AppPreferences,
+    Base,
+    DailyEntry,
+    GoalSettings,
+    NutritionLog,
+    WeeklyPlan,
+)
 
 engine = create_engine(database_url(), pool_pre_ping=True)
 
@@ -26,13 +33,20 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
     existing_columns = {column["name"] for column in inspect(engine).get_columns("daily_entries")}
     with engine.begin() as connection:
-        for column in ("physio", "drugs"):
+        column_types = {
+            "physio": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "drugs": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "hunger": "INTEGER",
+            "cravings": "INTEGER",
+            "diet_satisfaction": "INTEGER",
+            "illness": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "injury": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "unusual_day": "BOOLEAN NOT NULL DEFAULT FALSE",
+        }
+        for column, sql_type in column_types.items():
             if column not in existing_columns:
                 connection.execute(
-                    text(
-                        f"ALTER TABLE daily_entries ADD COLUMN {column} "
-                        "BOOLEAN NOT NULL DEFAULT FALSE"
-                    )
+                    text(f"ALTER TABLE daily_entries ADD COLUMN {column} {sql_type}")
                 )
     with Session(engine) as session:
         if session.get(GoalSettings, 1) is None:
@@ -89,3 +103,23 @@ def get_daily(entry_date: date) -> DailyEntry | None:
 def get_nutrition(entry_date: date) -> NutritionLog | None:
     with Session(engine) as session:
         return session.scalar(select(NutritionLog).where(NutritionLog.entry_date == entry_date))
+
+
+def get_weekly_plan(week_start: date) -> WeeklyPlan | None:
+    with Session(engine) as session:
+        return session.scalar(select(WeeklyPlan).where(WeeklyPlan.week_start == week_start))
+
+
+def upsert_weekly_plan(values: dict) -> WeeklyPlan:
+    with session_scope() as session:
+        item = session.scalar(
+            select(WeeklyPlan).where(WeeklyPlan.week_start == values["week_start"])
+        )
+        if item is None:
+            item = WeeklyPlan(week_start=values["week_start"])
+            session.add(item)
+        for key, value in values.items():
+            setattr(item, key, value)
+        session.flush()
+        session.refresh(item)
+        return item

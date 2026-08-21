@@ -3,7 +3,13 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from health_tracker.analytics import bmi_status, current_streak, daily_health_score, excel_safe_data
+from health_tracker.analytics import (
+    bmi_status,
+    current_streak,
+    daily_health_score,
+    excel_safe_data,
+    weekly_coaching_summary,
+)
 from health_tracker.auth import create_remember_token, hash_password, valid_remember_token
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
@@ -11,6 +17,7 @@ from health_tracker.nutrition import DailyNutritionEstimate
 from health_tracker.quotes import QUOTES, daily_item, quote_count
 from health_tracker.theme import normalize_color
 from scripts.send_reminder import reminder_copy, should_send
+from scripts.send_weekly_report import build_weekly_message, should_send_weekly
 
 
 def test_profile_target_date_is_uk_interpretation():
@@ -142,3 +149,56 @@ def test_motivational_library_has_60_unique_short_entries():
 def test_daily_quote_is_stable_for_the_day():
     day = date(2026, 8, 21)
     assert daily_item(QUOTES, day) == daily_item(QUOTES, day)
+
+
+def test_weekly_coaching_summary_reports_completion_and_trends():
+    end = date(2026, 8, 21)
+    rows = []
+    for offset in range(14):
+        rows.append(
+            {
+                "entry_date": end - timedelta(days=13 - offset),
+                "weight_kg": 100 - offset * 0.1,
+                "protein_g": 170,
+                "steps": 8000,
+                "sleep_hours": 7.5,
+                "gym": offset % 3 == 0,
+                "cardio": False,
+                "alcohol_free": True,
+            }
+        )
+
+    summary = weekly_coaching_summary(pd.DataFrame(rows), end)
+
+    assert summary["logged_days"] == 7
+    assert summary["completion"] == 100
+    assert summary["weight_change"] < 0
+    assert summary["habits"]["alcohol_free"] == 7
+
+
+def test_weekly_report_schedule_handles_daylight_saving():
+    london = ZoneInfo("Europe/London")
+    assert should_send_weekly(datetime(2026, 7, 5, 19, tzinfo=london), "schedule")
+    assert not should_send_weekly(datetime(2026, 7, 5, 18, tzinfo=london), "schedule")
+    assert should_send_weekly(datetime(2026, 7, 5, 18, tzinfo=london), "workflow_dispatch")
+
+
+def test_weekly_report_contains_summary(monkeypatch):
+    monkeypatch.setenv("REMINDER_FROM", "sender@example.com")
+    monkeypatch.setenv("REMINDER_TO", "receiver@example.com")
+    monkeypatch.setenv("APP_URL", "https://example.streamlit.app")
+    summary = {
+        "completion": 86,
+        "logged_days": 6,
+        "weight_change": -0.4,
+        "loss_percent": 5.2,
+        "recommendation": "Keep the current routine repeatable for another week.",
+    }
+
+    message = build_weekly_message(datetime(2026, 8, 23), summary)
+
+    assert "86% logged" in message["Subject"]
+    assert "-0.4 kg" in message.get_body(preferencelist=("plain",)).get_content()
+    assert (
+        "https://example.streamlit.app" in message.get_body(preferencelist=("html",)).get_content()
+    )

@@ -58,6 +58,7 @@ PAGE_FOLDERS = {
     "swim": "nutrition-insights",
     "stretch": "appearance",
     "target": "targets-export",
+    "kettlebell": "weekly-coaching",
 }
 
 

@@ -26,6 +26,9 @@ class DailyEntry(Base):
     steps: Mapped[int | None] = mapped_column(Integer)
     mood: Mapped[int | None] = mapped_column(Integer)
     energy: Mapped[int | None] = mapped_column(Integer)
+    hunger: Mapped[int | None] = mapped_column(Integer)
+    cravings: Mapped[int | None] = mapped_column(Integer)
+    diet_satisfaction: Mapped[int | None] = mapped_column(Integer)
     calories_burned: Mapped[int | None] = mapped_column(Integer)
     gym: Mapped[bool] = mapped_column(Boolean, default=False)
     cardio: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -36,6 +39,9 @@ class DailyEntry(Base):
     physio: Mapped[bool] = mapped_column(Boolean, default=False)
     drugs: Mapped[bool] = mapped_column(Boolean, default=False)
     sleep_target: Mapped[bool] = mapped_column(Boolean, default=False)
+    illness: Mapped[bool] = mapped_column(Boolean, default=False)
+    injury: Mapped[bool] = mapped_column(Boolean, default=False)
+    unusual_day: Mapped[bool] = mapped_column(Boolean, default=False)
     fasted: Mapped[bool] = mapped_column(Boolean, default=False)
     fast_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     fast_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -87,3 +93,19 @@ class AppPreferences(Base):
     color_mode: Mapped[str] = mapped_column(String(20), default="light")
     accent: Mapped[str] = mapped_column(String(20), default="#7B8451")
     font_family: Mapped[str] = mapped_column(String(40), default="Modern sans")
+
+
+class WeeklyPlan(Base):
+    __tablename__ = "weekly_plans"
+    __table_args__ = (UniqueConstraint("week_start", name="uq_weekly_plan_start"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    week_start: Mapped[date] = mapped_column(Date, index=True)
+    focus: Mapped[str] = mapped_column(String(200), default="")
+    planned_gym_sessions: Mapped[int] = mapped_column(Integer, default=3)
+    planned_cardio_sessions: Mapped[int] = mapped_column(Integer, default=2)
+    minimum_steps: Mapped[int] = mapped_column(Integer, default=7000)
+    anticipated_barrier: Mapped[str] = mapped_column(Text, default="")
+    if_then_plan: Mapped[str] = mapped_column(Text, default="")
+    maintenance_mode: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
