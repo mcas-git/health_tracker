@@ -24,6 +24,7 @@ from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
 from health_tracker.quotes import QUOTES
 from health_tracker.theme import ACCENTS, FONTS, apply_theme
+from health_tracker.visuals import home_logo, page_watermark
 
 st.set_page_config(page_title="Health Journey", layout="wide")
 init_db()
@@ -68,6 +69,8 @@ def style_chart(chart):
 
 
 def home():
+    page_watermark("home", _theme_values[1])
+    home_logo(_theme_values[1])
     if "opening_quote" not in st.session_state:
         st.session_state.opening_quote = secrets.choice(QUOTES)
     st.title("Welcome back")
@@ -89,6 +92,7 @@ def home():
 
 
 def dashboard():
+    page_watermark("runner", _theme_values[1])
     st.title("Your health journey")
     st.caption(f"One calm day at a time · Goal: {PROFILE.target_weight_kg:g} kg by 1 Sep 2027")
     df = load_data()
@@ -251,6 +255,7 @@ def dashboard():
 
 
 def daily_entry():
+    page_watermark("barbell", _theme_values[1])
     st.title("Daily check-in")
     selected = st.date_input("Date", date.today())
     item = get_daily(selected)
@@ -380,6 +385,7 @@ def daily_entry():
 
 
 def food_log():
+    page_watermark("cycling", _theme_values[1])
     st.title("Food journal")
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     selected = st.date_input("Date", date.today(), key="food_date")
@@ -442,6 +448,7 @@ def food_log():
 
 
 def nutrition_insights():
+    page_watermark("swim", _theme_values[1])
     st.title("Nutrition insights")
     st.caption("Daily estimates compared with your adjustable targets")
     df = load_data()
@@ -560,6 +567,7 @@ def nutrition_insights():
 
 
 def appearance_page():
+    page_watermark("stretch", _theme_values[1])
     st.title("Appearance")
     st.caption("Make the tracker feel like your own")
     with Session(engine) as session:
@@ -592,6 +600,7 @@ def appearance_page():
 
 
 def settings_page():
+    page_watermark("target", _theme_values[1])
     st.title("Targets, backup and privacy")
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)

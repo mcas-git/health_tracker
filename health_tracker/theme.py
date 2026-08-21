@@ -102,6 +102,17 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             box-shadow:0 5px 20px #0000000d;
         }}
         .quote-card {{ padding:32px; margin:12px 0 28px; }}
+        .sport-watermark {{
+            position:fixed; left:20rem; bottom:1.5rem; width:min(19vw,260px);
+            opacity:.065; pointer-events:none; z-index:0;
+        }}
+        .sport-watermark svg {{ display:block; width:100%; height:auto; }}
+        .journey-logo {{ width:min(100%,420px); margin:0 auto 1.25rem; color:{text}; }}
+        .journey-logo svg {{ display:block; width:100%; height:auto; }}
+        @media (max-width:768px) {{
+            .sport-watermark {{ left:1rem; bottom:1rem; width:145px; opacity:.055; }}
+            .journey-logo {{ width:min(88vw,360px); }}
+        }}
         .neutral-note {{
             background:{surface}; color:{text}; border-left:4px solid {accent};
             border-radius:10px; padding:16px 18px; margin:12px 0;
