@@ -38,7 +38,7 @@ from health_tracker.visuals import optional_home_logo, page_watermark
 
 st.set_page_config(
     page_title="Health Journey",
-    page_icon="assets/logo/favicon.svg",
+    page_icon="⚪",
     layout="wide",
 )
 init_db()

@@ -62,6 +62,8 @@ def build_message(now: datetime) -> EmailMessage:
       <a href="{safe_url}" style="background:#2a9d8f;color:white;text-decoration:none;
          padding:14px 22px;border-radius:10px;font-weight:bold">Open my health tracker</a>
     </p>
+    <p style="font-size:13px;color:#63736f">On Android, open this link in Chrome, then use the
+      Chrome menu and choose Add to Home screen.</p>
     <p style="font-size:14px;color:#63736f">Just show up. The entry does not need to be perfect.</p>
   </div>
 </body></html>""",

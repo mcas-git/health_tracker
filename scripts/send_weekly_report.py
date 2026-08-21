@@ -45,6 +45,8 @@ def build_weekly_message(now: datetime, summary: dict) -> EmailMessage:
         <h1 style="font-size:24px">Review, learn, plan one action</h1>
         <ul style="font-size:17px;line-height:1.7">{rows}</ul>
         <p><a href="{escape(url, quote=True)}">Open weekly coaching</a></p>
+        <p style="font-size:13px">On Android, open this link in Chrome, then use the Chrome menu
+        and choose Add to Home screen.</p>
         <p style="font-size:13px">Trends are informational and are not medical advice.</p>
         </div></body></html>""",
         subtype="html",
