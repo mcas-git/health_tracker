@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from health_tracker.analytics import current_streak, daily_health_score, excel_safe_data
+from health_tracker.analytics import bmi_status, current_streak, daily_health_score, excel_safe_data
 from health_tracker.auth import create_remember_token, hash_password, valid_remember_token
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
@@ -97,6 +97,12 @@ def test_daily_health_score_is_deterministic_and_uses_available_measurements():
     assert score == 93
     assert label == "Strong"
     assert len(included) == 7
+
+
+def test_bmi_status_uses_standard_adult_bands():
+    assert bmi_status(24.9)[0] == "Healthy range"
+    assert bmi_status(25.0)[0] == "Overweight"
+    assert bmi_status(30.0)[0] == "Obesity"
 
 
 def test_palette_colour_accepts_hex_and_rgb():

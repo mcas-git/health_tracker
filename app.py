@@ -10,6 +10,7 @@ import streamlit as st
 from sqlalchemy.orm import Session
 
 from health_tracker.analytics import (
+    bmi_status,
     current_streak,
     daily_health_score,
     excel_safe_data,
@@ -325,6 +326,20 @@ def daily_entry():
         st.markdown(
             "<div class='neutral-note'>Save measurements for this date to calculate the daily "
             "health indicator.</div>",
+            unsafe_allow_html=True,
+        )
+    weight_status = bmi_status(value(item, "bmi")) if item else None
+    if weight_status:
+        status_label, status_tone, status_context = weight_status
+        status_color = {
+            "strong": "#4F8A55",
+            "watch": "#C5A33B",
+            "attention": "#B64B4B",
+        }[status_tone]
+        st.markdown(
+            f"<div class='health-score' style='--score-color:{status_color}'>"
+            f"<span>BMI weight status</span><strong>{status_label}</strong>"
+            f"<small>BMI {item.bmi:.1f} · {status_context}. This is not a diagnosis.</small></div>",
             unsafe_allow_html=True,
         )
     with st.expander("Garmin sync", expanded=False):

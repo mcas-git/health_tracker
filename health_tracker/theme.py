@@ -205,9 +205,32 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stSlider"] [role="slider"] {{
             background:{accent} !important; border-color:{accent} !important;
         }}
+        [data-baseweb="slider"] [role="slider"] {{
+            background:{accent} !important; border-color:{accent} !important;
+            box-shadow:0 0 0 1px {accent} !important;
+        }}
+        [data-baseweb="slider"] > div > div:nth-child(2),
+        [data-baseweb="slider"] > div > div:nth-child(3) {{
+            background:{accent} !important;
+        }}
         [data-testid="stSlider"] [data-testid="stTickBar"] + div,
         [data-testid="stToggle"] [role="switch"][aria-checked="true"] {{
             background:{accent} !important;
+        }}
+        [data-baseweb="checkbox"] input:checked + div,
+        [data-testid="stCheckbox"] input:checked + div {{
+            background:{accent} !important; border-color:{accent} !important;
+        }}
+        [data-testid="stSegmentedControl"] button[aria-pressed="true"],
+        [data-baseweb="button-group"] button[aria-pressed="true"],
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"],
+        [data-testid="stSegmentedControl"] label:has(input:checked) {{
+            background:{accent} !important; border-color:{accent} !important;
+            color:#FFFFFF !important;
+        }}
+        [data-testid="stSegmentedControl"] button[aria-pressed="true"] *,
+        [data-testid="stSegmentedControl"] label:has(input:checked) * {{
+            color:#FFFFFF !important;
         }}
         [data-testid="stSidebarCollapsedControl"] {{
             display:flex !important; visibility:visible !important; opacity:1 !important;

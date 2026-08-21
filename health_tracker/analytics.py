@@ -107,6 +107,21 @@ def daily_health_score(item) -> tuple[int, str, list[str]] | None:
     return score, label, [name for name, _ in components]
 
 
+def bmi_status(bmi: float | None) -> tuple[str, str, str] | None:
+    """Return the standard adult BMI band, tone and short context."""
+    if bmi is None:
+        return None
+    if bmi < 18.5:
+        return "Underweight", "attention", "Below the standard healthy adult range"
+    if bmi < 25:
+        return "Healthy range", "strong", "Within the standard healthy adult range"
+    if bmi < 30:
+        return "Overweight", "watch", "Above the standard healthy adult range"
+    if bmi < 40:
+        return "Obesity", "attention", "Within the standard obesity range"
+    return "Severe obesity", "attention", "Within the standard severe-obesity range"
+
+
 def current_streak(df: pd.DataFrame) -> int:
     if df.empty or "entry_date" not in df:
         return 0
