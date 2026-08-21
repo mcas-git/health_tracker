@@ -359,10 +359,11 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             background:{surface} !important; color:{text} !important;
             border:1px solid {accent}55 !important; border-radius:9px !important;
         }}
+        [data-testid="stExpandSidebarButton"],
         [data-testid="stSidebarCollapsedControl"] button,
         [data-testid="stSidebarCollapseButton"] button {{
             background:{surface} !important; color:{text} !important;
-            border:1px solid {muted} !important;
+            border:1px solid {muted} !important; border-radius:9px !important;
         }}
         [data-testid="stSidebarCollapsedControl"] span,
         [data-testid="stSidebarCollapseButton"] span,
