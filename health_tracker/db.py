@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from datetime import date
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.orm import Session
 
 from health_tracker.config import PROFILE, database_url
@@ -24,6 +24,16 @@ def calculate_targets(weight_kg: float = PROFILE.start_weight_kg) -> dict[str, i
 
 def init_db() -> None:
     Base.metadata.create_all(engine)
+    existing_columns = {column["name"] for column in inspect(engine).get_columns("daily_entries")}
+    with engine.begin() as connection:
+        for column in ("physio", "drugs"):
+            if column not in existing_columns:
+                connection.execute(
+                    text(
+                        f"ALTER TABLE daily_entries ADD COLUMN {column} "
+                        "BOOLEAN NOT NULL DEFAULT FALSE"
+                    )
+                )
     with Session(engine) as session:
         if session.get(GoalSettings, 1) is None:
             targets = calculate_targets()

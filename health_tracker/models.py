@@ -33,6 +33,8 @@ class DailyEntry(Base):
     supplements: Mapped[bool] = mapped_column(Boolean, default=False)
     alcohol_free: Mapped[bool] = mapped_column(Boolean, default=False)
     sufficient_water: Mapped[bool] = mapped_column(Boolean, default=False)
+    physio: Mapped[bool] = mapped_column(Boolean, default=False)
+    drugs: Mapped[bool] = mapped_column(Boolean, default=False)
     sleep_target: Mapped[bool] = mapped_column(Boolean, default=False)
     fasted: Mapped[bool] = mapped_column(Boolean, default=False)
     fast_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

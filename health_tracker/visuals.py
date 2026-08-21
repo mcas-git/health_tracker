@@ -52,8 +52,31 @@ ICONS = {
     """,
 }
 
+PAGE_FOLDERS = {
+    "home": "home",
+    "runner": "dashboard",
+    "barbell": "daily-check-in",
+    "cycling": "food-journal",
+    "swim": "nutrition-insights",
+    "stretch": "appearance",
+    "target": "targets-export",
+}
+
 
 def page_watermark(icon: str) -> None:
+    custom_logo = (
+        Path(__file__).resolve().parents[1]
+        / "assets"
+        / "page-logos"
+        / PAGE_FOLDERS[icon]
+        / "watermark.svg"
+    )
+    if custom_logo.is_file():
+        st.markdown(
+            f'<div class="sport-watermark" aria-hidden="true">{custom_logo.read_text()}</div>',
+            unsafe_allow_html=True,
+        )
+        return
     paths = ICONS[icon]
     st.markdown(
         f"""

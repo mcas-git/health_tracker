@@ -47,6 +47,20 @@ def apply_theme(mode: str, font_name: str) -> None:
         [data-baseweb="select"] input {{
             color:{text} !important; -webkit-text-fill-color:{text} !important;
         }}
+        input[type="date"], input[type="time"] {{
+            color:{text} !important; background:{surface} !important;
+            -webkit-text-fill-color:{text} !important; color-scheme:dark;
+        }}
+        input[type="date"]::-webkit-datetime-edit,
+        input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+        input[type="date"]::-webkit-datetime-edit-text,
+        input[type="date"]::-webkit-datetime-edit-month-field,
+        input[type="date"]::-webkit-datetime-edit-day-field,
+        input[type="date"]::-webkit-datetime-edit-year-field,
+        input[type="time"]::-webkit-datetime-edit {{
+            color:{text} !important; -webkit-text-fill-color:{text} !important;
+            opacity:1 !important;
+        }}
         [data-baseweb="input"],
         [data-baseweb="textarea"],
         [data-baseweb="select"] > div,

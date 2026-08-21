@@ -330,7 +330,8 @@ def daily_entry():
                 ("erg", "ERG"),
                 ("supplements", "Supplements"),
                 ("alcohol_free", "Alcohol-free"),
-                ("sufficient_water", "Sufficient water"),
+                ("physio", "Physio"),
+                ("drugs", "Drugs"),
                 ("sleep_target", "Sleep target"),
             ]
         ):
