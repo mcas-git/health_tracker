@@ -378,14 +378,16 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             border:1px solid {muted} !important;
         }}
         [data-testid="stSidebarCollapsedControl"] span,
-        [data-testid="stSidebarCollapseButton"] span {{
+        [data-testid="stSidebarCollapseButton"] span,
+        [data-testid="stSidebarHeader"] button span {{
             font-family:"Material Symbols Rounded", "Material Symbols Outlined" !important;
             color:{sidebar_icon} !important; -webkit-text-fill-color:{sidebar_icon} !important;
             opacity:1 !important; font-size:1.5rem !important;
             font-variation-settings:"FILL" 0, "wght" 600, "GRAD" 0, "opsz" 24;
         }}
         [data-testid="stSidebarCollapsedControl"] svg,
-        [data-testid="stSidebarCollapseButton"] svg {{
+        [data-testid="stSidebarCollapseButton"] svg,
+        [data-testid="stSidebarHeader"] button svg {{
             color:{sidebar_icon} !important; fill:{sidebar_icon} !important;
             stroke:{sidebar_icon} !important; opacity:1 !important;
         }}
