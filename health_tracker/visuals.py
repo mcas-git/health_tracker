@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
+
+from health_tracker.theme import OLIVE_ACCENT
 
 ICONS = {
     "home": """
@@ -49,12 +53,12 @@ ICONS = {
 }
 
 
-def page_watermark(icon: str, accent: str) -> None:
+def page_watermark(icon: str) -> None:
     paths = ICONS[icon]
     st.markdown(
         f"""
         <div class="sport-watermark" aria-hidden="true">
-          <svg viewBox="0 0 160 160" role="presentation" style="color:{accent}">
+          <svg viewBox="0 0 160 160" role="presentation" style="color:{OLIVE_ACCENT}">
             <g fill="none" stroke="currentColor" stroke-width="5"
                stroke-linecap="round" stroke-linejoin="round">{paths}</g>
           </svg>
@@ -64,22 +68,7 @@ def page_watermark(icon: str, accent: str) -> None:
     )
 
 
-def home_logo(accent: str) -> None:
-    st.markdown(
-        f"""
-        <div class="journey-logo" aria-label="Health Journey">
-          <svg viewBox="0 0 360 150" role="img">
-            <circle cx="77" cy="75" r="59" fill="none" stroke="{accent}" stroke-width="6"/>
-            <g fill="none" stroke="currentColor" stroke-width="5"
-               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M37 78 H57 L66 61 L78 94 L91 70 L100 78 H119"/>
-              <path d="M53 51 C61 39 70 42 77 52 C85 42 96 40 102 52"/>
-              <path d="M49 108 C65 98 88 98 106 108"/>
-            </g>
-            <text x="158" y="66" fill="currentColor" font-size="30" font-weight="700">HEALTH</text>
-            <text x="158" y="101" fill="{accent}" font-size="30" font-weight="700">JOURNEY</text>
-          </svg>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+def optional_home_logo() -> None:
+    logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "main-logo.svg"
+    if logo.is_file():
+        st.image(str(logo), width=420)

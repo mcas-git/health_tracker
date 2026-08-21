@@ -9,22 +9,17 @@ FONTS = {
     "Focused mono": "ui-monospace, SFMono-Regular, Menlo, monospace",
 }
 
-ACCENTS = {
-    "Teal": "#2A9D8F",
-    "Ocean": "#2979A8",
-    "Violet": "#7057C7",
-    "Coral": "#D8664F",
-    "Forest": "#397552",
-}
+OLIVE_ACCENT = "#7B8451"
 
 
-def apply_theme(mode: str, accent: str, font_name: str) -> None:
+def apply_theme(mode: str, font_name: str) -> None:
     dark = mode == "dark"
-    background = "#101614" if dark else "#F7FAF9"
-    surface = "#18221F" if dark else "#FFFFFF"
-    secondary = "#22302C" if dark else "#EAF4F1"
-    text = "#EDF6F2" if dark else "#16302B"
-    muted = "#A9BBB5" if dark else "#63736F"
+    accent = OLIVE_ACCENT
+    background = "#161811" if dark else "#F5F5EE"
+    surface = "#22251A" if dark else "#FCFCF7"
+    secondary = "#292D1F" if dark else "#E9EAD8"
+    text = "#EFF0E5" if dark else "#2C3023"
+    muted = "#B1B59A" if dark else "#6E7359"
     font = FONTS.get(font_name, FONTS["Modern sans"])
     dark_overrides = (
         f"""
@@ -103,15 +98,12 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         .quote-card {{ padding:32px; margin:12px 0 28px; }}
         .sport-watermark {{
-            position:fixed; left:20rem; bottom:1.5rem; width:min(19vw,260px);
+            position:fixed; left:20rem; bottom:1.5rem; width:min(25vw,350px);
             opacity:.065; pointer-events:none; z-index:0;
         }}
         .sport-watermark svg {{ display:block; width:100%; height:auto; }}
-        .journey-logo {{ width:min(100%,420px); margin:0 auto 1.25rem; color:{text}; }}
-        .journey-logo svg {{ display:block; width:100%; height:auto; }}
         @media (max-width:768px) {{
-            .sport-watermark {{ left:1rem; bottom:1rem; width:145px; opacity:.055; }}
-            .journey-logo {{ width:min(88vw,360px); }}
+            .sport-watermark {{ left:1rem; bottom:1rem; width:210px; opacity:.055; }}
         }}
         .neutral-note {{
             background:{surface}; color:{text}; border-left:4px solid {accent};
@@ -120,10 +112,16 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         .quote-text {{ font-size:clamp(1.35rem,3vw,2rem); line-height:1.4; font-weight:600; }}
         .quote-label {{ color:{accent}; letter-spacing:.12em; font-size:.75rem; font-weight:700; }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
+        button[kind="primary"], .stFormSubmitButton > button {{
+            background:{accent} !important; border-color:{accent} !important;
+        }}
         [data-testid="stAlert"] {{
             background:{surface} !important; color:{text} !important;
             border-color:{accent} !important;
         }}
+        [data-testid="stAlert"] svg,
+        [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
+        [data-testid="stProgress"] [role="progressbar"] > div {{ background:{accent} !important; }}
         [data-testid="stSidebarCollapsedControl"] {{
             display:flex !important; visibility:visible !important; opacity:1 !important;
             background:{surface} !important; color:{text} !important;

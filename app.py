@@ -23,8 +23,8 @@ from health_tracker.garmin import sync_day
 from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
 from health_tracker.quotes import QUOTES
-from health_tracker.theme import ACCENTS, FONTS, apply_theme
-from health_tracker.visuals import home_logo, page_watermark
+from health_tracker.theme import FONTS, OLIVE_ACCENT, apply_theme
+from health_tracker.visuals import optional_home_logo, page_watermark
 
 st.set_page_config(page_title="Health Journey", layout="wide")
 init_db()
@@ -32,8 +32,8 @@ require_login()
 
 with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
-    _theme_values = (_preferences.color_mode, _preferences.accent, _preferences.font_family)
-apply_theme(*_theme_values)
+    _theme_values = (_preferences.color_mode, OLIVE_ACCENT, _preferences.font_family)
+apply_theme(_theme_values[0], _theme_values[2])
 
 
 def value(item, name, default=None):
@@ -69,8 +69,8 @@ def style_chart(chart):
 
 
 def home():
-    page_watermark("home", _theme_values[1])
-    home_logo(_theme_values[1])
+    page_watermark("home")
+    optional_home_logo()
     if "opening_quote" not in st.session_state:
         st.session_state.opening_quote = secrets.choice(QUOTES)
     st.title("Welcome back")
@@ -92,7 +92,7 @@ def home():
 
 
 def dashboard():
-    page_watermark("runner", _theme_values[1])
+    page_watermark("runner")
     st.title("Your health journey")
     st.caption(f"One calm day at a time · Goal: {PROFILE.target_weight_kg:g} kg by 1 Sep 2027")
     df = load_data()
@@ -255,7 +255,7 @@ def dashboard():
 
 
 def daily_entry():
-    page_watermark("barbell", _theme_values[1])
+    page_watermark("barbell")
     st.title("Daily check-in")
     selected = st.date_input("Date", date.today())
     item = get_daily(selected)
@@ -385,7 +385,7 @@ def daily_entry():
 
 
 def food_log():
-    page_watermark("cycling", _theme_values[1])
+    page_watermark("cycling")
     st.title("Food journal")
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     selected = st.date_input("Date", date.today(), key="food_date")
@@ -444,11 +444,15 @@ def food_log():
                     f"P {meal['protein_g']:g}g · C {meal['carbs_g']:g}g · "
                     f"F {meal['fat_g']:g}g · Fibre {meal['fibre_g']:g}g"
                 )
-        st.warning("AI nutrition values are estimates and are not medical advice.")
+        st.markdown(
+            "<div class='neutral-note'>AI nutrition values are estimates and are not medical "
+            "advice.</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def nutrition_insights():
-    page_watermark("swim", _theme_values[1])
+    page_watermark("swim")
     st.title("Nutrition insights")
     st.caption("Daily estimates compared with your adjustable targets")
     df = load_data()
@@ -563,11 +567,15 @@ def nutrition_insights():
         )
     )
     st.altair_chart(style_chart(overall_chart), use_container_width=True, theme=None)
-    st.warning("Indicators use AI food estimates and are informational, not medical advice.")
+    st.markdown(
+        "<div class='neutral-note'>Indicators use AI food estimates and are informational, "
+        "not medical advice.</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def appearance_page():
-    page_watermark("stretch", _theme_values[1])
+    page_watermark("stretch")
     st.title("Appearance")
     st.caption("Make the tracker feel like your own")
     with Session(engine) as session:
@@ -576,31 +584,21 @@ def appearance_page():
             mode = st.segmented_control(
                 "Mode", ["light", "dark"], default=prefs.color_mode, format_func=str.title
             )
-            accent_name = st.selectbox(
-                "Main accent colour",
-                list(ACCENTS),
-                index=(
-                    list(ACCENTS.values()).index(prefs.accent)
-                    if prefs.accent in ACCENTS.values()
-                    else 0
-                ),
-            )
             font = st.selectbox(
                 "Font",
                 list(FONTS),
                 index=(list(FONTS).index(prefs.font_family) if prefs.font_family in FONTS else 0),
             )
-            st.color_picker("Selected accent", ACCENTS[accent_name], disabled=True)
             if st.form_submit_button("Save appearance", type="primary", use_container_width=True):
                 prefs.color_mode = mode or "light"
-                prefs.accent = ACCENTS[accent_name]
+                prefs.accent = OLIVE_ACCENT
                 prefs.font_family = font
                 session.commit()
                 st.rerun()
 
 
 def settings_page():
-    page_watermark("target", _theme_values[1])
+    page_watermark("target")
     st.title("Targets, backup and privacy")
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)

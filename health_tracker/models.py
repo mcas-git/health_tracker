@@ -83,5 +83,5 @@ class AppPreferences(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     color_mode: Mapped[str] = mapped_column(String(20), default="light")
-    accent: Mapped[str] = mapped_column(String(20), default="#2A9D8F")
+    accent: Mapped[str] = mapped_column(String(20), default="#7B8451")
     font_family: Mapped[str] = mapped_column(String(40), default="Modern sans")
