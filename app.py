@@ -35,6 +35,33 @@ def value(item, name, default=None):
     return default if result is None else result
 
 
+def style_chart(chart):
+    dark = _theme_values[0] == "dark"
+    foreground = "#E8ECEA" if dark else "#252A28"
+    grid = "#58615E" if dark else "#D5DAD8"
+    return (
+        chart.configure(background="transparent")
+        .configure_view(strokeOpacity=0)
+        .configure_axis(
+            labelColor=foreground,
+            titleColor=foreground,
+            domainColor=grid,
+            tickColor=grid,
+            gridColor=grid,
+            gridOpacity=0.35,
+        )
+        .configure_legend(
+            orient="bottom",
+            direction="horizontal",
+            labelColor=foreground,
+            titleColor=foreground,
+            symbolStrokeColor=foreground,
+            padding=12,
+        )
+        .configure_title(color=foreground)
+    )
+
+
 def home():
     if "opening_quote" not in st.session_state:
         st.session_state.opening_quote = secrets.choice(QUOTES)
@@ -92,7 +119,7 @@ def dashboard():
                     y=alt.Y("weight_kg:Q", title="kg", scale=alt.Scale(zero=False)),
                 )
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(style_chart(chart), use_container_width=True, theme=None)
         else:
             st.caption("No weight entries yet.")
     with right:
@@ -104,12 +131,16 @@ def dashboard():
         ]
         if fields:
             melted = df.melt("entry_date", fields, var_name="measure", value_name="kcal").dropna()
-            st.altair_chart(
+            chart = (
                 alt.Chart(melted)
-                .mark_line(point=True)
-                .encode(x=alt.X("entry_date:T", title=None), y="kcal:Q", color="measure:N"),
-                use_container_width=True,
+                .mark_line(point=True, color="#A5AAA8" if _theme_values[0] == "dark" else "#333333")
+                .encode(
+                    x=alt.X("entry_date:T", title=None),
+                    y="kcal:Q",
+                    strokeDash=alt.StrokeDash("measure:N", legend=alt.Legend(orient="bottom")),
+                )
             )
+            st.altair_chart(style_chart(chart), use_container_width=True, theme=None)
         else:
             st.caption("No nutrition or calorie-burn data yet.")
 
@@ -270,15 +301,23 @@ def food_log():
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     selected = st.date_input("Date", date.today(), key="food_date")
     existing = get_nutrition(selected)
+    if existing:
+        st.markdown(
+            "<div class='neutral-note'>This day already has a saved food journal. Edit the text "
+            "below and recalculate to replace its nutrition estimate.</div>",
+            unsafe_allow_html=True,
+        )
     note = st.text_area(
-        "What did you eat and drink?",
+        "Full-day food journal",
         value=existing.raw_note if existing else "",
         height=220,
         placeholder="Breakfast was porridge with banana… Lunch… Later I had…",
-        label_visibility="collapsed",
     )
     if st.button(
-        "Analyse and save day", type="primary", use_container_width=True, disabled=not note.strip()
+        "Recalculate and replace" if existing else "Analyse and save day",
+        type="primary",
+        use_container_width=True,
+        disabled=not note.strip(),
     ):
         if not setting("OPENAI_API_KEY"):
             st.error("OPENAI_API_KEY is not configured.")
@@ -287,7 +326,7 @@ def food_log():
                 with st.spinner("Estimating meals and nutrition…"):
                     estimate, model = analyse_day(note)
                     save_estimate(selected, note, estimate, model)
-                st.success("Nutrition saved.")
+                st.success("Food journal and nutrition estimate updated.")
                 st.rerun()
             except Exception as exc:
                 st.error(f"Analysis failed: {exc}")
@@ -371,7 +410,12 @@ def nutrition_insights():
                 )
     long = pd.DataFrame(rows)
     st.subheader("Daily target balance")
-    st.altair_chart(
+    grayscale = (
+        ["#3A3A3A", "#929292", "#E5E5E5"]
+        if _theme_values[0] == "dark"
+        else ["#E5E5E5", "#8A8A8A", "#292929"]
+    )
+    daily_chart = (
         alt.Chart(long)
         .mark_rect(cornerRadius=3)
         .encode(
@@ -379,12 +423,13 @@ def nutrition_insights():
             y=alt.Y("Nutrient:N", title=None),
             color=alt.Color(
                 "% of target:Q",
-                scale=alt.Scale(domain=[50, 100, 150], range=["#D8664F", "#2A9D8F", "#7057C7"]),
+                scale=alt.Scale(domain=[50, 100, 150], range=grayscale),
+                legend=alt.Legend(orient="bottom"),
             ),
             tooltip=["Date:T", "Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
-        ),
-        use_container_width=True,
+        )
     )
+    st.altair_chart(style_chart(daily_chart), use_container_width=True, theme=None)
 
     nutrition["week"] = nutrition.entry_date.dt.to_period("W").dt.start_time
     weekly = nutrition.groupby("week", as_index=False)[list(fields.values())].mean()
@@ -396,37 +441,38 @@ def nutrition_insights():
     st.subheader("Weekly average vs target")
     weekly_chart = (
         alt.Chart(pd.DataFrame(weekly_rows))
-        .mark_line(point=True)
+        .mark_line(point=True, color="#A5AAA8" if _theme_values[0] == "dark" else "#333333")
         .encode(
             x=alt.X("Week:T", title=None),
             y=alt.Y("% of target:Q", title="Target %"),
-            color="Nutrient:N",
+            strokeDash=alt.StrokeDash("Nutrient:N", legend=alt.Legend(orient="bottom")),
             tooltip=["Week:T", "Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
         )
     )
     target_line = alt.Chart(pd.DataFrame({"y": [100]})).mark_rule(strokeDash=[5, 5]).encode(y="y:Q")
-    st.altair_chart(weekly_chart + target_line, use_container_width=True)
+    st.altair_chart(style_chart(weekly_chart + target_line), use_container_width=True, theme=None)
 
     overall = [
         {"Nutrient": label, "% of target": nutrition[field].mean() / targets[label] * 100}
         for label, field in fields.items()
     ]
     st.subheader("Overall average")
-    st.altair_chart(
+    overall_chart = (
         alt.Chart(pd.DataFrame(overall))
         .mark_bar(cornerRadiusEnd=8)
         .encode(
             x=alt.X("% of target:Q", title="Average target achievement (%)"),
             y=alt.Y("Nutrient:N", sort=None, title=None),
-            color=alt.condition(
+            opacity=alt.condition(
                 "datum['% of target'] >= 80 && datum['% of target'] <= 120",
-                alt.value("#2A9D8F"),
-                alt.value("#D8664F"),
+                alt.value(1.0),
+                alt.value(0.45),
             ),
+            color=alt.value("#A5AAA8" if _theme_values[0] == "dark" else "#444444"),
             tooltip=["Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
-        ),
-        use_container_width=True,
+        )
     )
+    st.altair_chart(style_chart(overall_chart), use_container_width=True, theme=None)
     st.warning("Indicators use AI food estimates and are informational, not medical advice.")
 
 

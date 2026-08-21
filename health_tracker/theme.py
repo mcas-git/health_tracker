@@ -52,6 +52,22 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-baseweb="select"] input {{
             color:{text} !important; -webkit-text-fill-color:{text} !important;
         }}
+        [data-baseweb="input"],
+        [data-baseweb="textarea"],
+        [data-baseweb="select"] > div,
+        [data-testid="stDateInput"] > div > div,
+        [data-testid="stNumberInput"] > div > div {{
+            background-color:{surface} !important;
+            border-color:{muted} !important;
+            color:{text} !important;
+        }}
+        [data-baseweb="select"] span,
+        [data-baseweb="select"] div,
+        [data-testid="stDateInput"] button,
+        [data-testid="stNumberInput"] button {{
+            color:{text} !important;
+            fill:{text} !important;
+        }}
         input::placeholder, textarea::placeholder {{
             color:{muted} !important; -webkit-text-fill-color:{muted} !important;
         }}
@@ -102,9 +118,21 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             background:{surface} !important; color:{text} !important;
             border:1px solid {accent}55 !important; border-radius:9px !important;
         }}
+        [data-testid="stSidebarCollapsedControl"] button,
+        [data-testid="stSidebarCollapseButton"] button {{
+            background:{surface} !important; color:{text} !important;
+            border:1px solid {muted} !important;
+        }}
         [data-testid="stSidebarCollapsedControl"] span,
         [data-testid="stSidebarCollapseButton"] span {{
             font-family:"Material Symbols Rounded", "Material Symbols Outlined" !important;
+            color:{text} !important; opacity:1 !important; font-size:1.5rem !important;
+            font-variation-settings:"FILL" 0, "wght" 600, "GRAD" 0, "opsz" 24;
+        }}
+        [data-testid="stSidebarCollapsedControl"] svg,
+        [data-testid="stSidebarCollapseButton"] svg {{
+            color:{text} !important; fill:{text} !important;
+            stroke:{text} !important; opacity:1 !important;
         }}
         a {{ color:{accent}; }}
         {dark_overrides}
