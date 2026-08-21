@@ -577,12 +577,6 @@ def food_log():
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     selected = st.date_input("Date", date.today(), key="food_date")
     existing = get_nutrition(selected)
-    if existing:
-        st.markdown(
-            "<div class='neutral-note'>This day already has a saved food journal. Edit the text "
-            "below and recalculate to replace its nutrition estimate.</div>",
-            unsafe_allow_html=True,
-        )
     note = st.text_area(
         "Full-day food journal",
         value=existing.raw_note if existing else "",
