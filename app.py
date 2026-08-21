@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import io
 import json
-import secrets
 from datetime import date, datetime, time
 
 import altair as alt
@@ -23,7 +22,8 @@ from health_tracker.db import engine, get_daily, get_nutrition, init_db, upsert_
 from health_tracker.garmin import sync_day
 from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
-from health_tracker.quotes import QUOTES
+from health_tracker.quotes import QUOTES, daily_item
+from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import FONTS, apply_theme, normalize_color
 from health_tracker.visuals import optional_home_logo, page_watermark
 
@@ -72,24 +72,38 @@ def style_chart(chart):
 def home():
     page_watermark("home", _theme_values[1])
     optional_home_logo()
-    if "opening_quote" not in st.session_state:
-        st.session_state.opening_quote = secrets.choice(QUOTES)
     st.title("Welcome back")
     st.caption("Your private space for a stronger, healthier year")
-    st.markdown(
-        f"""
-        <div class="quote-card">
-          <div class="quote-label">TODAY'S THOUGHT</div>
-          <div class="quote-text">“{st.session_state.opening_quote}”</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        "<div class='neutral-note'>Use the menu to complete today's check-in, log food, "
-        "and review your progress.</div>",
-        unsafe_allow_html=True,
-    )
+    london_day = datetime.now(LONDON).date()
+    if st.session_state.get("home_research", False):
+        research = daily_item(RESEARCH_INSIGHTS, london_day)
+        st.markdown(
+            f"""
+            <div class="quote-card">
+              <div class="quote-label">RESEARCH NOTE</div>
+              <div class="quote-text">{research["insight"]}</div>
+              <p><a href="{research["url"]}" target="_blank">{research["source"]}</a></p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("Show today's inspiration", use_container_width=True):
+            st.session_state.home_research = False
+            st.rerun()
+    else:
+        quote = daily_item(QUOTES, london_day)
+        st.markdown(
+            f"""
+            <div class="quote-card">
+              <div class="quote-label">TODAY'S THOUGHT</div>
+              <div class="quote-text">“{quote}”</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("Show today's research note", use_container_width=True):
+            st.session_state.home_research = True
+            st.rerun()
 
 
 def dashboard():

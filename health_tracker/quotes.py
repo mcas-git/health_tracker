@@ -1,5 +1,8 @@
 """Original short prompts informed by evidence-based habit and activity themes."""
 
+import hashlib
+from datetime import date
+
 QUOTES = [
     "Small choices, repeated, become visible change.",
     "Today only asks for today's effort.",
@@ -66,3 +69,9 @@ QUOTES = [
 
 def quote_count() -> int:
     return len(QUOTES)
+
+
+def daily_item(items: list, day: date):
+    """Choose one stable item for a calendar day."""
+    index = int(hashlib.sha256(day.isoformat().encode()).hexdigest(), 16) % len(items)
+    return items[index]

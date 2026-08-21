@@ -8,7 +8,7 @@ from health_tracker.auth import create_remember_token, hash_password, valid_reme
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.nutrition import DailyNutritionEstimate
-from health_tracker.quotes import QUOTES, quote_count
+from health_tracker.quotes import QUOTES, daily_item, quote_count
 from health_tracker.theme import normalize_color
 from scripts.send_reminder import reminder_copy, should_send
 
@@ -125,3 +125,8 @@ def test_motivational_library_has_60_unique_short_entries():
     assert quote_count() == 60
     assert len(set(QUOTES)) == 60
     assert max(map(len, QUOTES)) < 100
+
+
+def test_daily_quote_is_stable_for_the_day():
+    day = date(2026, 8, 21)
+    assert daily_item(QUOTES, day) == daily_item(QUOTES, day)
