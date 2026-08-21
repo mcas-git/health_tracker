@@ -71,6 +71,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     red, green, blue = (int(accent[index : index + 2], 16) for index in (1, 3, 5))
     accent_text = "#111111" if (0.2126 * red + 0.7152 * green + 0.0722 * blue) > 150 else "#FFFFFF"
     neutral_icon = "#D8D8D8" if dark else "#4A4A4A"
+    sidebar_icon = "#FFFFFF" if dark else neutral_icon
     neutral_border = "#666666" if dark else "#C8C8C8"
     neutral_surface = "#303030" if dark else "#F2F2F2"
     font = FONTS.get(font_name, FONTS["Modern sans"])
@@ -379,13 +380,14 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stSidebarCollapsedControl"] span,
         [data-testid="stSidebarCollapseButton"] span {{
             font-family:"Material Symbols Rounded", "Material Symbols Outlined" !important;
-            color:{text} !important; opacity:1 !important; font-size:1.5rem !important;
+            color:{sidebar_icon} !important; -webkit-text-fill-color:{sidebar_icon} !important;
+            opacity:1 !important; font-size:1.5rem !important;
             font-variation-settings:"FILL" 0, "wght" 600, "GRAD" 0, "opsz" 24;
         }}
         [data-testid="stSidebarCollapsedControl"] svg,
         [data-testid="stSidebarCollapseButton"] svg {{
-            color:{text} !important; fill:{text} !important;
-            stroke:{text} !important; opacity:1 !important;
+            color:{sidebar_icon} !important; fill:{sidebar_icon} !important;
+            stroke:{sidebar_icon} !important; opacity:1 !important;
         }}
         a {{ color:{accent}; }}
         {dark_overrides}
