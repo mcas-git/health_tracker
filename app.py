@@ -36,7 +36,11 @@ from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import FONTS, apply_theme, derived_palette, normalize_color
 from health_tracker.visuals import optional_home_logo, page_watermark
 
-st.set_page_config(page_title="Health Journey", layout="wide")
+st.set_page_config(
+    page_title="Health Journey",
+    page_icon="assets/logo/favicon.svg",
+    layout="wide",
+)
 init_db()
 require_login()
 
