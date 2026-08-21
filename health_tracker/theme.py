@@ -162,6 +162,8 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stMarkdownContainer"],
         [data-testid="stWidgetLabel"],
         [data-testid="stMetric"],
+        [data-testid="stCaptionContainer"],
+        [data-testid="stCaptionContainer"] *,
         [data-baseweb="select"], input, textarea {{ font-family:{font}; }}
         [data-testid="stAppViewContainer"] h1,
         [data-testid="stAppViewContainer"] h2,
