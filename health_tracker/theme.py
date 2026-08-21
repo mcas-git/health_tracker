@@ -70,6 +70,9 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     accent_rgb = ", ".join(str(int(accent[index : index + 2], 16)) for index in (1, 3, 5))
     red, green, blue = (int(accent[index : index + 2], 16) for index in (1, 3, 5))
     accent_text = "#111111" if (0.2126 * red + 0.7152 * green + 0.0722 * blue) > 150 else "#FFFFFF"
+    neutral_icon = "#D8D8D8" if dark else "#4A4A4A"
+    neutral_border = "#666666" if dark else "#C8C8C8"
+    neutral_surface = "#303030" if dark else "#F2F2F2"
     font = FONTS.get(font_name, FONTS["Modern sans"])
     dark_overrides = (
         f"""
@@ -208,7 +211,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stProgress"] [role="progressbar"] > div {{ background:{accent} !important; }}
         [data-testid="stElementToolbar"] button,
         [data-testid="stElementToolbar"] svg {{
-            color:{muted} !important; fill:{muted} !important;
+            color:{neutral_icon} !important; fill:{neutral_icon} !important;
         }}
         [data-testid="stHeaderActionElements"] button,
         [data-testid="stHeaderActionElements"] a,
@@ -216,7 +219,8 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stToolbar"] button,
         [data-testid="stToolbar"] a,
         [data-testid="stToolbar"] svg {{
-            color:{muted} !important; fill:{muted} !important; stroke:{muted} !important;
+            color:{neutral_icon} !important; fill:{neutral_icon} !important;
+            stroke:{neutral_icon} !important;
         }}
         [data-testid="stSlider"] [role="slider"] {{
             background:{accent} !important; border-color:{accent} !important;
@@ -252,14 +256,14 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         [data-baseweb="checkbox"] input:checked + div,
         [data-testid="stCheckbox"] input:checked + div {{
-            background:{accent} !important; border-color:{accent} !important;
+            background:{accent} !important; border-color:{neutral_border} !important;
         }}
         [data-testid="stCheckbox"] label:has(input:checked) span:first-of-type,
         [data-baseweb="checkbox"] label:has(input:checked) span:first-of-type {{
-            background:{accent} !important; border-color:{accent} !important;
+            background:{accent} !important; border-color:{neutral_border} !important;
         }}
         [data-testid="stCheckbox"] label:has(input:checked) > span + div {{
-            background:{accent} !important; border-color:{accent} !important;
+            background:{accent} !important; border-color:{neutral_border} !important;
         }}
         [data-testid="stSegmentedControl"] button[aria-pressed="true"],
         [data-baseweb="button-group"] button[aria-pressed="true"],
@@ -278,14 +282,14 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             color:#FFFFFF !important;
         }}
         [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] {{
-            background:{accent} !important; border-color:{accent} !important;
+            background:{accent} !important; border-color:{neutral_border} !important;
             color:{accent_text} !important;
         }}
         [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] * {{
             color:{accent_text} !important;
         }}
         [data-testid="stButtonGroup"] [role="radio"][aria-checked="false"] {{
-            background:{surface} !important; border-color:{muted} !important;
+            background:{surface} !important; border-color:{neutral_border} !important;
             color:{text} !important;
         }}
         [data-testid="stButtonGroup"] [role="radio"][aria-checked="false"] * {{
@@ -293,29 +297,37 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         [data-testid="stDateInput"] [data-baseweb="input"],
         [data-testid="stDateInput"] input {{
-            border-color:{accent} !important; caret-color:{accent} !important;
+            border-color:{neutral_border} !important; caret-color:{text} !important;
+            color:{text} !important; -webkit-text-fill-color:{text} !important;
+        }}
+        [data-testid="stDateInput"] [role="spinbutton"],
+        [data-testid="stDateInput"] [role="group"],
+        [data-testid="stDateInput"] [role="group"] * {{
+            color:{neutral_icon} !important; -webkit-text-fill-color:{neutral_icon} !important;
         }}
         [data-testid="stDateInput"] button,
         [data-testid="stDateInput"] svg {{
-            color:{text} !important; fill:{text} !important; stroke:{text} !important;
+            color:{neutral_icon} !important; fill:{neutral_icon} !important;
+            stroke:{neutral_icon} !important;
         }}
         [data-baseweb="calendar"] [aria-selected="true"],
         [role="dialog"] [role="gridcell"][aria-selected="true"],
         [role="dialog"] button[data-selected="true"] {{
-            background:{accent} !important; color:{accent_text} !important;
-            border-color:{accent} !important;
+            background:{neutral_surface} !important; color:{neutral_icon} !important;
+            border-color:{neutral_border} !important;
         }}
         [data-testid="stNumberInput"] button,
         [data-testid="stNumberInput"] button:hover,
         [data-testid="stNumberInput"] button:focus {{
-            background:{surface} !important; border-color:{muted} !important;
+            background:{surface} !important; border-color:{neutral_border} !important;
             color:{text} !important; outline:none !important; box-shadow:none !important;
         }}
         [data-testid="stNumberInput"] button svg {{
-            color:{text} !important; fill:{text} !important; stroke:{text} !important;
+            color:{neutral_icon} !important; fill:{neutral_icon} !important;
+            stroke:{neutral_icon} !important;
         }}
         input[type="date"]::-webkit-calendar-picker-indicator {{
-            opacity:1; accent-color:{accent};
+            opacity:1; accent-color:{neutral_icon};
         }}
         [data-testid="stSidebarCollapsedControl"] {{
             display:flex !important; visibility:visible !important; opacity:1 !important;
