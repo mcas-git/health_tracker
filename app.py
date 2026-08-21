@@ -106,43 +106,77 @@ def dashboard():
         st.info("Add your first daily entry to begin the dashboard.")
         return
     df["entry_date"] = pd.to_datetime(df["entry_date"])
-    left, right = st.columns(2)
-    with left:
-        st.subheader("Weight trend")
-        weight = df.dropna(subset=["weight_kg"])
-        if not weight.empty:
-            chart = (
-                alt.Chart(weight)
-                .mark_line(point=True)
-                .encode(
-                    x=alt.X("entry_date:T", title=None),
-                    y=alt.Y("weight_kg:Q", title="kg", scale=alt.Scale(zero=False)),
-                )
+    smooth = st.checkbox("Smooth chart lines (7-entry rolling average)")
+    chart_height = 320
+    accent = _theme_values[1]
+    hidden_axis = alt.Axis(labels=False, ticks=False, domain=False, title=None)
+
+    st.subheader("Weight trend")
+    weight = df[["entry_date", "weight_kg"]].dropna().copy()
+    if not weight.empty:
+        weight["display_value"] = (
+            weight.weight_kg.rolling(7, min_periods=1).mean() if smooth else weight.weight_kg
+        )
+        weight_line = (
+            alt.Chart(weight)
+            .mark_line(point=not smooth, color=accent, strokeWidth=4)
+            .encode(
+                x=alt.X("entry_date:T", axis=hidden_axis),
+                y=alt.Y("display_value:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
+                tooltip=[
+                    alt.Tooltip("entry_date:T", title="Date"),
+                    alt.Tooltip("display_value:Q", title="Weight (kg)", format=".1f"),
+                ],
             )
-            st.altair_chart(style_chart(chart), use_container_width=True, theme=None)
-        else:
-            st.caption("No weight entries yet.")
-    with right:
-        st.subheader("Calories and activity")
-        fields = [
-            field
-            for field in ["calories", "calories_burned"]
-            if field in df and df[field].notna().any()
-        ]
-        if fields:
-            melted = df.melt("entry_date", fields, var_name="measure", value_name="kcal").dropna()
-            chart = (
-                alt.Chart(melted)
-                .mark_line(point=True, color="#A5AAA8" if _theme_values[0] == "dark" else "#333333")
-                .encode(
-                    x=alt.X("entry_date:T", title=None),
-                    y="kcal:Q",
-                    strokeDash=alt.StrokeDash("measure:N", legend=alt.Legend(orient="bottom")),
-                )
+        )
+        goal_line = (
+            alt.Chart(pd.DataFrame({"goal": [PROFILE.target_weight_kg]}))
+            .mark_rule(color=accent, strokeWidth=3, strokeDash=[8, 5], opacity=0.65)
+            .encode(
+                y="goal:Q",
+                tooltip=[alt.Tooltip("goal:Q", title="Goal weight (kg)", format=".1f")],
             )
-            st.altair_chart(style_chart(chart), use_container_width=True, theme=None)
-        else:
-            st.caption("No nutrition or calorie-burn data yet.")
+        )
+        st.altair_chart(
+            style_chart((weight_line + goal_line).properties(height=chart_height)),
+            use_container_width=True,
+            theme=None,
+        )
+    else:
+        st.caption("No weight entries yet.")
+
+    st.subheader("Calories and activity")
+    fields = [
+        field
+        for field in ["calories", "calories_burned"]
+        if field in df and df[field].notna().any()
+    ]
+    if fields:
+        calories = df[["entry_date", *fields]].copy()
+        if smooth:
+            calories[fields] = calories[fields].rolling(7, min_periods=1).mean()
+        melted = calories.melt("entry_date", fields, var_name="measure", value_name="kcal").dropna()
+        chart = (
+            alt.Chart(melted)
+            .mark_line(point=not smooth, color=accent, strokeWidth=4)
+            .encode(
+                x=alt.X("entry_date:T", axis=hidden_axis),
+                y=alt.Y("kcal:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
+                strokeDash=alt.StrokeDash(
+                    "measure:N", legend=alt.Legend(orient="bottom", title=None)
+                ),
+                opacity=alt.Opacity("measure:N", legend=None, scale=alt.Scale(range=[1.0, 0.55])),
+                tooltip=[
+                    alt.Tooltip("entry_date:T", title="Date"),
+                    alt.Tooltip("measure:N", title="Measure"),
+                    alt.Tooltip("kcal:Q", title="kcal", format=".0f"),
+                ],
+            )
+            .properties(height=chart_height)
+        )
+        st.altair_chart(style_chart(chart), use_container_width=True, theme=None)
+    else:
+        st.caption("No nutrition or calorie-burn data yet.")
 
     st.subheader("Recent KPI view")
     kpis = [
@@ -160,9 +194,53 @@ def dashboard():
         ]
         if col in df
     ]
-    st.dataframe(
-        df[kpis].tail(14).sort_values("entry_date", ascending=False),
-        hide_index=True,
+    labels = {
+        "bmi": "BMI",
+        "waist_cm": "Waist",
+        "steps": "Steps",
+        "sleep_hours": "Sleep",
+        "mood": "Mood",
+        "energy": "Energy",
+        "fasting_hours": "Fasting hours",
+        "resting_heart_rate": "Resting heart rate",
+        "systolic": "Blood pressure (systolic)",
+        "diastolic": "Blood pressure (diastolic)",
+    }
+    available = {
+        label: field for field, label in labels.items() if field in df and df[field].notna().any()
+    }
+    if available:
+        selected_label = st.selectbox("Additional KPI", available)
+        selected_kpi = available[selected_label]
+        recent = df[["entry_date", selected_kpi]].dropna().tail(30).copy()
+        recent["display_value"] = (
+            recent[selected_kpi].rolling(7, min_periods=1).mean()
+            if smooth
+            else recent[selected_kpi]
+        )
+        kpi_chart = (
+            alt.Chart(recent)
+            .mark_line(point=not smooth, color=accent, strokeWidth=4)
+            .encode(
+                x=alt.X("entry_date:T", axis=hidden_axis),
+                y=alt.Y("display_value:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
+                tooltip=[
+                    alt.Tooltip("entry_date:T", title="Date"),
+                    alt.Tooltip("display_value:Q", title=selected_label, format=".1f"),
+                ],
+            )
+            .properties(height=chart_height)
+        )
+        st.altair_chart(style_chart(kpi_chart), use_container_width=True, theme=None)
+    else:
+        st.caption("Add another measurement to display a recent KPI trend.")
+
+    recent_table = df[kpis].tail(14).sort_values("entry_date", ascending=False)
+    st.download_button(
+        "Download recent KPI table",
+        recent_table.to_csv(index=False).encode(),
+        "recent-health-kpis.csv",
+        "text/csv",
         use_container_width=True,
     )
 
