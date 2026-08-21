@@ -24,7 +24,7 @@ from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
 from health_tracker.quotes import QUOTES, daily_item
 from health_tracker.research import RESEARCH_INSIGHTS
-from health_tracker.theme import FONTS, apply_theme, normalize_color
+from health_tracker.theme import FONTS, apply_theme, derived_palette, normalize_color
 from health_tracker.visuals import optional_home_logo, page_watermark
 
 st.set_page_config(page_title="Health Journey", layout="wide")
@@ -43,9 +43,9 @@ def value(item, name, default=None):
 
 
 def style_chart(chart):
-    dark = _theme_values[0] == "dark"
-    foreground = "#E8ECEA" if dark else "#252A28"
-    grid = "#58615E" if dark else "#D5DAD8"
+    palette = derived_palette(_theme_values[0], _theme_values[1])
+    foreground = palette["foreground"]
+    grid = palette["grid"]
     return (
         chart.configure(background="transparent")
         .configure_view(strokeOpacity=0)
@@ -130,20 +130,22 @@ def dashboard():
         st.info("Add your first daily entry to begin the dashboard.")
         return
     df["entry_date"] = pd.to_datetime(df["entry_date"])
-    smooth = st.checkbox("Smooth chart lines (7-entry rolling average)")
     chart_height = 320
     accent = _theme_values[1]
+    palette = derived_palette(*_theme_values[:2])
+    series_colors = palette["series"]
     hidden_axis = alt.Axis(labels=False, ticks=False, domain=False, title=None)
 
     st.subheader("Weight trend")
+    smooth_weight = st.checkbox("Smooth weight (7-entry rolling average)", key="smooth_weight")
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
         weight["display_value"] = (
-            weight.weight_kg.rolling(7, min_periods=1).mean() if smooth else weight.weight_kg
+            weight.weight_kg.rolling(7, min_periods=1).mean() if smooth_weight else weight.weight_kg
         )
         weight_line = (
             alt.Chart(weight)
-            .mark_line(point=not smooth, color=accent, strokeWidth=4)
+            .mark_line(point=not smooth_weight, color=accent, strokeWidth=4)
             .encode(
                 x=alt.X("entry_date:T", axis=hidden_axis),
                 y=alt.Y("display_value:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
@@ -170,6 +172,9 @@ def dashboard():
         st.caption("No weight entries yet.")
 
     st.subheader("Calories and activity")
+    smooth_calories = st.checkbox(
+        "Smooth calories and activity (7-entry rolling average)", key="smooth_calories"
+    )
     fields = [
         field
         for field in ["calories", "calories_burned"]
@@ -177,19 +182,23 @@ def dashboard():
     ]
     if fields:
         calories = df[["entry_date", *fields]].copy()
-        if smooth:
+        if smooth_calories:
             calories[fields] = calories[fields].rolling(7, min_periods=1).mean()
         melted = calories.melt("entry_date", fields, var_name="measure", value_name="kcal").dropna()
         chart = (
             alt.Chart(melted)
-            .mark_line(point=not smooth, color=accent, strokeWidth=4)
+            .mark_line(point=not smooth_calories, strokeWidth=4)
             .encode(
                 x=alt.X("entry_date:T", axis=hidden_axis),
                 y=alt.Y("kcal:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
                 strokeDash=alt.StrokeDash(
                     "measure:N", legend=alt.Legend(orient="bottom", title=None)
                 ),
-                opacity=alt.Opacity("measure:N", legend=None, scale=alt.Scale(range=[1.0, 0.55])),
+                color=alt.Color(
+                    "measure:N",
+                    legend=None,
+                    scale=alt.Scale(range=series_colors[: len(fields)]),
+                ),
                 tooltip=[
                     alt.Tooltip("entry_date:T", title="Date"),
                     alt.Tooltip("measure:N", title="Measure"),
@@ -203,6 +212,9 @@ def dashboard():
         st.caption("No nutrition or calorie-burn data yet.")
 
     st.subheader("Recent KPI view")
+    smooth_kpi = st.checkbox(
+        "Smooth selected KPI (7-entry rolling average)", key="smooth_recent_kpi"
+    )
     kpis = [
         col
         for col in [
@@ -239,12 +251,12 @@ def dashboard():
         recent = df[["entry_date", selected_kpi]].dropna().tail(30).copy()
         recent["display_value"] = (
             recent[selected_kpi].rolling(7, min_periods=1).mean()
-            if smooth
+            if smooth_kpi
             else recent[selected_kpi]
         )
         kpi_chart = (
             alt.Chart(recent)
-            .mark_line(point=not smooth, color=accent, strokeWidth=4)
+            .mark_line(point=not smooth_kpi, color=accent, strokeWidth=4)
             .encode(
                 x=alt.X("entry_date:T", axis=hidden_axis),
                 y=alt.Y("display_value:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
@@ -539,11 +551,7 @@ def nutrition_insights():
                 )
     long = pd.DataFrame(rows)
     st.subheader("Daily target balance")
-    grayscale = (
-        ["#3A3A3A", "#929292", "#E5E5E5"]
-        if _theme_values[0] == "dark"
-        else ["#E5E5E5", "#8A8A8A", "#292929"]
-    )
+    palette = derived_palette(*_theme_values[:2])
     daily_chart = (
         alt.Chart(long)
         .mark_rect(cornerRadius=3)
@@ -552,7 +560,7 @@ def nutrition_insights():
             y=alt.Y("Nutrient:N", title=None),
             color=alt.Color(
                 "% of target:Q",
-                scale=alt.Scale(domain=[50, 100, 150], range=grayscale),
+                scale=alt.Scale(domain=[50, 100, 150], range=palette["scale"]),
                 legend=alt.Legend(orient="bottom"),
             ),
             tooltip=["Date:T", "Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
@@ -568,17 +576,30 @@ def nutrition_insights():
         for label, field in fields.items()
     ]
     st.subheader("Weekly average vs target")
+    smooth_weekly = st.checkbox(
+        "Smooth weekly nutrition (3-week rolling average)", key="smooth_weekly_nutrition"
+    )
+    weekly_frame = pd.DataFrame(weekly_rows)
+    if smooth_weekly:
+        weekly_frame["% of target"] = weekly_frame.groupby("Nutrient")["% of target"].transform(
+            lambda values: values.rolling(3, min_periods=1).mean()
+        )
     weekly_chart = (
-        alt.Chart(pd.DataFrame(weekly_rows))
-        .mark_line(point=True, color="#A5AAA8" if _theme_values[0] == "dark" else "#333333")
+        alt.Chart(weekly_frame)
+        .mark_line(point=not smooth_weekly, strokeWidth=3)
         .encode(
             x=alt.X("Week:T", title=None),
             y=alt.Y("% of target:Q", title="Target %"),
             strokeDash=alt.StrokeDash("Nutrient:N", legend=alt.Legend(orient="bottom")),
+            color=alt.Color("Nutrient:N", legend=None, scale=alt.Scale(range=palette["series"])),
             tooltip=["Week:T", "Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
         )
     )
-    target_line = alt.Chart(pd.DataFrame({"y": [100]})).mark_rule(strokeDash=[5, 5]).encode(y="y:Q")
+    target_line = (
+        alt.Chart(pd.DataFrame({"y": [100]}))
+        .mark_rule(strokeDash=[5, 5], color=_theme_values[1], opacity=0.65)
+        .encode(y="y:Q")
+    )
     st.altair_chart(style_chart(weekly_chart + target_line), use_container_width=True, theme=None)
 
     overall = [
@@ -597,7 +618,7 @@ def nutrition_insights():
                 alt.value(1.0),
                 alt.value(0.45),
             ),
-            color=alt.value("#A5AAA8" if _theme_values[0] == "dark" else "#444444"),
+            color=alt.value(_theme_values[1]),
             tooltip=["Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
         )
     )

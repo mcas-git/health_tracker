@@ -39,6 +39,26 @@ def _mix(color: str, target: str, amount: float) -> str:
     return "#" + "".join(f"{value:02X}" for value in values)
 
 
+def derived_palette(mode: str, accent: str) -> dict[str, str | list[str]]:
+    accent = normalize_color(accent)
+    dark = mode == "dark"
+    return {
+        "accent": accent,
+        "foreground": _mix(accent, "#FFFFFF", 0.9) if dark else _mix(accent, "#000000", 0.76),
+        "grid": _mix(accent, "#FFFFFF", 0.38) if dark else _mix(accent, "#FFFFFF", 0.68),
+        "series": [
+            accent,
+            _mix(accent, "#FFFFFF", 0.38) if dark else _mix(accent, "#000000", 0.3),
+            _mix(accent, "#FFFFFF", 0.65) if dark else _mix(accent, "#000000", 0.52),
+        ],
+        "scale": [
+            _mix(accent, "#000000", 0.45) if dark else _mix(accent, "#FFFFFF", 0.78),
+            accent,
+            _mix(accent, "#FFFFFF", 0.68) if dark else _mix(accent, "#000000", 0.48),
+        ],
+    }
+
+
 def apply_theme(mode: str, accent: str, font_name: str) -> None:
     dark = mode == "dark"
     accent = normalize_color(accent)
@@ -132,6 +152,12 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stWidgetLabel"],
         [data-testid="stMetric"],
         [data-baseweb="select"], input, textarea {{ font-family:{font}; }}
+        [data-testid="stAppViewContainer"] h1,
+        [data-testid="stAppViewContainer"] h2,
+        [data-testid="stAppViewContainer"] h3,
+        [data-testid="stAppViewContainer"] h4,
+        [data-testid="stAppViewContainer"] h5,
+        [data-testid="stAppViewContainer"] h6 {{ font-family:{font} !important; }}
         [data-testid="stSidebar"] {{ background:{secondary}; }}
         div[data-testid="stMetric"], .quote-card {{
             background:{surface}; border:1px solid {accent}33; border-radius:16px; padding:18px;
