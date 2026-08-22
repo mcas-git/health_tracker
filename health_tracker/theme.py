@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+from base64 import b64encode
+from pathlib import Path
 
 import streamlit as st
 
@@ -75,6 +77,14 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     neutral_border = "#666666" if dark else "#C8C8C8"
     neutral_surface = "#303030" if dark else "#F2F2F2"
     font = FONTS.get(font_name, FONTS["Modern sans"])
+    garmin_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "garmin.jpg"
+    garmin_logo_css = (
+        'background-image:url("data:image/jpeg;base64,'
+        + b64encode(garmin_logo.read_bytes()).decode()
+        + '") !important;'
+        if garmin_logo.is_file()
+        else ""
+    )
     dark_overrides = (
         f"""
         [data-testid="stAppViewContainer"] h1,
@@ -210,8 +220,8 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             margin-top:1.5rem;
         }}
         .research-motivation {{
-            color:{text}; font-size:1.05rem; line-height:1.5; font-style:italic;
-            margin-top:.35rem;
+            color:{text}; font-size:clamp(1.35rem,3vw,2rem); line-height:1.4;
+            font-weight:600; margin-top:.35rem;
         }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
         [class*="st-key-rating_"] .stFormSubmitButton button {{
@@ -226,23 +236,21 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         .st-key-garmin_yesterday button,
         .st-key-garmin_selected button {{
-            background:#007CC3 !important; border-color:#007CC3 !important;
-            color:#FFFFFF !important; font-weight:750 !important; letter-spacing:.02em;
+            background-color:#FFFFFF !important; {garmin_logo_css}
+            background-repeat:no-repeat !important; background-position:14px center !important;
+            background-size:88px auto !important; border-color:#00A6CE !important;
+            color:#111111 !important; font-weight:750 !important; letter-spacing:.02em;
+            padding-left:7.4rem !important;
         }}
         .st-key-garmin_yesterday button:hover,
         .st-key-garmin_yesterday button:focus,
         .st-key-garmin_selected button:hover,
         .st-key-garmin_selected button:focus {{
-            background:#006AA6 !important; border-color:#006AA6 !important;
-            color:#FFFFFF !important; box-shadow:0 0 0 2px #007CC344 !important;
+            background-color:#F2FAFC !important; border-color:#007CC3 !important;
+            color:#111111 !important; box-shadow:0 0 0 2px #007CC344 !important;
         }}
         .st-key-garmin_yesterday button *,
-        .st-key-garmin_selected button * {{ color:#FFFFFF !important; }}
-        .st-key-garmin_yesterday button::before,
-        .st-key-garmin_selected button::before {{
-            content:"▲"; color:#FFFFFF; font-size:.62rem; margin-right:.15rem;
-            transform:translateY(-.08rem);
-        }}
+        .st-key-garmin_selected button * {{ color:#111111 !important; }}
         button[kind="primary"], .stFormSubmitButton > button {{
             background:{accent} !important; border-color:{accent} !important;
         }}
@@ -422,6 +430,21 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         a {{ color:{accent}; }}
         {dark_overrides}
+
+        .st-key-garmin_yesterday button,
+        .st-key-garmin_selected button {{
+            background-color:#FFFFFF !important; border-color:#00A6CE !important;
+            color:#111111 !important;
+        }}
+        .st-key-garmin_yesterday button:hover,
+        .st-key-garmin_yesterday button:focus,
+        .st-key-garmin_selected button:hover,
+        .st-key-garmin_selected button:focus {{
+            background-color:#F2FAFC !important; border-color:#007CC3 !important;
+            color:#111111 !important;
+        }}
+        .st-key-garmin_yesterday button *,
+        .st-key-garmin_selected button * {{ color:#111111 !important; }}
 
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
         [data-testid="stExpandSidebarButton"],

@@ -373,7 +373,7 @@ def daily_entry():
     if "daily_entry_date" not in st.session_state:
         st.session_state.daily_entry_date = yesterday if london_now.hour < 12 else london_now.date()
     with st.container(key="garmin_yesterday"):
-        if st.button("GARMIN · Load yesterday", use_container_width=True):
+        if st.button("Load yesterday", use_container_width=True):
             try:
                 with st.spinner("Loading yesterday from Garmin…"):
                     yesterday_data = sync_day(yesterday)
@@ -394,7 +394,7 @@ def daily_entry():
     with st.expander("Garmin sync", expanded=False):
         st.caption("Imports steps, calories burned, sleep, resting heart rate, and activity data.")
         with st.container(key="garmin_selected"):
-            if st.button("GARMIN · Sync selected date", use_container_width=True):
+            if st.button("Sync selected date", use_container_width=True):
                 try:
                     with st.spinner("Connecting to Garmin…"):
                         synced = sync_day(selected)
@@ -483,7 +483,12 @@ def daily_entry():
             habits[key] = cols[idx % 4].checkbox(label, value=bool(value(item, key, False)))
 
         st.subheader("Fasting")
-        fasted = st.toggle("I fasted", value=bool(value(item, "fasted", False)))
+        fasting_status = st.segmented_control(
+            "Fasting status",
+            ["Fasted", "Did not fast"],
+            default="Fasted" if bool(value(item, "fasted", False)) else "Did not fast",
+        )
+        fasted = fasting_status == "Fasted"
         fast_start = fast_end = None
         fasting_hours = 0.0
         if fasted:
@@ -494,8 +499,8 @@ def daily_entry():
             default_end = value(item, "fast_end", datetime.combine(selected, time(12, 0), LONDON))
             start_date = fc1.date_input("Fast started · date", default_start.date())
             start_time = fc1.time_input("Fast started · time", default_start.time())
-            end_date = fc2.date_input("Fast ended · date", default_end.date())
-            end_time = fc2.time_input("Fast ended · time", default_end.time())
+            end_date = fc2.date_input("Fast broken · date", default_end.date())
+            end_time = fc2.time_input("Fast broken at", default_end.time())
             fast_start = datetime.combine(start_date, start_time, LONDON)
             fast_end = datetime.combine(end_date, end_time, LONDON)
             fasting_hours = max(0, (fast_end - fast_start).total_seconds() / 3600)
@@ -858,13 +863,18 @@ def settings_page():
                 st.success("Targets saved.")
     st.subheader("Export")
     data = load_data()
-    csv = data.to_csv(index=False).encode()
+    export = data.copy()
+    if "fasted" in export:
+        export["fasting_status"] = export.pop("fasted").map({True: "Fasted", False: "Did not fast"})
+    if "fast_end" in export:
+        export = export.rename(columns={"fast_end": "fast_broken_at"})
+    csv = export.to_csv(index=False).encode()
     st.download_button(
         "Download all data as CSV", csv, "health-journey.csv", "text/csv", use_container_width=True
     )
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        excel_safe_data(data).to_excel(writer, index=False, sheet_name="Journey")
+        excel_safe_data(export).to_excel(writer, index=False, sheet_name="Journey")
     st.download_button(
         "Download all data as Excel",
         buffer.getvalue(),
