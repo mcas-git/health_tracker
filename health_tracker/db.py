@@ -36,6 +36,7 @@ def init_db() -> None:
         column_types = {
             "physio": "BOOLEAN NOT NULL DEFAULT FALSE",
             "drugs": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "protein_powder": "BOOLEAN NOT NULL DEFAULT FALSE",
             "hunger": "INTEGER",
             "cravings": "INTEGER",
             "diet_satisfaction": "INTEGER",

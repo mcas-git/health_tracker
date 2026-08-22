@@ -202,6 +202,25 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         .quote-text {{ font-size:clamp(1.35rem,3vw,2rem); line-height:1.4; font-weight:600; }}
         .quote-label {{ color:{accent}; letter-spacing:.12em; font-size:.75rem; font-weight:700; }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
+        .st-key-garmin_yesterday button,
+        .st-key-garmin_selected button {{
+            background:#007CC3 !important; border-color:#007CC3 !important;
+            color:#FFFFFF !important; font-weight:750 !important; letter-spacing:.02em;
+        }}
+        .st-key-garmin_yesterday button:hover,
+        .st-key-garmin_yesterday button:focus,
+        .st-key-garmin_selected button:hover,
+        .st-key-garmin_selected button:focus {{
+            background:#006AA6 !important; border-color:#006AA6 !important;
+            color:#FFFFFF !important; box-shadow:0 0 0 2px #007CC344 !important;
+        }}
+        .st-key-garmin_yesterday button *,
+        .st-key-garmin_selected button * {{ color:#FFFFFF !important; }}
+        .st-key-garmin_yesterday button::before,
+        .st-key-garmin_selected button::before {{
+            content:"▲"; color:#FFFFFF; font-size:.62rem; margin-right:.15rem;
+            transform:translateY(-.08rem);
+        }}
         button[kind="primary"], .stFormSubmitButton > button {{
             background:{accent} !important; border-color:{accent} !important;
         }}

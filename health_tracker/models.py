@@ -34,6 +34,7 @@ class DailyEntry(Base):
     cardio: Mapped[bool] = mapped_column(Boolean, default=False)
     erg: Mapped[bool] = mapped_column(Boolean, default=False)
     supplements: Mapped[bool] = mapped_column(Boolean, default=False)
+    protein_powder: Mapped[bool] = mapped_column(Boolean, default=False)
     alcohol_free: Mapped[bool] = mapped_column(Boolean, default=False)
     sufficient_water: Mapped[bool] = mapped_column(Boolean, default=False)
     physio: Mapped[bool] = mapped_column(Boolean, default=False)

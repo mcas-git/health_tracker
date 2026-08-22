@@ -351,33 +351,42 @@ def dashboard():
 def daily_entry():
     page_watermark("barbell", _theme_values[1])
     st.title("Daily check-in")
-    if st.session_state.pop("daily_checkin_saved", False):
-        st.success("Daily check-in saved.")
+    if saved_message := st.session_state.pop("daily_checkin_saved", None):
+        st.success(saved_message)
     london_now = datetime.now(LONDON)
     yesterday = london_now.date() - timedelta(days=1)
     if "daily_entry_date" not in st.session_state:
         st.session_state.daily_entry_date = yesterday if london_now.hour < 12 else london_now.date()
-    if st.button("Load yesterday from Garmin", use_container_width=True):
-        try:
-            with st.spinner("Loading yesterday from Garmin…"):
-                yesterday_data = sync_day(yesterday)
-            st.session_state.daily_entry_date = yesterday
-            st.session_state.garmin_sync = {"date": yesterday, "data": yesterday_data}
-            st.success(f"Loaded yesterday · {len(yesterday_data['activities'])} activities.")
-        except Exception as exc:
-            st.error(f"Garmin sync failed: {exc}")
-    selected = st.date_input("Date", key="daily_entry_date")
-    item = get_daily(selected)
-    with st.expander("Garmin sync", expanded=False):
-        st.caption("Imports steps, calories burned, sleep, resting heart rate, and activity data.")
-        if st.button("Sync Garmin for this date", use_container_width=True):
+    with st.container(key="garmin_yesterday"):
+        if st.button("GARMIN · Load yesterday", use_container_width=True):
             try:
-                with st.spinner("Connecting to Garmin…"):
-                    synced = sync_day(selected)
-                st.session_state.garmin_sync = {"date": selected, "data": synced}
-                st.success(f"Synced {len(synced['activities'])} activities.")
+                with st.spinner("Loading yesterday from Garmin…"):
+                    yesterday_data = sync_day(yesterday)
+                st.session_state.daily_entry_date = yesterday
+                st.session_state.garmin_sync = {"date": yesterday, "data": yesterday_data}
+                st.success(f"Loaded yesterday · {len(yesterday_data['activities'])} activities.")
             except Exception as exc:
                 st.error(f"Garmin sync failed: {exc}")
+    selected = st.date_input("Date", key="daily_entry_date")
+    item = get_daily(selected)
+    if item is not None:
+        updated = item.updated_at
+        if updated.tzinfo is not None:
+            updated = updated.astimezone(LONDON)
+        st.success(
+            f"Entry saved for {selected:%d %b %Y} · Last updated {updated:%d %b %Y at %H:%M}"
+        )
+    with st.expander("Garmin sync", expanded=False):
+        st.caption("Imports steps, calories burned, sleep, resting heart rate, and activity data.")
+        with st.container(key="garmin_selected"):
+            if st.button("GARMIN · Sync selected date", use_container_width=True):
+                try:
+                    with st.spinner("Connecting to Garmin…"):
+                        synced = sync_day(selected)
+                    st.session_state.garmin_sync = {"date": selected, "data": synced}
+                    st.success(f"Synced {len(synced['activities'])} activities.")
+                except Exception as exc:
+                    st.error(f"Garmin sync failed: {exc}")
     sync_record = st.session_state.get("garmin_sync", {})
     synced = sync_record.get("data", {}) if sync_record.get("date") == selected else {}
 
@@ -445,6 +454,7 @@ def daily_entry():
                 ("cardio", "Cardio"),
                 ("erg", "ERG"),
                 ("supplements", "Supplements"),
+                ("protein_powder", "Protein powder"),
                 ("alcohol_free", "Alcohol-free"),
                 ("physio", "Physio"),
                 ("drugs", "Drugs"),
@@ -505,7 +515,10 @@ def daily_entry():
             }
         )
         st.session_state.pop("garmin_sync", None)
-        st.session_state["daily_checkin_saved"] = True
+        action = "updated" if item is not None else "saved"
+        st.session_state["daily_checkin_saved"] = (
+            f"Daily check-in {action} for {selected:%d %b %Y}."
+        )
         st.rerun()
 
 
@@ -593,6 +606,8 @@ def weekly_coaching():
 def food_log():
     page_watermark("cycling", _theme_values[1])
     st.title("Food journal")
+    if saved_message := st.session_state.pop("food_journal_saved", None):
+        st.success(saved_message)
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     selected = st.date_input("Date", date.today(), key="food_date")
     existing = get_nutrition(selected)
@@ -615,7 +630,9 @@ def food_log():
                 with st.spinner("Estimating meals and nutrition…"):
                     estimate, model = analyse_day(note)
                     save_estimate(selected, note, estimate, model)
-                st.success("Food journal and nutrition estimate updated.")
+                st.session_state.food_journal_saved = (
+                    f"Food journal and nutrition estimate saved for {selected:%d %b %Y}."
+                )
                 st.rerun()
             except Exception as exc:
                 st.error(f"Analysis failed: {exc}")
@@ -754,6 +771,8 @@ def nutrition_insights():
 def appearance_page():
     page_watermark("stretch", _theme_values[1])
     st.title("Appearance")
+    if st.session_state.pop("appearance_saved", False):
+        st.success("Appearance settings saved.")
     st.caption("Make the tracker feel like your own")
     with Session(engine) as session:
         prefs = session.get(AppPreferences, 1)
@@ -788,6 +807,7 @@ def appearance_page():
                 prefs.font_family = font
                 prefs.smooth_charts = smooth_charts
                 session.commit()
+                st.session_state.appearance_saved = True
                 st.rerun()
             except ValueError as exc:
                 st.error(str(exc))
