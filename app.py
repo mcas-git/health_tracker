@@ -454,11 +454,14 @@ def daily_entry():
         date_key = selected.isoformat()
         mood = mobile_rating("Mood", f"mood_{date_key}", int(value(item, "mood", 5)))
         energy = mobile_rating("Energy level", f"energy_{date_key}", int(value(item, "energy", 5)))
-        c1, c2, c3 = st.columns(3)
-        hunger = c1.slider("Hunger", 1, 10, int(value(item, "hunger", 5)))
-        cravings = c2.slider("Cravings", 1, 10, int(value(item, "cravings", 5)))
-        satisfaction = c3.slider(
-            "Diet satisfaction", 1, 10, int(value(item, "diet_satisfaction", 7))
+        hunger = mobile_rating("Hunger", f"hunger_{date_key}", int(value(item, "hunger", 5)))
+        cravings = mobile_rating(
+            "Cravings", f"cravings_{date_key}", int(value(item, "cravings", 5))
+        )
+        satisfaction = mobile_rating(
+            "Diet satisfaction",
+            f"diet_satisfaction_{date_key}",
+            int(value(item, "diet_satisfaction", 7)),
         )
 
         st.subheader("Habits")
