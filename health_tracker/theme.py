@@ -213,6 +213,16 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             margin-top:.35rem;
         }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
+        [class*="st-key-rating_"] .stFormSubmitButton button {{
+            min-width:2.5rem; background:{surface} !important; color:{text} !important;
+            border:1px solid {neutral_border} !important; box-shadow:none !important;
+            font-size:1.25rem !important; font-weight:650 !important;
+        }}
+        [class*="st-key-rating_"] .stFormSubmitButton button:hover,
+        [class*="st-key-rating_"] .stFormSubmitButton button:focus {{
+            background:{secondary} !important; color:{text} !important;
+            border-color:{accent} !important; box-shadow:none !important;
+        }}
         .st-key-garmin_yesterday button,
         .st-key-garmin_selected button {{
             background:#007CC3 !important; border-color:#007CC3 !important;

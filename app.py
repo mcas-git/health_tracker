@@ -56,6 +56,35 @@ def value(item, name, default=None):
     return default if result is None else result
 
 
+def adjust_rating(key: str, change: int) -> None:
+    st.session_state[key] = max(1, min(10, int(st.session_state.get(key, 5)) + change))
+
+
+def mobile_rating(label: str, key: str, initial: int) -> int:
+    if key not in st.session_state:
+        st.session_state[key] = initial
+    with st.container(key=f"rating_{key}"):
+        minus, scale, plus = st.columns([1, 6, 1], vertical_alignment="bottom")
+        minus.form_submit_button(
+            "−",
+            key=f"{key}_minus",
+            help=f"Decrease {label.lower()}",
+            on_click=adjust_rating,
+            args=(key, -1),
+            use_container_width=True,
+        )
+        rating = scale.slider(label, 1, 10, key=key)
+        plus.form_submit_button(
+            "+",
+            key=f"{key}_plus",
+            help=f"Increase {label.lower()}",
+            on_click=adjust_rating,
+            args=(key, 1),
+            use_container_width=True,
+        )
+    return rating
+
+
 def style_chart(chart):
     palette = derived_palette(_theme_values[0], _theme_values[1])
     foreground = palette["foreground"]
@@ -440,8 +469,9 @@ def daily_entry():
             int(synced.get("calories_burned") or value(item, "calories_burned", 0)),
             10,
         )
-        mood = st.slider("Mood", 1, 10, int(value(item, "mood", 5)))
-        energy = st.slider("Energy level", 1, 10, int(value(item, "energy", 5)))
+        date_key = selected.isoformat()
+        mood = mobile_rating("Mood", f"mood_{date_key}", int(value(item, "mood", 5)))
+        energy = mobile_rating("Energy level", f"energy_{date_key}", int(value(item, "energy", 5)))
         c1, c2, c3 = st.columns(3)
         hunger = c1.slider("Hunger", 1, 10, int(value(item, "hunger", 5)))
         cravings = c2.slider("Cravings", 1, 10, int(value(item, "cravings", 5)))
