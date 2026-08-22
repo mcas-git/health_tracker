@@ -201,6 +201,17 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         .health-score small {{ color:{muted}; grid-column:1/-1; }}
         .quote-text {{ font-size:clamp(1.35rem,3vw,2rem); line-height:1.4; font-weight:600; }}
         .quote-label {{ color:{accent}; letter-spacing:.12em; font-size:.75rem; font-weight:700; }}
+        .quote-card a, .quote-card a:visited, .quote-card a:hover, .quote-card a:focus {{
+            color:{accent} !important; -webkit-text-fill-color:{accent} !important;
+        }}
+        .research-motivation-label {{
+            color:{accent}; letter-spacing:.12em; font-size:.7rem; font-weight:700;
+            margin-top:1.5rem;
+        }}
+        .research-motivation {{
+            color:{text}; font-size:1.05rem; line-height:1.5; font-style:italic;
+            margin-top:.35rem;
+        }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
         .st-key-garmin_yesterday button,
         .st-key-garmin_selected button {{

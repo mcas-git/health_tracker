@@ -119,7 +119,9 @@ def home():
     page_watermark("home", _theme_values[1])
     optional_home_logo()
     london_day = datetime.now(LONDON).date()
-    if st.session_state.get("home_research", False):
+    if "home_research" not in st.session_state:
+        st.session_state.home_research = True
+    if st.session_state.home_research:
         research = daily_item(RESEARCH_INSIGHTS, london_day)
         st.markdown(
             f"""
@@ -127,6 +129,8 @@ def home():
               <div class="quote-label">RESEARCH NOTE</div>
               <div class="quote-text">{research["insight"]}</div>
               <p><a href="{research["url"]}" target="_blank">{research["source"]}</a></p>
+              <div class="research-motivation-label">TODAY'S MOTIVATION</div>
+              <div class="research-motivation">“{research["motivation"]}”</div>
             </div>
             """,
             unsafe_allow_html=True,

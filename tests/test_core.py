@@ -15,6 +15,7 @@ from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.nutrition import DailyNutritionEstimate
 from health_tracker.quotes import QUOTES, daily_item, quote_count
+from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import normalize_color
 from scripts.send_reminder import reminder_copy, should_send
 from scripts.send_weekly_report import build_weekly_message, should_send_weekly
@@ -149,6 +150,11 @@ def test_motivational_library_has_60_unique_short_entries():
 def test_daily_quote_is_stable_for_the_day():
     day = date(2026, 8, 21)
     assert daily_item(QUOTES, day) == daily_item(QUOTES, day)
+
+
+def test_every_research_note_has_a_source_and_motivation():
+    assert all(item["insight"] and item["source"] and item["url"] for item in RESEARCH_INSIGHTS)
+    assert all(item["motivation"] for item in RESEARCH_INSIGHTS)
 
 
 def test_weekly_coaching_summary_reports_completion_and_trends():
