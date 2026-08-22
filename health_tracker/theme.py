@@ -173,11 +173,12 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stAppViewContainer"] h5,
         [data-testid="stAppViewContainer"] h6 {{ font-family:{font} !important; }}
         [data-testid="stSidebar"] {{ background:{secondary}; }}
-        div[data-testid="stMetric"], .quote-card {{
+        div[data-testid="stMetric"], .quote-card, .motivation-card {{
             background:{surface}; border:1px solid {accent}33; border-radius:16px; padding:18px;
             box-shadow:0 5px 20px #0000000d;
         }}
-        .quote-card {{ padding:32px; margin:12px 0 28px; }}
+        .quote-card {{ padding:32px; margin:12px 0 16px; }}
+        .motivation-card {{ padding:24px 32px; margin:0 0 28px; }}
         .sport-watermark {{
             position:fixed; left:20rem; bottom:1.5rem; width:min(25vw,350px);
             opacity:.065; pointer-events:none; z-index:0;

@@ -31,7 +31,7 @@ from health_tracker.db import (
 from health_tracker.garmin import sync_day
 from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
-from health_tracker.quotes import QUOTES, daily_item
+from health_tracker.quotes import daily_item
 from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import FONTS, apply_theme, derived_palette, normalize_color
 from health_tracker.visuals import optional_home_logo, page_watermark
@@ -148,39 +148,21 @@ def home():
     page_watermark("home", _theme_values[1])
     optional_home_logo()
     london_day = datetime.now(LONDON).date()
-    if "home_research" not in st.session_state:
-        st.session_state.home_research = True
-    if st.session_state.home_research:
-        research = daily_item(RESEARCH_INSIGHTS, london_day)
-        st.markdown(
-            f"""
-            <div class="quote-card">
-              <div class="quote-label">RESEARCH NOTE</div>
-              <div class="quote-text">{research["insight"]}</div>
-              <p><a href="{research["url"]}" target="_blank">{research["source"]}</a></p>
-              <div class="research-motivation-label">TODAY'S MOTIVATION</div>
-              <div class="research-motivation">“{research["motivation"]}”</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        if st.button("Show today's inspiration", use_container_width=True):
-            st.session_state.home_research = False
-            st.rerun()
-    else:
-        quote = daily_item(QUOTES, london_day)
-        st.markdown(
-            f"""
-            <div class="quote-card">
-              <div class="quote-label">TODAY'S THOUGHT</div>
-              <div class="quote-text">“{quote}”</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        if st.button("Show today's research note", use_container_width=True):
-            st.session_state.home_research = True
-            st.rerun()
+    research = daily_item(RESEARCH_INSIGHTS, london_day)
+    st.markdown(
+        f"""
+        <div class="quote-card">
+          <div class="quote-label">RESEARCH NOTE</div>
+          <div class="quote-text">{research["insight"]}</div>
+          <p><a href="{research["url"]}" target="_blank">{research["source"]}</a></p>
+        </div>
+        <div class="motivation-card">
+          <div class="research-motivation-label">TODAY'S MOTIVATION</div>
+          <div class="research-motivation">“{research["motivation"]}”</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def dashboard():
