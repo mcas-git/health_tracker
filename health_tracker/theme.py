@@ -77,9 +77,9 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     neutral_border = "#666666" if dark else "#C8C8C8"
     neutral_surface = "#303030" if dark else "#F2F2F2"
     font = FONTS.get(font_name, FONTS["Modern sans"])
-    garmin_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "garmin.jpg"
+    garmin_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "garmin.svg"
     garmin_logo_css = (
-        'background-image:url("data:image/jpeg;base64,'
+        'background-image:url("data:image/svg+xml;base64,'
         + b64encode(garmin_logo.read_bytes()).decode()
         + '") !important;'
         if garmin_logo.is_file()
@@ -237,10 +237,9 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         .st-key-garmin_yesterday button,
         .st-key-garmin_selected button {{
             background-color:#FFFFFF !important; {garmin_logo_css}
-            background-repeat:no-repeat !important; background-position:14px center !important;
-            background-size:88px auto !important; border-color:#00A6CE !important;
-            color:#111111 !important; font-weight:750 !important; letter-spacing:.02em;
-            padding-left:7.4rem !important;
+            background-repeat:no-repeat !important; background-position:center !important;
+            background-size:150px auto !important; border-color:#00A6CE !important;
+            color:#111111 !important; min-height:3.5rem !important;
         }}
         .st-key-garmin_yesterday button:hover,
         .st-key-garmin_yesterday button:focus,
@@ -251,6 +250,11 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         .st-key-garmin_yesterday button *,
         .st-key-garmin_selected button * {{ color:#111111 !important; }}
+        .st-key-garmin_yesterday button p,
+        .st-key-garmin_selected button p {{ opacity:0 !important; font-size:0 !important; }}
+        .garmin-action-label {{
+            color:{text}; font-weight:650; margin:.5rem 0 .35rem;
+        }}
         button[kind="primary"], .stFormSubmitButton > button {{
             background:{accent} !important; border-color:{accent} !important;
         }}

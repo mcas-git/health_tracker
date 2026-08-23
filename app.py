@@ -372,17 +372,21 @@ def daily_entry():
     yesterday = london_now.date() - timedelta(days=1)
     if "daily_entry_date" not in st.session_state:
         st.session_state.daily_entry_date = yesterday if london_now.hour < 12 else london_now.date()
-    with st.container(key="garmin_yesterday"):
-        if st.button("Load yesterday", use_container_width=True):
-            try:
-                with st.spinner("Loading yesterday from Garmin…"):
-                    yesterday_data = sync_day(yesterday)
-                st.session_state.daily_entry_date = yesterday
-                st.session_state.garmin_sync = {"date": yesterday, "data": yesterday_data}
-                st.success(f"Loaded yesterday · {len(yesterday_data['activities'])} activities.")
-            except Exception as exc:
-                st.error(f"Garmin sync failed: {exc}")
+    if st.session_state.pop("load_yesterday_requested", False):
+        try:
+            with st.spinner("Loading yesterday from Garmin…"):
+                yesterday_data = sync_day(yesterday)
+            st.session_state.daily_entry_date = yesterday
+            st.session_state.garmin_sync = {"date": yesterday, "data": yesterday_data}
+            st.success(f"Loaded yesterday · {len(yesterday_data['activities'])} activities.")
+        except Exception as exc:
+            st.error(f"Garmin sync failed: {exc}")
     selected = st.date_input("Date", key="daily_entry_date")
+    with st.container(key="garmin_yesterday"):
+        st.markdown('<div class="garmin-action-label">Load yesterday</div>', unsafe_allow_html=True)
+        if st.button("Load yesterday from Garmin", use_container_width=True):
+            st.session_state.load_yesterday_requested = True
+            st.rerun()
     item = get_daily(selected)
     if item is not None:
         updated = item.updated_at
@@ -394,7 +398,10 @@ def daily_entry():
     with st.expander("Garmin sync", expanded=False):
         st.caption("Imports steps, calories burned, sleep, resting heart rate, and activity data.")
         with st.container(key="garmin_selected"):
-            if st.button("Sync selected date", use_container_width=True):
+            st.markdown(
+                '<div class="garmin-action-label">Sync selected date</div>', unsafe_allow_html=True
+            )
+            if st.button("Sync selected date with Garmin", use_container_width=True):
                 try:
                     with st.spinner("Connecting to Garmin…"):
                         synced = sync_day(selected)
