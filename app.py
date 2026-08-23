@@ -16,6 +16,7 @@ from health_tracker.analytics import (
     load_data,
     projected_target_date,
     weekly_coaching_summary,
+    weight_milestones,
 )
 from health_tracker.auth import require_login
 from health_tracker.config import LONDON, PROFILE, setting
@@ -206,13 +207,14 @@ def dashboard():
     date_scale = alt.Scale(domain=[journey_start, journey_end])
     date_axis = alt.Axis(
         title=None,
-        format="%b %Y",
+        format="%b",
         labelAngle=0,
         tickCount=8,
         labelOverlap="greedy",
     )
 
     st.subheader("Weight trend")
+    show_milestones = st.toggle("Show weight milestones", value=False)
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
         weight["display_value"] = (
@@ -255,8 +257,44 @@ def dashboard():
                 tooltip=[alt.Tooltip("goal:Q", title="Goal weight (kg)", format=".1f")],
             )
         )
+        weight_chart = weight_line + goal_line
+        if show_milestones:
+            milestones, weekly_pace = weight_milestones(journey_start.date())
+            milestone_frame = pd.DataFrame(milestones)
+            milestone_frame["milestone_date"] = pd.to_datetime(milestone_frame["milestone_date"])
+            milestone_frame["display_label"] = milestone_frame.apply(
+                lambda row: f"{row['label']} · {row['weight_kg']:.1f} kg", axis=1
+            )
+            milestone_points = (
+                alt.Chart(milestone_frame)
+                .mark_point(filled=True, size=150, color=series_colors[1])
+                .encode(
+                    x=alt.X("milestone_date:T", axis=date_axis, scale=date_scale),
+                    y=alt.Y("weight_kg:Q", title="Weight (kg)", scale=alt.Scale(zero=False)),
+                    tooltip=[
+                        alt.Tooltip("label:N", title="Milestone"),
+                        alt.Tooltip("milestone_date:T", title="Date"),
+                        alt.Tooltip("weight_kg:Q", title="Target weight", format=".1f"),
+                    ],
+                )
+            )
+            milestone_labels = (
+                alt.Chart(milestone_frame)
+                .mark_text(dy=-14, color=series_colors[1], fontWeight=600)
+                .encode(
+                    x=alt.X("milestone_date:T", axis=date_axis, scale=date_scale),
+                    y=alt.Y("weight_kg:Q", scale=alt.Scale(zero=False)),
+                    text="display_label:N",
+                )
+            )
+            weight_chart = weight_chart + milestone_points + milestone_labels
+            st.caption(
+                f"Milestones use the {weekly_pace:.2f} kg/week pace required by your plan, "
+                "within [NHS guidance of 0.5–1 kg/week](https://www.nhs.uk/live-well/"
+                "healthy-weight/managing-your-weight/tips-to-help-you-lose-weight/)."
+            )
         st.altair_chart(
-            style_chart((weight_line + goal_line).properties(height=chart_height)),
+            style_chart(weight_chart.properties(height=chart_height)),
             use_container_width=True,
             theme=None,
         )
@@ -762,7 +800,11 @@ def nutrition_insights():
         alt.Chart(weekly_frame)
         .mark_line(point=not _smooth_charts, strokeWidth=3)
         .encode(
-            x=alt.X("Week:T", title=None),
+            x=alt.X(
+                "Week:T",
+                title=None,
+                axis=alt.Axis(format="%b", labelAngle=0, labelOverlap="greedy"),
+            ),
             y=alt.Y("% of target:Q", title="Target %"),
             strokeDash=alt.StrokeDash("Nutrient:N", legend=alt.Legend(orient="bottom")),
             color=alt.Color("Nutrient:N", legend=None, scale=alt.Scale(range=palette["series"])),

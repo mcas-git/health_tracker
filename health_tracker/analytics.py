@@ -196,6 +196,30 @@ def weekly_coaching_summary(df: pd.DataFrame, end_date: date | None = None) -> d
     }
 
 
+def weight_milestones(start_date: date) -> tuple[list[dict], float]:
+    """Return fixed plan milestones using a gradual 0.5–1.0 kg weekly pace."""
+    target_date = PROFILE.target_date
+    total_weeks = max((target_date - start_date).days / 7, 1)
+    required_pace = (PROFILE.start_weight_kg - PROFILE.target_weight_kg) / total_weeks
+    weekly_pace = min(1.0, max(0.5, required_pace))
+    milestones = []
+    for months in (1, 3, 6, 9):
+        milestone_date = (pd.Timestamp(start_date) + pd.DateOffset(months=months)).date()
+        elapsed_weeks = max(0, (milestone_date - start_date).days / 7)
+        weight = max(
+            PROFILE.target_weight_kg,
+            PROFILE.start_weight_kg - weekly_pace * elapsed_weeks,
+        )
+        milestones.append(
+            {
+                "milestone_date": milestone_date,
+                "weight_kg": round(weight, 1),
+                "label": f"{months} month" if months == 1 else f"{months} months",
+            }
+        )
+    return milestones, weekly_pace
+
+
 def current_streak(df: pd.DataFrame) -> int:
     if df.empty or "entry_date" not in df:
         return 0

@@ -9,6 +9,7 @@ from health_tracker.analytics import (
     daily_health_score,
     excel_safe_data,
     weekly_coaching_summary,
+    weight_milestones,
 )
 from health_tracker.auth import create_remember_token, hash_password, valid_remember_token
 from health_tracker.config import PROFILE
@@ -180,6 +181,22 @@ def test_weekly_coaching_summary_reports_completion_and_trends():
     assert summary["completion"] == 100
     assert summary["weight_change"] < 0
     assert summary["habits"]["alcohol_free"] == 7
+
+
+def test_weight_milestones_follow_a_sustainable_plan_pace():
+    milestones, pace = weight_milestones(date(2026, 8, 23))
+
+    assert [item["label"] for item in milestones] == [
+        "1 month",
+        "3 months",
+        "6 months",
+        "9 months",
+    ]
+    assert 0.5 <= pace <= 1.0
+    assert all(
+        left["weight_kg"] > right["weight_kg"]
+        for left, right in zip(milestones, milestones[1:], strict=False)
+    )
 
 
 def test_weekly_report_schedule_handles_daylight_saving():
