@@ -301,7 +301,7 @@ def dashboard():
     else:
         st.caption("No weight entries yet.")
 
-    st.subheader("Recent KPI view")
+    st.subheader("Additional KPI")
     kpis = [
         col
         for col in [
@@ -337,7 +337,7 @@ def dashboard():
         label: field for field, label in labels.items() if field in df and df[field].notna().any()
     }
     if available:
-        selected_label = st.selectbox("Additional KPI", available)
+        selected_label = st.selectbox("Additional KPI", available, label_visibility="collapsed")
         selected_kpi = available[selected_label]
         recent = df[["entry_date", selected_kpi]].dropna().tail(30).copy()
         recent["display_value"] = (
