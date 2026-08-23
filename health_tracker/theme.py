@@ -520,6 +520,26 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             color:{text} !important;
             -webkit-text-fill-color:{text} !important;
         }}
+        [data-testid="stSelectbox"] [data-baseweb="select"],
+        [data-testid="stSelectbox"] [data-baseweb="select"] > div,
+        [data-testid="stSelectbox"] [data-baseweb="select"] > div:hover,
+        [data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within {{
+            background:{surface} !important;
+            background-color:{surface} !important;
+            color:{text} !important;
+            border-color:{neutral_border} !important;
+            box-shadow:none !important;
+        }}
+        [data-testid="stSelectbox"] [data-baseweb="select"] input,
+        [data-testid="stSelectbox"] [data-baseweb="select"] span,
+        [data-testid="stSelectbox"] [data-baseweb="select"] p {{
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+        [data-testid="stSelectbox"] [data-baseweb="select"] svg {{
+            color:{neutral_icon} !important;
+            fill:{neutral_icon} !important;
+        }}
 
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; border-color:#00A6CE !important;

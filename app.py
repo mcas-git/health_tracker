@@ -201,7 +201,16 @@ def dashboard():
     accent = _theme_values[1]
     palette = derived_palette(*_theme_values[:2])
     series_colors = palette["series"]
-    hidden_axis = alt.Axis(labels=False, ticks=False, domain=False, title=None)
+    journey_start = pd.Timestamp(df.entry_date.min()).normalize()
+    journey_end = pd.Timestamp(PROFILE.target_date)
+    date_scale = alt.Scale(domain=[journey_start, journey_end])
+    date_axis = alt.Axis(
+        title=None,
+        format="%b %Y",
+        labelAngle=0,
+        tickCount=8,
+        labelOverlap="greedy",
+    )
 
     st.subheader("Weight trend")
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
@@ -225,8 +234,13 @@ def dashboard():
                 strokeWidth=4,
             )
             .encode(
-                x=alt.X("entry_date:T", axis=hidden_axis),
-                y=alt.Y("display_value:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
+                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                y=alt.Y(
+                    "display_value:Q",
+                    title="Weight (kg)",
+                    axis=alt.Axis(labels=True, ticks=True, domain=True),
+                    scale=alt.Scale(zero=False),
+                ),
                 tooltip=[
                     alt.Tooltip("entry_date:T", title="Date"),
                     alt.Tooltip("display_value:Q", title="Weight (kg)", format=".1f"),
@@ -264,8 +278,13 @@ def dashboard():
             alt.Chart(melted)
             .mark_line(point=not _smooth_charts, strokeWidth=4)
             .encode(
-                x=alt.X("entry_date:T", axis=hidden_axis),
-                y=alt.Y("kcal:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
+                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                y=alt.Y(
+                    "kcal:Q",
+                    title="kcal",
+                    axis=alt.Axis(labels=True, ticks=True, domain=True),
+                    scale=alt.Scale(zero=False),
+                ),
                 strokeDash=alt.StrokeDash(
                     "measure:N", legend=alt.Legend(orient="bottom", title=None)
                 ),
@@ -340,8 +359,13 @@ def dashboard():
                 strokeWidth=4,
             )
             .encode(
-                x=alt.X("entry_date:T", axis=hidden_axis),
-                y=alt.Y("display_value:Q", axis=hidden_axis, scale=alt.Scale(zero=False)),
+                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                y=alt.Y(
+                    "display_value:Q",
+                    title=selected_label,
+                    axis=alt.Axis(labels=True, ticks=True, domain=True),
+                    scale=alt.Scale(zero=False),
+                ),
                 tooltip=[
                     alt.Tooltip("entry_date:T", title="Date"),
                     alt.Tooltip("display_value:Q", title=selected_label, format=".1f"),
