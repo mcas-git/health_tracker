@@ -138,8 +138,8 @@ def health_status_cards(item) -> None:
         }[status_tone]
         st.markdown(
             f"<div class='health-score' style='--score-color:{status_color}'>"
-            f"<span>BMI weight status</span><strong>{status_label}</strong>"
-            f"<small>BMI {item.bmi:.1f} · {status_context}. This is not a diagnosis.</small></div>",
+            f"<span>BMI weight status</span><strong>BMI {item.bmi:.1f} · {status_label}</strong>"
+            f"<small>{status_context}. This is not a diagnosis.</small></div>",
             unsafe_allow_html=True,
         )
 
@@ -411,8 +411,54 @@ def daily_entry():
     synced = sync_record.get("data", {}) if sync_record.get("date") == selected else {}
 
     with st.form("daily_form"):
-        st.subheader("Measurements")
-        c1, c2, c3 = st.columns(3)
+
+        def smartwatch_value(field):
+            imported = synced.get(field)
+            return imported if imported is not None else value(item, field)
+
+        st.subheader("Smartwatch data")
+        st.caption("Loaded from Garmin and read-only. Sync again to update these values.")
+        c1, c2, c3, c4 = st.columns(4)
+        resting_value = smartwatch_value("resting_heart_rate")
+        resting_hr = c1.number_input(
+            "Resting heart rate",
+            30,
+            220,
+            value=int(resting_value) if resting_value is not None else None,
+            disabled=True,
+            placeholder="No data",
+        )
+        sleep_value = smartwatch_value("sleep_hours")
+        sleep = c2.number_input(
+            "Sleep (hours)",
+            0.0,
+            24.0,
+            value=float(sleep_value) if sleep_value is not None else None,
+            step=0.01,
+            disabled=True,
+            placeholder="No data",
+        )
+        steps_value = smartwatch_value("steps")
+        steps = c3.number_input(
+            "Steps",
+            0,
+            100000,
+            value=int(steps_value) if steps_value is not None else None,
+            disabled=True,
+            placeholder="No data",
+        )
+        burned_value = smartwatch_value("calories_burned")
+        burned = c4.number_input(
+            "Calories burned",
+            0,
+            10000,
+            value=int(burned_value) if burned_value is not None else None,
+            disabled=True,
+            placeholder="No data",
+        )
+
+        st.subheader("Your daily measurements")
+        c1, c2 = st.columns(2)
         weight = c1.number_input(
             "Weight (kg)",
             30.0,
@@ -424,37 +470,12 @@ def daily_entry():
             "Waist (cm)", 30.0, 250.0, float(value(item, "waist_cm", 100.0)), 0.1
         )
         bmi = weight / ((PROFILE.height_cm / 100) ** 2)
-        c3.number_input("BMI (calculated)", value=round(bmi, 1), disabled=True)
-        c1, c2, c3 = st.columns(3)
-        resting_hr = c1.number_input(
-            "Resting heart rate",
-            30,
-            220,
-            int(synced.get("resting_heart_rate") or value(item, "resting_heart_rate", 70)),
-        )
-        systolic = c2.number_input(
+        c1, c2 = st.columns(2)
+        systolic = c1.number_input(
             "Blood pressure · systolic", 60, 250, int(value(item, "systolic", 120))
         )
-        diastolic = c3.number_input(
+        diastolic = c2.number_input(
             "Blood pressure · diastolic", 30, 160, int(value(item, "diastolic", 80))
-        )
-        c1, c2, c3 = st.columns(3)
-        sleep = c1.number_input(
-            "Sleep (hours)",
-            0.0,
-            24.0,
-            float(synced.get("sleep_hours") or value(item, "sleep_hours", 8.0)),
-            0.25,
-        )
-        steps = c2.number_input(
-            "Steps", 0, 100000, int(synced.get("steps") or value(item, "steps", 0)), 100
-        )
-        burned = c3.number_input(
-            "Calories burned",
-            0,
-            10000,
-            int(synced.get("calories_burned") or value(item, "calories_burned", 0)),
-            10,
         )
         date_key = selected.isoformat()
         mood = mobile_rating("Mood", f"mood_{date_key}", int(value(item, "mood", 5)))
