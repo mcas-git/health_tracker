@@ -483,6 +483,48 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             -webkit-box-shadow:0 0 0 1000px {surface} inset !important;
             -webkit-text-fill-color:{text} !important;
         }}
+        [data-testid="stExpander"] details,
+        [data-testid="stExpander"] details[open],
+        [data-testid="stExpander"] summary,
+        [data-testid="stExpander"] details[open] summary,
+        [data-testid="stExpander"] details > div {{
+            background:{surface} !important;
+            color:{text} !important;
+            border-color:{neutral_border} !important;
+        }}
+        [data-testid="stExpander"] summary:hover,
+        [data-testid="stExpander"] summary:focus,
+        [data-testid="stExpander"] details[open] summary:hover {{
+            background:{secondary} !important;
+            color:{text} !important;
+            outline:none !important;
+            box-shadow:none !important;
+        }}
+        [data-testid="stExpander"] summary *,
+        [data-testid="stExpander"] details > div * {{
+            color:{text} !important;
+        }}
+        [data-baseweb="popover"] > div,
+        [role="listbox"] {{
+            background:{surface} !important;
+            color:{text} !important;
+            border-color:{neutral_border} !important;
+            box-shadow:0 8px 24px #00000024 !important;
+        }}
+        [role="option"],
+        [role="option"] * {{
+            background:{surface} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+        [role="option"]:hover,
+        [role="option"][aria-selected="true"],
+        [role="option"]:hover * ,
+        [role="option"][aria-selected="true"] * {{
+            background:{secondary} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
 
         .st-key-garmin_yesterday button,
         .st-key-garmin_selected button {{
