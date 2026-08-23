@@ -435,6 +435,55 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         a {{ color:{accent}; }}
         {dark_overrides}
 
+        /* One rounded frame per field; inner BaseWeb controls must not draw a second frame. */
+        [data-testid="stTextInput"] [data-baseweb="input"],
+        [data-testid="stNumberInput"] [data-baseweb="input"],
+        [data-testid="stDateInput"] [data-baseweb="input"],
+        [data-testid="stTimeInput"] [data-baseweb="input"],
+        [data-testid="stTextArea"] [data-baseweb="textarea"],
+        [data-baseweb="select"] > div {{
+            background:{surface} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:8px !important;
+            box-shadow:none !important;
+            outline:none !important;
+            overflow:hidden !important;
+        }}
+        [data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+        [data-testid="stNumberInput"] [data-baseweb="input"]:focus-within,
+        [data-testid="stDateInput"] [data-baseweb="input"]:focus-within,
+        [data-testid="stTimeInput"] [data-baseweb="input"]:focus-within,
+        [data-testid="stTextArea"] [data-baseweb="textarea"]:focus-within,
+        [data-baseweb="select"] > div:focus-within {{
+            border-color:{accent} !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [data-testid="stTextInput"] [data-baseweb="base-input"],
+        [data-testid="stNumberInput"] [data-baseweb="base-input"],
+        [data-testid="stDateInput"] [data-baseweb="base-input"],
+        [data-testid="stTimeInput"] [data-baseweb="base-input"],
+        [data-testid="stTextInput"] input,
+        [data-testid="stNumberInput"] input,
+        [data-testid="stDateInput"] input,
+        [data-testid="stTimeInput"] input,
+        [data-testid="stTextArea"] textarea,
+        [data-baseweb="select"] input {{
+            background:transparent !important;
+            border:0 !important;
+            border-radius:0 !important;
+            box-shadow:none !important;
+            outline:none !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+            caret-color:{text} !important;
+        }}
+        [data-testid="stTextInput"] input:-webkit-autofill,
+        [data-testid="stTextArea"] textarea:-webkit-autofill {{
+            -webkit-box-shadow:0 0 0 1000px {surface} inset !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+
         .st-key-garmin_yesterday button,
         .st-key-garmin_selected button {{
             background-color:#FFFFFF !important; border-color:#00A6CE !important;
