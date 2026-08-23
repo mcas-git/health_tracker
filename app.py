@@ -263,48 +263,6 @@ def dashboard():
     else:
         st.caption("No weight entries yet.")
 
-    st.subheader("Calories and activity")
-    fields = [
-        field
-        for field in ["calories", "calories_burned"]
-        if field in df and df[field].notna().any()
-    ]
-    if fields:
-        calories = df[["entry_date", *fields]].copy()
-        if _smooth_charts:
-            calories[fields] = calories[fields].rolling(7, min_periods=1).mean()
-        melted = calories.melt("entry_date", fields, var_name="measure", value_name="kcal").dropna()
-        chart = (
-            alt.Chart(melted)
-            .mark_line(point=not _smooth_charts, strokeWidth=4)
-            .encode(
-                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
-                y=alt.Y(
-                    "kcal:Q",
-                    title="kcal",
-                    axis=alt.Axis(labels=True, ticks=True, domain=True),
-                    scale=alt.Scale(zero=False),
-                ),
-                strokeDash=alt.StrokeDash(
-                    "measure:N", legend=alt.Legend(orient="bottom", title=None)
-                ),
-                color=alt.Color(
-                    "measure:N",
-                    legend=None,
-                    scale=alt.Scale(range=series_colors[: len(fields)]),
-                ),
-                tooltip=[
-                    alt.Tooltip("entry_date:T", title="Date"),
-                    alt.Tooltip("measure:N", title="Measure"),
-                    alt.Tooltip("kcal:Q", title="kcal", format=".0f"),
-                ],
-            )
-            .properties(height=chart_height)
-        )
-        st.altair_chart(style_chart(chart), use_container_width=True, theme=None)
-    else:
-        st.caption("No nutrition or calorie-burn data yet.")
-
     st.subheader("Recent KPI view")
     kpis = [
         col
@@ -315,6 +273,8 @@ def dashboard():
             "waist_cm",
             "steps",
             "sleep_hours",
+            "calories",
+            "calories_burned",
             "mood",
             "energy",
             "fasting_hours",
@@ -326,6 +286,8 @@ def dashboard():
         "waist_cm": "Waist",
         "steps": "Steps",
         "sleep_hours": "Sleep",
+        "calories": "Calories eaten",
+        "calories_burned": "Calories burned",
         "mood": "Mood",
         "energy": "Energy",
         "fasting_hours": "Fasting hours",

@@ -520,15 +520,28 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             color:{text} !important;
             -webkit-text-fill-color:{text} !important;
         }}
-        [data-testid="stSelectbox"] [data-baseweb="select"],
+        [data-testid="stSelectbox"] [data-baseweb="select"] {{
+            background:{surface} !important;
+            background-color:{surface} !important;
+            color:{text} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:8px !important;
+            overflow:hidden !important;
+            box-shadow:none !important;
+        }}
         [data-testid="stSelectbox"] [data-baseweb="select"] > div,
         [data-testid="stSelectbox"] [data-baseweb="select"] > div:hover,
         [data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within {{
             background:{surface} !important;
             background-color:{surface} !important;
             color:{text} !important;
-            border-color:{neutral_border} !important;
+            border:0 !important;
+            border-radius:0 !important;
             box-shadow:none !important;
+        }}
+        [data-testid="stSelectbox"] [data-baseweb="select"] > div * {{
+            background:transparent !important;
+            background-color:transparent !important;
         }}
         [data-testid="stSelectbox"] [data-baseweb="select"] input,
         [data-testid="stSelectbox"] [data-baseweb="select"] span,
