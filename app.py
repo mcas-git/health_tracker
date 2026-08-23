@@ -371,21 +371,33 @@ def daily_entry():
     london_now = datetime.now(LONDON)
     yesterday = london_now.date() - timedelta(days=1)
     if "daily_entry_date" not in st.session_state:
-        st.session_state.daily_entry_date = yesterday if london_now.hour < 12 else london_now.date()
-    if st.session_state.pop("load_yesterday_requested", False):
+        st.session_state.daily_entry_date = yesterday
+    if requested_date := st.session_state.pop("smartwatch_sync_requested", None):
         try:
-            with st.spinner("Loading yesterday from Garmin…"):
-                yesterday_data = sync_day(yesterday)
-            st.session_state.daily_entry_date = yesterday
-            st.session_state.garmin_sync = {"date": yesterday, "data": yesterday_data}
-            st.success(f"Loaded yesterday · {len(yesterday_data['activities'])} activities.")
+            with st.spinner("Loading smartwatch data…"):
+                smartwatch_data = sync_day(requested_date)
+            st.session_state.daily_entry_date = requested_date
+            st.session_state.garmin_sync = {"date": requested_date, "data": smartwatch_data}
+            st.success(
+                f"Smartwatch data loaded for {requested_date:%d %b %Y} · "
+                f"{len(smartwatch_data['activities'])} activities."
+            )
         except Exception as exc:
-            st.error(f"Garmin sync failed: {exc}")
+            st.error(f"Smartwatch sync failed: {exc}")
     selected = st.date_input("Date", key="daily_entry_date")
-    with st.container(key="garmin_yesterday"):
-        st.markdown('<div class="garmin-action-label">Load yesterday</div>', unsafe_allow_html=True)
-        if st.button("Load yesterday from Garmin", use_container_width=True):
-            st.session_state.load_yesterday_requested = True
+    use_selected_date = st.toggle(
+        "Use specified date for smartwatch data",
+        value=False,
+        help="Off loads yesterday. On loads the date selected above.",
+    )
+    sync_date = selected if use_selected_date else yesterday
+    with st.container(key="smartwatch_load"):
+        st.markdown(
+            '<div class="garmin-action-label">Load smartwatch data</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Load smartwatch data from Garmin", use_container_width=True):
+            st.session_state.smartwatch_sync_requested = sync_date
             st.rerun()
     item = get_daily(selected)
     if item is not None:
@@ -395,20 +407,6 @@ def daily_entry():
         st.success(
             f"Entry saved for {selected:%d %b %Y} · Last updated {updated:%d %b %Y at %H:%M}"
         )
-    with st.expander("Garmin sync", expanded=False):
-        st.caption("Imports steps, calories burned, sleep, resting heart rate, and activity data.")
-        with st.container(key="garmin_selected"):
-            st.markdown(
-                '<div class="garmin-action-label">Sync selected date</div>', unsafe_allow_html=True
-            )
-            if st.button("Sync selected date with Garmin", use_container_width=True):
-                try:
-                    with st.spinner("Connecting to Garmin…"):
-                        synced = sync_day(selected)
-                    st.session_state.garmin_sync = {"date": selected, "data": synced}
-                    st.success(f"Synced {len(synced['activities'])} activities.")
-                except Exception as exc:
-                    st.error(f"Garmin sync failed: {exc}")
     sync_record = st.session_state.get("garmin_sync", {})
     synced = sync_record.get("data", {}) if sync_record.get("date") == selected else {}
 

@@ -234,24 +234,19 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             background:{secondary} !important; color:{text} !important;
             border-color:{accent} !important; box-shadow:none !important;
         }}
-        .st-key-garmin_yesterday button,
-        .st-key-garmin_selected button {{
+        .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;
             background-size:150px auto !important; border-color:#00A6CE !important;
             color:#111111 !important; min-height:3.5rem !important;
         }}
-        .st-key-garmin_yesterday button:hover,
-        .st-key-garmin_yesterday button:focus,
-        .st-key-garmin_selected button:hover,
-        .st-key-garmin_selected button:focus {{
+        .st-key-smartwatch_load button:hover,
+        .st-key-smartwatch_load button:focus {{
             background-color:#F2FAFC !important; border-color:#007CC3 !important;
             color:#111111 !important; box-shadow:0 0 0 2px #007CC344 !important;
         }}
-        .st-key-garmin_yesterday button *,
-        .st-key-garmin_selected button * {{ color:#111111 !important; }}
-        .st-key-garmin_yesterday button p,
-        .st-key-garmin_selected button p {{ opacity:0 !important; font-size:0 !important; }}
+        .st-key-smartwatch_load button * {{ color:#111111 !important; }}
+        .st-key-smartwatch_load button p {{ opacity:0 !important; font-size:0 !important; }}
         .garmin-action-label {{
             color:{text}; font-weight:650; margin:.5rem 0 .35rem;
         }}
@@ -526,20 +521,16 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             -webkit-text-fill-color:{text} !important;
         }}
 
-        .st-key-garmin_yesterday button,
-        .st-key-garmin_selected button {{
+        .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; border-color:#00A6CE !important;
             color:#111111 !important;
         }}
-        .st-key-garmin_yesterday button:hover,
-        .st-key-garmin_yesterday button:focus,
-        .st-key-garmin_selected button:hover,
-        .st-key-garmin_selected button:focus {{
+        .st-key-smartwatch_load button:hover,
+        .st-key-smartwatch_load button:focus {{
             background-color:#F2FAFC !important; border-color:#007CC3 !important;
             color:#111111 !important;
         }}
-        .st-key-garmin_yesterday button *,
-        .st-key-garmin_selected button * {{ color:#111111 !important; }}
+        .st-key-smartwatch_load button * {{ color:#111111 !important; }}
 
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
         [data-testid="stExpandSidebarButton"],
