@@ -414,14 +414,11 @@ def daily_entry():
     if saved_message := st.session_state.pop("daily_checkin_saved", None):
         st.success(saved_message)
     london_now = datetime.now(LONDON)
-    yesterday = london_now.date() - timedelta(days=1)
-    if "daily_entry_date" not in st.session_state:
-        st.session_state.daily_entry_date = yesterday
+    today = london_now.date()
     if requested_date := st.session_state.pop("smartwatch_sync_requested", None):
         try:
             with st.spinner("Loading smartwatch data…"):
                 smartwatch_data = sync_day(requested_date)
-            st.session_state.daily_entry_date = requested_date
             st.session_state.garmin_sync = {"date": requested_date, "data": smartwatch_data}
             st.success(
                 f"Smartwatch data loaded for {requested_date:%d %b %Y} · "
@@ -429,7 +426,23 @@ def daily_entry():
             )
         except Exception as exc:
             st.error(f"Smartwatch sync failed: {exc}")
-    selected = st.date_input("Date", key="daily_entry_date")
+    update_another_day = st.toggle(
+        "Update a different day",
+        value=False,
+        help="Turn this on only to review or correct a previous daily check-in.",
+        key="update_another_day",
+    )
+    if update_another_day:
+        selected = st.date_input(
+            "Date to update",
+            value=today - timedelta(days=1),
+            max_value=today,
+            key="historical_entry_date",
+        )
+        st.caption(f"Updating the saved check-in for {selected:%A, %d %B %Y}.")
+    else:
+        selected = today
+        st.caption(f"Recording today · {today:%A, %d %B %Y}")
     item = get_daily(selected)
     previous_item = get_latest_daily_before(selected) if item is None else None
     measurement_defaults = item or previous_item
