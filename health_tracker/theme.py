@@ -473,15 +473,35 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             -webkit-text-fill-color:{input_placeholder} !important;
             opacity:1 !important;
         }}
-        [class*="st-key-food_note_"] [data-baseweb="textarea"],
-        [class*="st-key-food_note_"] [data-baseweb="base-input"],
-        [class*="st-key-food_note_"] textarea {{
-            background:{input_surface} !important;
-            background-color:{input_surface} !important;
+        [class*="st-key-food_note_"] [data-baseweb="textarea"] {{
+            background:{background} !important;
+            background-color:{background} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:10px !important;
+            overflow:hidden !important;
+            box-shadow:none !important;
+            outline:none !important;
             color:{input_text} !important;
             -webkit-text-fill-color:{input_text} !important;
             caret-color:{input_text} !important;
             opacity:1 !important;
+        }}
+        [class*="st-key-food_note_"] [data-baseweb="textarea"]:focus-within {{
+            border-color:{accent} !important;
+            box-shadow:none !important;
+        }}
+        [class*="st-key-food_note_"] [data-baseweb="textarea"] > div,
+        [class*="st-key-food_note_"] [data-baseweb="base-input"],
+        [class*="st-key-food_note_"] textarea {{
+            background:transparent !important;
+            background-color:transparent !important;
+            border:0 !important;
+            border-radius:0 !important;
+            box-shadow:none !important;
+            outline:none !important;
+            color:{input_text} !important;
+            -webkit-text-fill-color:{input_text} !important;
+            caret-color:{input_text} !important;
         }}
         [class*="st-key-food_note_"] textarea::placeholder {{
             color:{input_placeholder} !important;

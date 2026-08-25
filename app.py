@@ -798,6 +798,7 @@ def food_log():
         height=220,
         placeholder="Breakfast was porridge with banana… Lunch… Later I had…",
         key=food_note_key,
+        label_visibility="collapsed",
     )
     st.button(
         "Clear food journal",
