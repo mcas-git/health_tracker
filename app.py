@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import json
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 
 import altair as alt
 import pandas as pd
@@ -584,9 +584,6 @@ def daily_entry():
                 f"energy_{date_key}",
                 int(value(measurement_defaults, "energy", 5)),
             )
-            hunger = rating_input(
-                "Hunger", f"hunger_{date_key}", int(value(measurement_defaults, "hunger", 5))
-            )
             cravings = rating_input(
                 "Cravings",
                 f"cravings_{date_key}",
@@ -630,34 +627,6 @@ def daily_entry():
                     label, value=bool(value(item, key, False)), key=f"{key}_{date_key}"
                 )
 
-            st.subheader("Fasting details")
-            fasted = habits["fasted"]
-            fast_start = fast_end = None
-            fasting_hours = 0.0
-            if fasted:
-                fc1, fc2 = st.columns(2)
-                default_start = value(
-                    item, "fast_start", datetime.combine(selected, time(20, 0), LONDON)
-                )
-                default_end = value(
-                    item, "fast_end", datetime.combine(selected, time(12, 0), LONDON)
-                )
-                start_date = fc1.date_input(
-                    "Fast started · date", default_start.date(), key=f"fast_start_date_{date_key}"
-                )
-                start_time = fc1.time_input(
-                    "Fast started · time", default_start.time(), key=f"fast_start_time_{date_key}"
-                )
-                end_date = fc2.date_input(
-                    "Fast broken · date", default_end.date(), key=f"fast_end_date_{date_key}"
-                )
-                end_time = fc2.time_input(
-                    "Fast broken at", default_end.time(), key=f"fast_end_time_{date_key}"
-                )
-                fast_start = datetime.combine(start_date, start_time, LONDON)
-                fast_end = datetime.combine(end_date, end_time, LONDON)
-                fasting_hours = max(0, (fast_end - fast_start).total_seconds() / 3600)
-                st.metric("Fasting duration", f"{fasting_hours:.1f} hours")
             notes_key = f"daily_notes_{date_key}"
             notes = st.text_area(
                 "General notes", value=value(item, "notes", ""), height=100, key=notes_key
@@ -681,12 +650,8 @@ def daily_entry():
                     "calories_burned": burned,
                     "mood": mood,
                     "energy": energy,
-                    "hunger": hunger,
                     "cravings": cravings,
                     "diet_satisfaction": satisfaction,
-                    "fast_start": fast_start,
-                    "fast_end": fast_end,
-                    "fasting_hours": fasting_hours,
                     "notes": notes,
                     **habits,
                     **circumstances,
