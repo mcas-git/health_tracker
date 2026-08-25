@@ -222,44 +222,6 @@ def weight_milestones(start_date: date, profile: Profile = PROFILE) -> tuple[lis
     return milestones, weekly_pace
 
 
-def planned_weight_path(
-    start_date: date,
-    start_weight_kg: float,
-    profile: Profile = PROFILE,
-    shape: str = "Linear",
-) -> pd.DataFrame:
-    """Build a weekly plan path ending at the saved goal date and weight."""
-    dates = list(pd.date_range(start_date, profile.target_date, freq="7D"))
-    target_timestamp = pd.Timestamp(profile.target_date)
-    if not dates or dates[-1] != target_timestamp:
-        dates.append(target_timestamp)
-    total_days = max((profile.target_date - start_date).days, 1)
-    rows = []
-    for timestamp in dates:
-        elapsed = max(0, (timestamp.date() - start_date).days)
-        progress = min(1.0, elapsed / total_days)
-        if shape == "Non-linear decrease":
-            effective_progress = 1 - (1 - progress) ** 1.35
-        elif shape == "Non-linear with plateau":
-            plateau_start, plateau_end = 0.45, 0.60
-            if progress <= plateau_start:
-                adjusted = progress
-            elif progress <= plateau_end:
-                adjusted = plateau_start
-            else:
-                adjusted = plateau_start + (progress - plateau_end) * (
-                    (1 - plateau_start) / (1 - plateau_end)
-                )
-            effective_progress = 1 - (1 - adjusted) ** 1.35
-        else:
-            effective_progress = progress
-        weight = start_weight_kg - (
-            (start_weight_kg - profile.target_weight_kg) * effective_progress
-        )
-        rows.append({"entry_date": timestamp, "planned_weight_kg": weight})
-    return pd.DataFrame(rows)
-
-
 def current_streak(df: pd.DataFrame) -> int:
     if df.empty or "entry_date" not in df:
         return 0

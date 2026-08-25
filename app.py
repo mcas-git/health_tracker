@@ -15,7 +15,6 @@ from health_tracker.analytics import (
     daily_health_score,
     excel_safe_data,
     load_data,
-    planned_weight_path,
     projected_target_date,
     weekly_coaching_summary,
     weight_milestones,
@@ -211,10 +210,6 @@ def dashboard():
     c.metric("7-day completion", f"{recent_completion}%")
     d.metric("Projected goal", projection.strftime("%d %b %Y") if projection else "Need more data")
     st.progress(max(0.0, min(1.0, progress)))
-    if latest_weight is not None and st.toggle("Show weight change from the beginning"):
-        weight_change = latest_weight - _profile.start_weight_kg
-        st.caption(f"This is {weight_change:+.1f} kg from the beginning.")
-
     latest_measurements = (
         df.dropna(subset=["bmi"]).sort_values("entry_date").iloc[-1]
         if "bmi" in df and df["bmi"].notna().any()
@@ -264,14 +259,6 @@ def dashboard():
             preferences.smooth_charts = smooth_charts
             session.commit()
         st.rerun()
-    path_shape = st.selectbox(
-        "Weight-loss path",
-        ["Linear", "Non-linear decrease", "Non-linear with plateau"],
-        help=(
-            "Choose how the planned path reaches the saved goal date. The plateau option "
-            "holds the planned weight steady through the middle of the journey."
-        ),
-    )
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
         weight_scale = alt.Scale(
@@ -321,24 +308,7 @@ def dashboard():
                 tooltip=[alt.Tooltip("goal:Q", title="Goal weight (kg)", format=".1f")],
             )
         )
-        plan_frame = planned_weight_path(
-            journey_start.date(), float(weight.weight_kg.iloc[0]), _profile, path_shape
-        )
-        plan_line = (
-            alt.Chart(plan_frame)
-            .mark_line(color=series_colors[1], strokeWidth=3, strokeDash=[4, 4], opacity=0.9)
-            .encode(
-                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
-                y=alt.Y("planned_weight_kg:Q", title=None, scale=weight_scale),
-                tooltip=[
-                    alt.Tooltip("entry_date:T", title="Plan date"),
-                    alt.Tooltip(
-                        "planned_weight_kg:Q", title="Planned weight (kg)", format=".1f"
-                    ),
-                ],
-            )
-        )
-        weight_chart = weight_line + goal_line + plan_line
+        weight_chart = weight_line + goal_line
         if _smooth_charts:
             raw_weight_points = (
                 alt.Chart(weight)
@@ -392,6 +362,8 @@ def dashboard():
             f"Latest recorded weight: {latest_weight_row['weight_kg']:.1f} kg on "
             f"{latest_weight_row['entry_date']:%d %b %Y}."
         )
+        weight_change = latest_weight_row["weight_kg"] - _profile.start_weight_kg
+        st.caption(f"This is {weight_change:+.1f} kg from the beginning.")
     else:
         st.caption("No weight entries yet.")
 

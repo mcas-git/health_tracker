@@ -11,7 +11,6 @@ from health_tracker.analytics import (
     current_streak,
     daily_health_score,
     excel_safe_data,
-    planned_weight_path,
     weekly_coaching_summary,
     weight_milestones,
 )
@@ -276,20 +275,6 @@ def test_weight_milestones_follow_a_sustainable_plan_pace():
         left["weight_kg"] > right["weight_kg"]
         for left, right in zip(milestones, milestones[1:], strict=False)
     )
-
-
-def test_planned_weight_paths_end_at_goal_and_plateau_can_hold_weight():
-    linear = planned_weight_path(date(2026, 8, 25), 105.0, PROFILE, "Linear")
-    plateau = planned_weight_path(
-        date(2026, 8, 25), 105.0, PROFILE, "Non-linear with plateau"
-    )
-
-    assert linear.iloc[0].planned_weight_kg == 105.0
-    assert linear.iloc[-1].entry_date.date() == PROFILE.target_date
-    assert linear.iloc[-1].planned_weight_kg == PROFILE.target_weight_kg
-    assert plateau.iloc[-1].planned_weight_kg == PROFILE.target_weight_kg
-    plateau_changes = plateau.planned_weight_kg.diff().abs()
-    assert (plateau_changes.iloc[1:] < 0.01).any()
 
 
 def test_weekly_report_schedule_handles_daylight_saving():

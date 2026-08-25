@@ -252,7 +252,9 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         [data-testid="stAlert"] svg,
         [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
-        [data-testid="stProgress"] [role="progressbar"] > div {{ background:{accent} !important; }}
+        [data-testid="stProgress"] [role="progressbar"] > div {{
+            background:#4F8A55 !important;
+        }}
         [data-testid="stSlider"] [role="slider"] {{
             background:{accent} !important; border-color:{accent} !important;
         }}
@@ -630,27 +632,61 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         .st-key-additional_kpi [data-baseweb="select"] > div,
         .st-key-additional_kpi [role="combobox"],
         .st-key-additional_kpi [aria-haspopup="listbox"] {{
-            background:{input_surface} !important;
-            background-color:{input_surface} !important;
-            color:{input_text} !important;
-            -webkit-text-fill-color:{input_text} !important;
+            background:{background} !important;
+            background-color:{background} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+            border-color:{neutral_border} !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        .st-key-additional_kpi [data-baseweb="select"] > div:focus-within,
+        .st-key-additional_kpi [role="combobox"]:focus,
+        .st-key-additional_kpi [aria-haspopup="listbox"]:focus {{
+            border-color:{neutral_border} !important;
+            box-shadow:none !important;
+            outline:none !important;
         }}
         .st-key-additional_kpi [data-baseweb="select"] span,
         .st-key-additional_kpi [data-baseweb="select"] p,
         [data-baseweb="popover"] [role="listbox"],
         [data-baseweb="popover"] [role="option"],
         [data-baseweb="popover"] [role="option"] * {{
-            background-color:{input_surface} !important;
-            color:{input_text} !important;
-            -webkit-text-fill-color:{input_text} !important;
+            background-color:{background} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
         }}
         [data-baseweb="popover"] [role="option"]:hover,
         [data-baseweb="popover"] [role="option"][aria-selected="true"],
         [data-baseweb="popover"] [role="option"]:hover *,
         [data-baseweb="popover"] [role="option"][aria-selected="true"] * {{
             background-color:{secondary} !important;
-            color:{input_text} !important;
-            -webkit-text-fill-color:{input_text} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+
+        [data-testid="stTooltipIcon"],
+        [data-testid="stTooltipIcon"] button,
+        [data-testid="stWidgetLabel"] button[aria-label*="help" i] {{
+            width:1.25rem !important;
+            min-width:1.25rem !important;
+            height:1.25rem !important;
+            min-height:1.25rem !important;
+            padding:0 !important;
+            border:0 !important;
+            border-radius:50% !important;
+            background:transparent !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [data-testid="stTooltipIcon"] button:hover,
+        [data-testid="stTooltipIcon"] button:focus,
+        [data-testid="stWidgetLabel"] button[aria-label*="help" i]:hover,
+        [data-testid="stWidgetLabel"] button[aria-label*="help" i]:focus {{
+            border-radius:50% !important;
+            background:{secondary} !important;
+            box-shadow:none !important;
+            outline:none !important;
         }}
 
         .st-key-smartwatch_load button {{
