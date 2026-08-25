@@ -244,6 +244,11 @@ def dashboard():
     show_milestones = st.toggle("Show weight milestones", value=False)
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
+        weight_date_scale = (
+            date_scale
+            if show_milestones
+            else alt.Scale(domain=[weight.entry_date.min(), weight.entry_date.max()])
+        )
         weight_scale = alt.Scale(
             domain=[
                 _profile.target_weight_kg,
@@ -270,7 +275,7 @@ def dashboard():
                 strokeWidth=4,
             )
             .encode(
-                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                x=alt.X("entry_date:T", axis=date_axis, scale=weight_date_scale),
                 y=alt.Y(
                     "display_value:Q",
                     title=None,
@@ -293,19 +298,19 @@ def dashboard():
         )
         weight_chart = weight_line + goal_line
         if _smooth_charts:
-            latest_raw_point = (
-                alt.Chart(weight.tail(1))
-                .mark_point(filled=True, size=150, color=accent, stroke="#FFFFFF", strokeWidth=2)
+            raw_weight_points = (
+                alt.Chart(weight)
+                .mark_point(filled=True, size=90, color=accent, stroke="#FFFFFF", strokeWidth=2)
                 .encode(
-                    x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                    x=alt.X("entry_date:T", axis=date_axis, scale=weight_date_scale),
                     y=alt.Y("weight_kg:Q", title=None, scale=weight_scale),
                     tooltip=[
-                        alt.Tooltip("entry_date:T", title="Latest date"),
-                        alt.Tooltip("weight_kg:Q", title="Latest weight (kg)", format=".1f"),
+                        alt.Tooltip("entry_date:T", title="Date"),
+                        alt.Tooltip("weight_kg:Q", title="Recorded weight (kg)", format=".1f"),
                     ],
                 )
             )
-            weight_chart = weight_chart + latest_raw_point
+            weight_chart = weight_chart + raw_weight_points
         if show_milestones:
             milestones, weekly_pace = weight_milestones(journey_start.date(), _profile)
             milestone_frame = pd.DataFrame(milestones)
