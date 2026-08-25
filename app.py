@@ -87,23 +87,109 @@ def rating_input(label: str, key: str, initial: int) -> int:
     )
 
 
-def kpi_axis_domain(field: str, values: pd.Series) -> list[float]:
-    first = float(values.iloc[0])
-    ideals = {
-        "bmi": 25.0,
-        "waist_cm": _profile.height_cm * 0.5,
-        "steps": 8000.0,
-        "sleep_hours": 7.0,
-        "mood": 10.0,
-        "energy": 10.0,
-        "resting_heart_rate": 60.0,
-        "systolic": 120.0,
-        "diastolic": 80.0,
+def kpi_goal(field: str) -> dict:
+    sex_adjustment = 5 if _profile.sex == "male" else -161 if _profile.sex == "female" else -78
+    goal_burn = round(
+        (
+            10 * _profile.target_weight_kg
+            + 6.25 * _profile.height_cm
+            - 5 * _profile.age
+            + sex_adjustment
+        )
+        * 1.35
+    )
+    goal_bmi = _profile.target_weight_kg / ((_profile.height_cm / 100) ** 2)
+    step_goal = 7000 if _profile.age >= 60 else 8000
+    goals = {
+        "bmi": {
+            "value": goal_bmi,
+            "direction": "lower",
+            "label": f"{goal_bmi:.1f} BMI at the saved goal weight",
+            "note": "The general healthy adult BMI range is 18.5–24.9; BMI is a screening tool.",
+            "url": "https://www.nhs.uk/live-well/healthy-weight/bmi-calculator/",
+        },
+        "waist_cm": {
+            "value": _profile.height_cm * 0.49,
+            "direction": "lower",
+            "label": f"{_profile.height_cm * 0.49:.1f} cm",
+            "note": "This represents a waist-to-height ratio below 0.5.",
+            "url": "https://www.nice.org.uk/guidance/ng246/chapter/Rationale-and-impact",
+        },
+        "steps": {
+            "value": float(step_goal),
+            "direction": "higher",
+            "label": f"{step_goal:,} steps/day",
+            "note": (
+                "Evidence suggests benefits level off around 6,000–8,000 for older adults "
+                "and 8,000–10,000 for younger adults."
+            ),
+            "url": "https://pubmed.ncbi.nlm.nih.gov/35247352/",
+        },
+        "sleep_hours": {
+            "value": 7.0,
+            "direction": "range",
+            "upper": 9.0,
+            "label": "7–9 hours",
+            "note": "The NHS describes 7–9 hours as the usual range for healthy adults.",
+            "url": "https://www.nhs.uk/every-mind-matters/mental-health-issues/sleep/",
+        },
+        "calories_burned": {
+            "value": float(goal_burn),
+            "direction": "lower",
+            "label": f"about {goal_burn:,} kcal/day",
+            "note": (
+                "This is a personalised sedentary energy estimate at goal weight, not a "
+                "clinical target."
+            ),
+            "url": "https://pubmed.ncbi.nlm.nih.gov/2305711/",
+        },
+        "mood": {
+            "value": 10.0,
+            "direction": "higher",
+            "label": "10/10",
+            "note": "This is the top of the app's personal rating scale, not a medical standard.",
+            "url": None,
+        },
+        "energy": {
+            "value": 10.0,
+            "direction": "higher",
+            "label": "10/10",
+            "note": "This is the top of the app's personal rating scale, not a medical standard.",
+            "url": None,
+        },
+        "resting_heart_rate": {
+            "value": 60.0,
+            "direction": "lower",
+            "label": "60 bpm",
+            "note": "The usual adult resting range is 60–100 bpm; lower is not always better.",
+            "url": "https://www.bhf.org.uk/informationsupport/how-a-healthy-heart-works/your-heart-rate",
+        },
+        "systolic": {
+            "value": 120.0,
+            "direction": "lower",
+            "label": "120 mmHg",
+            "note": "This is the upper end of the NHS normal 90/60–120/80 range.",
+            "url": "https://www.nhs.uk/conditions/high-blood-pressure/",
+        },
+        "diastolic": {
+            "value": 80.0,
+            "direction": "lower",
+            "label": "80 mmHg",
+            "note": "This is the upper end of the NHS normal 90/60–120/80 range.",
+            "url": "https://www.nhs.uk/conditions/high-blood-pressure/",
+        },
     }
-    anchor = ideals.get(field, first)
-    recorded_min = float(values.min())
-    recorded_max = float(values.max())
-    return [min(anchor, recorded_min), max(float(math.ceil(first)), anchor, recorded_max)]
+    return goals[field]
+
+
+def kpi_axis_domain(field: str, values: pd.Series) -> list[float]:
+    goal = kpi_goal(field)
+    first = float(values.iloc[0])
+    if goal["direction"] == "higher":
+        return [min(float(math.floor(first)), float(values.min())), float(goal["value"])]
+    if goal["direction"] == "range":
+        return [float(goal["value"]), max(float(goal["upper"]), float(values.max()))]
+    return [float(goal["value"]), max(float(math.ceil(first)), float(values.max()))]
 
 
 def style_chart(chart):
@@ -300,15 +386,7 @@ def dashboard():
                 ],
             )
         )
-        goal_line = (
-            alt.Chart(pd.DataFrame({"goal": [_profile.target_weight_kg]}))
-            .mark_rule(color=series_colors[1], strokeWidth=3, strokeDash=[8, 5], opacity=0.8)
-            .encode(
-                y="goal:Q",
-                tooltip=[alt.Tooltip("goal:Q", title="Goal weight (kg)", format=".1f")],
-            )
-        )
-        weight_chart = weight_line + goal_line
+        weight_chart = weight_line
         if _smooth_charts:
             raw_weight_points = (
                 alt.Chart(weight)
@@ -443,6 +521,9 @@ def dashboard():
             .properties(height=chart_height)
         )
         st.altair_chart(style_chart(kpi_chart), use_container_width=True, theme=None)
+        goal = kpi_goal(selected_kpi)
+        reference = f" [Reference]({goal['url']})" if goal["url"] else ""
+        st.caption(f"Goal anchor: **{goal['label']}** — {goal['note']}{reference}")
     else:
         st.caption("Add another measurement to display a recent KPI trend.")
 
@@ -967,12 +1048,7 @@ def nutrition_insights():
             tooltip=["Week:T", "Nutrient:N", alt.Tooltip("% of target:Q", format=".0f")],
         )
     )
-    target_line = (
-        alt.Chart(pd.DataFrame({"y": [100]}))
-        .mark_rule(strokeDash=[5, 5], color=_theme_values[1], opacity=0.65)
-        .encode(y="y:Q")
-    )
-    st.altair_chart(style_chart(weekly_chart + target_line), use_container_width=True, theme=None)
+    st.altair_chart(style_chart(weekly_chart), use_container_width=True, theme=None)
 
     overall = [
         {"Nutrient": label, "% of target": nutrition[field].mean() / targets[label] * 100}
