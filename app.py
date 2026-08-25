@@ -15,6 +15,7 @@ from health_tracker.analytics import (
     daily_health_score,
     excel_safe_data,
     load_data,
+    planned_weight_path,
     projected_target_date,
     weekly_coaching_summary,
     weight_milestones,
@@ -230,7 +231,7 @@ def dashboard():
     palette = derived_palette(*_theme_values[:2])
     series_colors = palette["series"]
     journey_start = pd.Timestamp(df.entry_date.min()).normalize()
-    journey_end = max(pd.Timestamp(projection or _profile.target_date), journey_start)
+    journey_end = max(pd.Timestamp(_profile.target_date), journey_start)
     date_scale = alt.Scale(domain=[journey_start, journey_end])
     date_axis = alt.Axis(
         title=None,
@@ -263,6 +264,14 @@ def dashboard():
             preferences.smooth_charts = smooth_charts
             session.commit()
         st.rerun()
+    path_shape = st.selectbox(
+        "Weight-loss path",
+        ["Linear", "Non-linear decrease", "Non-linear with plateau"],
+        help=(
+            "Choose how the planned path reaches the saved goal date. The plateau option "
+            "holds the planned weight steady through the middle of the journey."
+        ),
+    )
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
         weight_scale = alt.Scale(
@@ -312,7 +321,24 @@ def dashboard():
                 tooltip=[alt.Tooltip("goal:Q", title="Goal weight (kg)", format=".1f")],
             )
         )
-        weight_chart = weight_line + goal_line
+        plan_frame = planned_weight_path(
+            journey_start.date(), float(weight.weight_kg.iloc[0]), _profile, path_shape
+        )
+        plan_line = (
+            alt.Chart(plan_frame)
+            .mark_line(color=series_colors[1], strokeWidth=3, strokeDash=[4, 4], opacity=0.9)
+            .encode(
+                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                y=alt.Y("planned_weight_kg:Q", title=None, scale=weight_scale),
+                tooltip=[
+                    alt.Tooltip("entry_date:T", title="Plan date"),
+                    alt.Tooltip(
+                        "planned_weight_kg:Q", title="Planned weight (kg)", format=".1f"
+                    ),
+                ],
+            )
+        )
+        weight_chart = weight_line + goal_line + plan_line
         if _smooth_charts:
             raw_weight_points = (
                 alt.Chart(weight)
