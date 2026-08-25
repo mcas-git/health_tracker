@@ -748,25 +748,52 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             -webkit-text-fill-color:{text} !important;
         }}
 
-        /* High-contrast journal and coaching fields; keep every BaseWeb layer dark. */
+        /* Journal and coaching fields use the page colour and one rounded outer frame. */
+        [class*="st-key-food_note_"] [data-testid="stTextAreaRootElement"],
         [class*="st-key-food_note_"] [data-baseweb="textarea"],
+        [class*="st-key-weekly_focus_"] [data-testid="stTextInputRootElement"],
+        [class*="st-key-weekly_focus_"] [data-baseweb="input"],
+        [class*="st-key-weekly_barrier_"] [data-testid="stTextInputRootElement"],
+        [class*="st-key-weekly_barrier_"] [data-baseweb="input"],
+        [class*="st-key-weekly_if_then_"] [data-testid="stTextInputRootElement"],
+        [class*="st-key-weekly_if_then_"] [data-baseweb="input"] {{
+            box-sizing:border-box !important;
+            background:{background} !important;
+            background-color:{background} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:10px !important;
+            overflow:hidden !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [class*="st-key-food_note_"] [data-testid="stTextAreaRootElement"]:focus-within,
+        [class*="st-key-food_note_"] [data-baseweb="textarea"]:focus-within,
+        [class*="st-key-weekly_focus_"] [data-testid="stTextInputRootElement"]:focus-within,
+        [class*="st-key-weekly_focus_"] [data-baseweb="input"]:focus-within,
+        [class*="st-key-weekly_barrier_"] [data-testid="stTextInputRootElement"]:focus-within,
+        [class*="st-key-weekly_barrier_"] [data-baseweb="input"]:focus-within,
+        [class*="st-key-weekly_if_then_"] [data-testid="stTextInputRootElement"]:focus-within,
+        [class*="st-key-weekly_if_then_"] [data-baseweb="input"]:focus-within {{
+            border-color:{accent} !important;
+        }}
         [class*="st-key-food_note_"] [data-baseweb="textarea"] > div,
         [class*="st-key-food_note_"] [data-baseweb="base-input"],
         [class*="st-key-food_note_"] textarea,
-        [class*="st-key-weekly_focus_"] [data-baseweb="input"],
         [class*="st-key-weekly_focus_"] [data-baseweb="input"] > div,
         [class*="st-key-weekly_focus_"] [data-baseweb="base-input"],
         [class*="st-key-weekly_focus_"] input,
-        [class*="st-key-weekly_barrier_"] [data-baseweb="input"],
         [class*="st-key-weekly_barrier_"] [data-baseweb="input"] > div,
         [class*="st-key-weekly_barrier_"] [data-baseweb="base-input"],
         [class*="st-key-weekly_barrier_"] input,
-        [class*="st-key-weekly_if_then_"] [data-baseweb="input"],
         [class*="st-key-weekly_if_then_"] [data-baseweb="input"] > div,
         [class*="st-key-weekly_if_then_"] [data-baseweb="base-input"],
         [class*="st-key-weekly_if_then_"] input {{
-            background:#202124 !important;
-            background-color:#202124 !important;
+            background:transparent !important;
+            background-color:transparent !important;
+            border:0 !important;
+            border-radius:0 !important;
+            box-shadow:none !important;
+            outline:none !important;
             color:#FFFFFF !important;
             -webkit-text-fill-color:#FFFFFF !important;
             caret-color:#FFFFFF !important;
