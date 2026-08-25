@@ -632,10 +632,11 @@ def daily_entry():
                 "General notes", value=value(item, "notes", ""), height=100, key=notes_key
             )
             st.form_submit_button(
-                "Clear general notes",
+                "Clean response",
                 key=f"clear_{notes_key}",
                 on_click=clear_text,
                 args=(notes_key,),
+                use_container_width=True,
             )
             evening_submitted = st.form_submit_button(
                 "Save evening check-in", use_container_width=True, type="primary"
@@ -712,7 +713,11 @@ def weekly_coaching():
             key=focus_key,
         )
         st.form_submit_button(
-            "Clear focus", key=f"clear_{focus_key}", on_click=clear_text, args=(focus_key,)
+            "Clean response",
+            key=f"clear_{focus_key}",
+            on_click=clear_text,
+            args=(focus_key,),
+            use_container_width=True,
         )
         c1, c2, c3 = st.columns(3)
         gym_sessions = c1.number_input(
@@ -731,10 +736,11 @@ def weekly_coaching():
             key=barrier_key,
         )
         st.form_submit_button(
-            "Clear barrier",
+            "Clean response",
             key=f"clear_{barrier_key}",
             on_click=clear_text,
             args=(barrier_key,),
+            use_container_width=True,
         )
         if_then_key = f"weekly_if_then_{week_key}"
         if_then = st.text_input(
@@ -744,10 +750,11 @@ def weekly_coaching():
             key=if_then_key,
         )
         st.form_submit_button(
-            "Clear response",
+            "Clean response",
             key=f"clear_{if_then_key}",
             on_click=clear_text,
             args=(if_then_key,),
+            use_container_width=True,
         )
         maintenance = st.toggle(
             "Maintenance mode", value=bool(value(saved, "maintenance_mode", False))
@@ -801,7 +808,7 @@ def food_log():
         label_visibility="collapsed",
     )
     st.button(
-        "Clear food journal",
+        "Clean response",
         key=f"clear_{food_note_key}",
         on_click=clear_text,
         args=(food_note_key,),
@@ -1021,7 +1028,7 @@ def settings_page():
             sleep = cols[2].number_input(
                 "Sleep target (hours)", 0.0, 16.0, goals.sleep_target_hours, 0.25
             )
-            if st.form_submit_button("Save targets", type="primary"):
+            if st.form_submit_button("Save targets", type="primary", use_container_width=True):
                 goals.calorie_target, goals.protein_target_g = calories, protein
                 goals.carbs_target_g, goals.fat_target_g = carbs, fat
                 goals.fibre_target_g, goals.fasting_target_hours = fibre, fasting
