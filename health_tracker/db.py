@@ -85,6 +85,9 @@ def init_db() -> None:
         if session.get(AppPreferences, 1) is None:
             session.add(AppPreferences(id=1))
             session.commit()
+        elif session.get(AppPreferences, 1).color_mode != "dark":
+            session.get(AppPreferences, 1).color_mode = "dark"
+            session.commit()
 
 
 @contextmanager

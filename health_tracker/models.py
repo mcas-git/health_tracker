@@ -92,7 +92,7 @@ class AppPreferences(Base):
     __tablename__ = "app_preferences"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
-    color_mode: Mapped[str] = mapped_column(String(20), default="light")
+    color_mode: Mapped[str] = mapped_column(String(20), default="dark")
     accent: Mapped[str] = mapped_column(String(20), default="#7B8451")
     font_family: Mapped[str] = mapped_column(String(40), default="Modern sans")
     smooth_charts: Mapped[bool] = mapped_column(Boolean, default=True)

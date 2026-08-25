@@ -236,6 +236,14 @@ def test_every_research_note_has_a_source_and_motivation():
     assert all(item["motivation"] for item in RESEARCH_INSIGHTS)
 
 
+def test_research_note_rotates_with_calendar_day():
+    start = date(2026, 8, 21)
+    daily_notes = [
+        daily_item(RESEARCH_INSIGHTS, start + timedelta(days=offset)) for offset in range(7)
+    ]
+    assert all(daily_notes[index] != daily_notes[index + 1] for index in range(6))
+
+
 def test_weekly_coaching_summary_reports_completion_and_trends():
     end = date(2026, 8, 21)
     rows = []

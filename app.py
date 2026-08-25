@@ -38,11 +38,9 @@ from health_tracker.nutrition import analyse_day, save_estimate
 from health_tracker.quotes import daily_item
 from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import FONTS, apply_theme, derived_palette, normalize_color
-from health_tracker.visuals import optional_home_logo, page_watermark
 
 st.set_page_config(
     page_title="Health Journey",
-    page_icon="⚪",
     layout="wide",
 )
 init_db()
@@ -50,7 +48,7 @@ require_login()
 
 with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
-    _theme_values = (_preferences.color_mode, _preferences.accent, _preferences.font_family)
+    _theme_values = ("dark", _preferences.accent, _preferences.font_family)
     _smooth_charts = bool(_preferences.smooth_charts)
     _profile = Profile(
         age=getattr(_preferences, "age", DEFAULT_PROFILE.age),
@@ -186,10 +184,19 @@ def kpi_axis_domain(field: str, values: pd.Series) -> list[float]:
     goal = kpi_goal(field)
     first = float(values.iloc[0])
     if goal["direction"] == "higher":
-        return [min(float(math.floor(first)), float(values.min())), float(goal["value"])]
+        return [
+            min(float(math.floor(first)), float(values.min())),
+            max(float(goal["value"]), float(values.max())),
+        ]
     if goal["direction"] == "range":
-        return [float(goal["value"]), max(float(goal["upper"]), float(values.max()))]
-    return [float(goal["value"]), max(float(math.ceil(first)), float(values.max()))]
+        return [
+            min(float(goal["value"]), float(values.min())),
+            max(float(goal["upper"]), float(values.max())),
+        ]
+    return [
+        min(float(goal["value"]), float(values.min())),
+        max(float(math.ceil(first)), float(values.max())),
+    ]
 
 
 def style_chart(chart):
@@ -252,8 +259,6 @@ def health_status_cards(item) -> None:
 
 
 def home():
-    page_watermark("home", _theme_values[1])
-    optional_home_logo()
     london_day = datetime.now(LONDON).date()
     research = daily_item(RESEARCH_INSIGHTS, london_day)
     st.markdown(
@@ -273,7 +278,6 @@ def home():
 
 
 def dashboard():
-    page_watermark("runner", _theme_values[1])
     st.title("Your health journey")
     st.caption(
         f"One calm day at a time · Goal: {_profile.target_weight_kg:g} kg by "
@@ -289,12 +293,20 @@ def dashboard():
         else 0
     )
     projection = projected_target_date(df, _profile)
+    dashboard_today = datetime.now(LONDON).date()
+    projection_label = "Need more data"
+    if projection:
+        projection_label = (
+            projection.strftime("%d %b")
+            if projection.year in {dashboard_today.year, dashboard_today.year + 1}
+            else projection.strftime("%d %b %Y")
+        )
     recent_completion = weekly_coaching_summary(df, profile=_profile)["completion"]
     a, b, c, d = st.columns(4)
     a.metric("Current weight", f"{latest_weight:.1f} kg" if latest_weight else "—")
     b.metric("Goal progress", f"{max(0, min(100, progress * 100)):.0f}%")
     c.metric("7-day completion", f"{recent_completion}%")
-    d.metric("Projected goal", projection.strftime("%d %b %Y") if projection else "Need more data")
+    d.metric("Projected goal", projection_label)
     st.progress(max(0.0, min(1.0, progress)))
     latest_measurements = (
         df.dropna(subset=["bmi"]).sort_values("entry_date").iloc[-1]
@@ -333,24 +345,16 @@ def dashboard():
             "healthy-weight/managing-your-weight/tips-to-help-you-lose-weight/)."
         ),
     )
-    smooth_charts = st.toggle(
-        "Smooth line graphs",
-        value=_smooth_charts,
-        help="Use seven-entry rolling averages. Turn off to plot every recorded value directly.",
-        key="dashboard_smooth_charts",
-    )
-    if smooth_charts != _smooth_charts:
-        with Session(engine) as session:
-            preferences = session.get(AppPreferences, 1)
-            preferences.smooth_charts = smooth_charts
-            session.commit()
-        st.rerun()
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
         weight_scale = alt.Scale(
             domain=[
-                _profile.target_weight_kg,
-                max(_profile.target_weight_kg + 1, math.ceil(float(weight.weight_kg.iloc[0]))),
+                min(_profile.target_weight_kg, float(weight.weight_kg.min())),
+                max(
+                    _profile.target_weight_kg + 1,
+                    math.ceil(float(weight.weight_kg.iloc[0])),
+                    float(weight.weight_kg.max()),
+                ),
             ],
             nice=False,
         )
@@ -362,13 +366,7 @@ def dashboard():
         weight_line = (
             alt.Chart(weight)
             .mark_line(
-                point=(
-                    alt.OverlayMarkDef(
-                        filled=True, fill=accent, stroke=accent, strokeWidth=2, size=72
-                    )
-                    if not _smooth_charts
-                    else False
-                ),
+                point=False,
                 color=accent,
                 strokeWidth=4,
             )
@@ -387,20 +385,19 @@ def dashboard():
             )
         )
         weight_chart = weight_line
-        if _smooth_charts:
-            raw_weight_points = (
-                alt.Chart(weight)
-                .mark_point(filled=True, size=90, color=accent, stroke="#FFFFFF", strokeWidth=2)
-                .encode(
-                    x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
-                    y=alt.Y("weight_kg:Q", title=None, scale=weight_scale),
-                    tooltip=[
-                        alt.Tooltip("entry_date:T", title="Date"),
-                        alt.Tooltip("weight_kg:Q", title="Recorded weight (kg)", format=".1f"),
-                    ],
-                )
+        weight_hover_targets = (
+            alt.Chart(weight)
+            .mark_point(opacity=0, size=180)
+            .encode(
+                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                y=alt.Y("weight_kg:Q", title=None, scale=weight_scale),
+                tooltip=[
+                    alt.Tooltip("entry_date:T", title="Date"),
+                    alt.Tooltip("weight_kg:Q", title="Recorded weight (kg)", format=".1f"),
+                ],
             )
-            weight_chart = weight_chart + raw_weight_points
+        )
+        weight_chart = weight_chart + weight_hover_targets
         if show_milestones:
             milestone_frame = pd.DataFrame(milestones)
             milestone_frame["milestone_date"] = pd.to_datetime(milestone_frame["milestone_date"])
@@ -483,7 +480,7 @@ def dashboard():
             "Additional KPI", available, label_visibility="collapsed", key="additional_kpi"
         )
         selected_kpi = available[selected_label]
-        recent = df[["entry_date", selected_kpi]].dropna().tail(30).copy()
+        recent = df[["entry_date", selected_kpi]].dropna().copy()
         recent["display_value"] = (
             recent[selected_kpi].rolling(7, min_periods=1).mean()
             if _smooth_charts
@@ -495,13 +492,7 @@ def dashboard():
         kpi_chart = (
             alt.Chart(recent)
             .mark_line(
-                point=(
-                    alt.OverlayMarkDef(
-                        filled=True, fill=accent, stroke=accent, strokeWidth=2, size=72
-                    )
-                    if not _smooth_charts
-                    else False
-                ),
+                point=False,
                 color=accent,
                 strokeWidth=4,
             )
@@ -520,8 +511,32 @@ def dashboard():
             )
             .properties(height=chart_height)
         )
-        st.altair_chart(style_chart(kpi_chart), use_container_width=True, theme=None)
+        kpi_hover_targets = (
+            alt.Chart(recent)
+            .mark_point(opacity=0, size=180)
+            .encode(
+                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                y=alt.Y("display_value:Q", title=None, scale=kpi_scale),
+                tooltip=[
+                    alt.Tooltip("entry_date:T", title="Date"),
+                    alt.Tooltip("display_value:Q", title=selected_label, format=".1f"),
+                ],
+            )
+        )
         goal = kpi_goal(selected_kpi)
+        goal_value = float(goal["value"])
+        kpi_layers = kpi_chart + kpi_hover_targets
+        if goal_value > kpi_scale.domain[0]:
+            ideal_line = (
+                alt.Chart(pd.DataFrame({"ideal": [goal_value]}))
+                .mark_rule(color=series_colors[1], strokeDash=[6, 5], strokeWidth=2)
+                .encode(
+                    y=alt.Y("ideal:Q", scale=kpi_scale),
+                    tooltip=[alt.Tooltip("ideal:Q", title="Ideal value", format=".1f")],
+                )
+            )
+            kpi_layers = kpi_layers + ideal_line
+        st.altair_chart(style_chart(kpi_layers), use_container_width=True, theme=None)
         reference = f" [Reference]({goal['url']})" if goal["url"] else ""
         st.caption(f"Goal anchor: **{goal['label']}** — {goal['note']}{reference}")
     else:
@@ -536,7 +551,6 @@ def dashboard():
         use_container_width=True,
     )
 def daily_entry():
-    page_watermark("barbell", _theme_values[1])
     st.title("Daily check-in")
     if saved_message := st.session_state.pop("daily_checkin_saved", None):
         st.success(saved_message)
@@ -784,7 +798,6 @@ def daily_entry():
 
 
 def weekly_coaching():
-    page_watermark("kettlebell", _theme_values[1])
     st.title("Weekly coaching")
     st.caption("Review the trend, choose one focus, and plan around real-life barriers")
     today = datetime.now(LONDON).date()
@@ -890,7 +903,6 @@ def weekly_coaching():
 
 
 def food_log():
-    page_watermark("cycling", _theme_values[1])
     st.title("Food journal")
     if saved_message := st.session_state.pop("food_journal_saved", None):
         st.success(saved_message)
@@ -980,7 +992,6 @@ def food_log():
 
 
 def nutrition_insights():
-    page_watermark("swim", _theme_values[1])
     st.title("Nutrition insights")
     st.caption("Daily estimates compared with your adjustable targets")
     df = load_data()
@@ -1079,16 +1090,13 @@ def nutrition_insights():
 
 
 def appearance_page():
-    page_watermark("stretch", _theme_values[1])
     st.title("Appearance")
     if st.session_state.pop("appearance_saved", False):
         st.success("Appearance settings saved.")
     st.caption("Make the tracker feel like your own")
     with Session(engine) as session:
         prefs = session.get(AppPreferences, 1)
-        mode = st.segmented_control(
-            "Mode", ["light", "dark"], default=prefs.color_mode, format_func=str.title
-        )
+        st.caption("Dark mode is used throughout the tracker.")
         picked_color = st.color_picker("Base palette colour", prefs.accent)
         typed_color = st.text_input(
             "RGB or HEX override (optional)",
@@ -1100,6 +1108,14 @@ def appearance_page():
             list(FONTS),
             index=(list(FONTS).index(prefs.font_family) if prefs.font_family in FONTS else 0),
         )
+        smooth_charts = st.toggle(
+            "Smooth line graphs",
+            value=bool(prefs.smooth_charts),
+            help=(
+                "Use seven-entry rolling averages. Turn off to plot every recorded value "
+                "directly."
+            ),
+        )
         st.markdown(
             f'<div style="font-family:{FONTS[font]};font-size:1.15rem;padding:.5rem 0">'
             f"Selected: {font} — The quick brown fox — 0123456789</div>",
@@ -1108,8 +1124,9 @@ def appearance_page():
         if st.button("Save appearance", type="primary", use_container_width=True):
             try:
                 prefs.accent = normalize_color(typed_color or picked_color)
-                prefs.color_mode = mode or "light"
+                prefs.color_mode = "dark"
                 prefs.font_family = font
+                prefs.smooth_charts = smooth_charts
                 session.commit()
                 st.session_state.appearance_saved = True
                 st.rerun()
@@ -1118,7 +1135,6 @@ def appearance_page():
 
 
 def settings_page():
-    page_watermark("target", _theme_values[1])
     st.title("Targets, backup and privacy")
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)
@@ -1237,8 +1253,8 @@ page = st.navigation(
         st.Page(food_log, title="Food journal"),
         st.Page(nutrition_insights, title="Nutrition insights"),
         st.Page(weekly_coaching, title="Weekly coaching"),
-        st.Page(appearance_page, title="Appearance"),
         st.Page(settings_page, title="Targets & export"),
+        st.Page(appearance_page, title="Appearance"),
     ]
 )
 page.run()

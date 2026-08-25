@@ -1,6 +1,5 @@
 """Original short prompts informed by evidence-based habit and activity themes."""
 
-import hashlib
 from datetime import date
 
 QUOTES = [
@@ -73,5 +72,5 @@ def quote_count() -> int:
 
 def daily_item(items: list, day: date):
     """Choose one stable item for a calendar day."""
-    index = int(hashlib.sha256(day.isoformat().encode()).hexdigest(), 16) % len(items)
+    index = day.toordinal() % len(items)
     return items[index]

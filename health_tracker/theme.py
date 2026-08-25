@@ -43,44 +43,43 @@ def _mix(color: str, target: str, amount: float) -> str:
 
 def derived_palette(mode: str, accent: str) -> dict[str, str | list[str]]:
     accent = normalize_color(accent)
-    dark = mode == "dark"
     return {
         "accent": accent,
-        "foreground": _mix(accent, "#FFFFFF", 0.9) if dark else _mix(accent, "#000000", 0.76),
-        "grid": _mix(accent, "#FFFFFF", 0.38) if dark else _mix(accent, "#FFFFFF", 0.68),
+        "foreground": _mix(accent, "#FFFFFF", 0.9),
+        "grid": _mix(accent, "#FFFFFF", 0.38),
         "series": [
             accent,
-            _mix(accent, "#FFFFFF", 0.38) if dark else _mix(accent, "#000000", 0.3),
-            _mix(accent, "#FFFFFF", 0.65) if dark else _mix(accent, "#000000", 0.52),
+            _mix(accent, "#FFFFFF", 0.38),
+            _mix(accent, "#FFFFFF", 0.65),
         ],
         "scale": [
-            _mix(accent, "#000000", 0.45) if dark else _mix(accent, "#FFFFFF", 0.78),
+            _mix(accent, "#000000", 0.45),
             accent,
-            _mix(accent, "#FFFFFF", 0.68) if dark else _mix(accent, "#000000", 0.48),
+            _mix(accent, "#FFFFFF", 0.68),
         ],
     }
 
 
 def apply_theme(mode: str, accent: str, font_name: str) -> None:
-    dark = mode == "dark"
     accent = normalize_color(accent)
-    background = _mix(accent, "#000000", 0.84) if dark else _mix(accent, "#FFFFFF", 0.93)
-    surface = _mix(accent, "#000000", 0.72) if dark else _mix(accent, "#FFFFFF", 0.98)
-    secondary = _mix(accent, "#000000", 0.66) if dark else _mix(accent, "#FFFFFF", 0.84)
-    text = _mix(accent, "#FFFFFF", 0.9) if dark else _mix(accent, "#000000", 0.76)
-    muted = _mix(accent, "#FFFFFF", 0.55) if dark else _mix(accent, "#000000", 0.48)
+    background = _mix(accent, "#000000", 0.84)
+    surface = _mix(accent, "#000000", 0.72)
+    secondary = _mix(accent, "#000000", 0.66)
+    text = _mix(accent, "#FFFFFF", 0.9)
+    muted = _mix(accent, "#FFFFFF", 0.55)
+    link_color = _mix(accent, "#FFFFFF", 0.42)
     accent_rgb = ", ".join(str(int(accent[index : index + 2], 16)) for index in (1, 3, 5))
     red, green, blue = (int(accent[index : index + 2], 16) for index in (1, 3, 5))
     accent_text = "#111111" if (0.2126 * red + 0.7152 * green + 0.0722 * blue) > 150 else "#FFFFFF"
-    neutral_icon = "#D8D8D8" if dark else "#4A4A4A"
-    sidebar_icon = "#FFFFFF" if dark else neutral_icon
-    neutral_border = "#666666" if dark else "#C8C8C8"
-    neutral_surface = "#303030" if dark else "#F2F2F2"
-    input_surface = "#202124" if dark else "#FFFFFF"
-    input_text = "#FFFFFF" if dark else "#202124"
-    input_placeholder = "#C4C7C5" if dark else "#666666"
+    neutral_icon = "#D8D8D8"
+    sidebar_icon = "#FFFFFF"
+    neutral_border = "#666666"
+    neutral_surface = "#303030"
+    input_surface = "#202124"
+    input_text = "#FFFFFF"
+    input_placeholder = "#C4C7C5"
     font = FONTS.get(font_name, FONTS["Modern sans"])
-    garmin_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "garmin.svg"
+    garmin_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "garmin-white.svg"
     garmin_logo_css = (
         'background-image:url("data:image/svg+xml;base64,'
         + b64encode(garmin_logo.read_bytes()).decode()
@@ -88,8 +87,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         if garmin_logo.is_file()
         else ""
     )
-    dark_overrides = (
-        f"""
+    dark_overrides = f"""
         [data-testid="stAppViewContainer"] h1,
         [data-testid="stAppViewContainer"] h2,
         [data-testid="stAppViewContainer"] h3,
@@ -160,9 +158,6 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         hr {{ border-color:{muted}55; }}
         """
-        if dark
-        else ""
-    )
     st.markdown(
         f"""
         <style>
@@ -216,7 +211,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         .quote-text {{ font-size:clamp(1.35rem,3vw,2rem); line-height:1.4; font-weight:600; }}
         .quote-label {{ color:{accent}; letter-spacing:.12em; font-size:.75rem; font-weight:700; }}
         .quote-card a, .quote-card a:visited, .quote-card a:hover, .quote-card a:focus {{
-            color:{accent} !important; -webkit-text-fill-color:{accent} !important;
+            color:{link_color} !important; -webkit-text-fill-color:{link_color} !important;
         }}
         .research-motivation-label {{
             color:{accent}; letter-spacing:.12em; font-size:.7rem; font-weight:700;
@@ -228,17 +223,17 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
         .st-key-smartwatch_load button {{
-            background-color:#FFFFFF !important; {garmin_logo_css}
+            background-color:{secondary} !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;
-            background-size:150px auto !important; border-color:#00A6CE !important;
-            color:#111111 !important; min-height:3.5rem !important;
+            background-size:150px auto !important; border-color:{accent} !important;
+            color:{text} !important; min-height:3.5rem !important;
         }}
         .st-key-smartwatch_load button:hover,
         .st-key-smartwatch_load button:focus {{
-            background-color:#F2FAFC !important; border-color:#007CC3 !important;
-            color:#111111 !important; box-shadow:0 0 0 2px #007CC344 !important;
+            background-color:{surface} !important; border-color:{link_color} !important;
+            color:{text} !important; box-shadow:none !important;
         }}
-        .st-key-smartwatch_load button * {{ color:#111111 !important; }}
+        .st-key-smartwatch_load button * {{ color:{text} !important; }}
         .st-key-smartwatch_load button p {{ opacity:0 !important; font-size:0 !important; }}
         .garmin-action-label {{
             color:{text}; font-weight:650; margin:.5rem 0 .35rem;
@@ -252,8 +247,11 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         [data-testid="stAlert"] svg,
         [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
-        [data-testid="stProgress"] [role="progressbar"] > div {{
+        [data-testid="stProgress"] [role="progressbar"] > div,
+        [data-testid="stProgressBar"] [role="progressbar"] > div,
+        [data-baseweb="progress-bar"] [role="progressbar"] > div {{
             background:#4F8A55 !important;
+            background-color:#4F8A55 !important;
         }}
         [data-testid="stSlider"] [role="slider"] {{
             background:{accent} !important; border-color:{accent} !important;
@@ -422,7 +420,10 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             color:{sidebar_icon} !important; fill:{sidebar_icon} !important;
             stroke:{sidebar_icon} !important; opacity:1 !important;
         }}
-        a {{ color:{accent}; }}
+        a, a:visited {{
+            color:{link_color} !important;
+            -webkit-text-fill-color:{link_color} !important;
+        }}
         {dark_overrides}
 
         /* One rounded frame per field; inner BaseWeb controls must not draw a second frame. */
@@ -636,14 +637,16 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             background-color:{background} !important;
             color:{text} !important;
             -webkit-text-fill-color:{text} !important;
-            border-color:{neutral_border} !important;
+            border:1px solid #FFFFFF !important;
+            border-color:#FFFFFF !important;
             box-shadow:none !important;
             outline:none !important;
         }}
         .st-key-additional_kpi [data-baseweb="select"] > div:focus-within,
         .st-key-additional_kpi [role="combobox"]:focus,
         .st-key-additional_kpi [aria-haspopup="listbox"]:focus {{
-            border-color:{neutral_border} !important;
+            border:1px solid #FFFFFF !important;
+            border-color:#FFFFFF !important;
             box-shadow:none !important;
             outline:none !important;
         }}
@@ -689,16 +692,27 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             outline:none !important;
         }}
 
+        /* Keep help affordances circular even when their associated toggle is selected. */
+        [data-testid="stTooltipIcon"],
+        [data-testid="stTooltipIcon"] *,
+        [data-testid="stWidgetLabel"] button[aria-label*="help" i],
+        [data-testid="stWidgetLabel"] button[aria-label*="help" i] * {{
+            border-radius:50% !important;
+            border:0 !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+
         .st-key-smartwatch_load button {{
-            background-color:#FFFFFF !important; border-color:#00A6CE !important;
-            color:#111111 !important;
+            background-color:{secondary} !important; border-color:{accent} !important;
+            color:{text} !important;
         }}
         .st-key-smartwatch_load button:hover,
         .st-key-smartwatch_load button:focus {{
-            background-color:#F2FAFC !important; border-color:#007CC3 !important;
-            color:#111111 !important;
+            background-color:{surface} !important; border-color:{link_color} !important;
+            color:{text} !important;
         }}
-        .st-key-smartwatch_load button * {{ color:#111111 !important; }}
+        .st-key-smartwatch_load button * {{ color:{text} !important; }}
 
         .stButton > button,
         .stFormSubmitButton > button {{ width:100% !important; }}
