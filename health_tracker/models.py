@@ -96,6 +96,7 @@ class AppPreferences(Base):
     accent: Mapped[str] = mapped_column(String(20), default="#7B8451")
     font_family: Mapped[str] = mapped_column(String(40), default="Modern sans")
     smooth_charts: Mapped[bool] = mapped_column(Boolean, default=True)
+    success_matches_accent: Mapped[bool] = mapped_column(Boolean, default=False)
     age: Mapped[int] = mapped_column(Integer, default=39)
     sex: Mapped[str] = mapped_column(String(20), default="male")
     height_cm: Mapped[float] = mapped_column(Float, default=177.0)

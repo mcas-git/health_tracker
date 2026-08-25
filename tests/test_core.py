@@ -52,6 +52,7 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
         "start_weight_kg",
         "target_weight_kg",
         "target_date",
+        "success_matches_accent",
     } <= preference_columns
     with Session(test_engine) as session:
         session.add_all(

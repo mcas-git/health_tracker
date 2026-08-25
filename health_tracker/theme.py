@@ -60,7 +60,9 @@ def derived_palette(mode: str, accent: str) -> dict[str, str | list[str]]:
     }
 
 
-def apply_theme(mode: str, accent: str, font_name: str) -> None:
+def apply_theme(
+    mode: str, accent: str, font_name: str, success_matches_accent: bool = False
+) -> None:
     accent = normalize_color(accent)
     background = _mix(accent, "#000000", 0.84)
     surface = _mix(accent, "#000000", 0.72)
@@ -71,6 +73,9 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     accent_rgb = ", ".join(str(int(accent[index : index + 2], 16)) for index in (1, 3, 5))
     red, green, blue = (int(accent[index : index + 2], 16) for index in (1, 3, 5))
     accent_text = "#111111" if (0.2126 * red + 0.7152 * green + 0.0722 * blue) > 150 else "#FFFFFF"
+    success_background = accent if success_matches_accent else "#DDEFE0"
+    success_text = accent_text if success_matches_accent else "#244C2A"
+    success_border = accent if success_matches_accent else "#8FC99A"
     neutral_icon = "#D8D8D8"
     sidebar_icon = "#FFFFFF"
     neutral_border = "#666666"
@@ -180,7 +185,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stAppViewContainer"] h4,
         [data-testid="stAppViewContainer"] h5,
         [data-testid="stAppViewContainer"] h6 {{ font-family:{font} !important; }}
-        [data-testid="stSidebar"] {{ background:{secondary}; }}
+        [data-testid="stSidebar"] {{ background:{accent}; }}
         div[data-testid="stMetric"], .quote-card, .motivation-card {{
             background:{surface}; border:1px solid {accent}33; border-radius:16px; padding:18px;
             box-shadow:0 5px 20px #0000000d;
@@ -941,6 +946,36 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         [data-testid="stDateInputCalendar"] [role="gridcell"] [data-today="true"] {{
             border:1px solid {accent} !important;
+        }}
+
+        /* Success confirmations can use light green or match primary Save buttons. */
+        [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"])
+        [data-testid="stAlertContainer"],
+        [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"])
+        [data-testid="stAlertContentSuccess"] {{
+            background:{success_background} !important;
+            background-color:{success_background} !important;
+            border-color:{success_border} !important;
+            color:{success_text} !important;
+            -webkit-text-fill-color:{success_text} !important;
+        }}
+        [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]) *,
+        [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]) svg {{
+            color:{success_text} !important;
+            fill:{success_text} !important;
+            stroke:{success_text} !important;
+            -webkit-text-fill-color:{success_text} !important;
+        }}
+
+        /* The side menu uses the same base colour as primary Save buttons. */
+        [data-testid="stSidebar"],
+        [data-testid="stSidebar"] > div {{
+            background:{accent} !important;
+            background-color:{accent} !important;
+        }}
+        [data-testid="stSidebar"] * {{
+            color:{accent_text} !important;
+            -webkit-text-fill-color:{accent_text} !important;
         }}
 
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */

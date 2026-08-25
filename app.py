@@ -50,6 +50,9 @@ with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
     _theme_values = ("dark", _preferences.accent, _preferences.font_family)
     _smooth_charts = bool(_preferences.smooth_charts)
+    _success_matches_accent = bool(
+        getattr(_preferences, "success_matches_accent", False)
+    )
     _profile = Profile(
         age=getattr(_preferences, "age", DEFAULT_PROFILE.age),
         sex=getattr(_preferences, "sex", DEFAULT_PROFILE.sex),
@@ -62,7 +65,7 @@ with Session(engine) as _theme_session:
         ),
         target_date=getattr(_preferences, "target_date", DEFAULT_PROFILE.target_date),
     )
-apply_theme(*_theme_values)
+apply_theme(*_theme_values, _success_matches_accent)
 
 
 def value(item, name, default=None):
@@ -219,6 +222,7 @@ def style_chart(chart):
             gridColor=grid,
             gridOpacity=0.35,
         )
+        .configure_axisX(grid=False)
         .configure_legend(
             orient="bottom",
             direction="horizontal",
@@ -332,6 +336,7 @@ def dashboard():
         labelAngle=0,
         tickCount=8,
         labelOverlap="greedy",
+        grid=False,
     )
 
     st.subheader("Weight trend")
@@ -1027,7 +1032,6 @@ def nutrition_insights():
         percent = nutrition[field].mean() / targets[label] * 100
         status = "Low" if percent < 80 else "High" if percent > 120 else "On target"
         overall.append({"Nutrient": label, "% of target": percent, "Status": status})
-    st.subheader("Overall average")
     overall_frame = pd.DataFrame(overall)
     overall_bars = (
         alt.Chart(overall_frame)
@@ -1044,8 +1048,9 @@ def nutrition_insights():
                 scale=alt.Scale(
                     domain=list(status_colors), range=list(status_colors.values())
                 ),
-                legend=alt.Legend(orient="bottom"),
+                legend=None,
             ),
+            opacity=alt.value(0.72),
             tooltip=[
                 "Nutrient:N",
                 "Status:N",
@@ -1058,10 +1063,6 @@ def nutrition_insights():
         .mark_rule(color="#D8D8D8", strokeDash=[4, 4], strokeWidth=2)
         .encode(x="target:Q")
     )
-    st.altair_chart(
-        style_chart(overall_bars + overall_target), use_container_width=True, theme=None
-    )
-
     day = nutrition[nutrition.entry_date.dt.date == selected]
     st.subheader("Selected day")
     if day.empty:
@@ -1111,16 +1112,11 @@ def nutrition_insights():
                     ),
                 ),
                 y=alt.Y("% of target:Q", title=None),
-                strokeDash=alt.StrokeDash(
-                    "Nutrient:N",
-                    sort=list(fields),
-                    legend=alt.Legend(orient="bottom"),
-                ),
                 color=alt.Color(
                     "Nutrient:N",
                     sort=list(fields),
                     scale=alt.Scale(domain=list(fields), range=nutrient_colors),
-                    legend=None,
+                    legend=alt.Legend(orient="bottom", title=None),
                 ),
                 tooltip=[
                     alt.Tooltip("Day:T", title="Day", format="%A, %d %b"),
@@ -1131,7 +1127,7 @@ def nutrition_insights():
         )
         weekly_target = (
             alt.Chart(pd.DataFrame({"target": [100]}))
-            .mark_rule(color="#D8D8D8", strokeDash=[4, 4], strokeWidth=2)
+            .mark_rule(color="#D8D8D8", strokeWidth=2, opacity=0.7)
             .encode(y="target:Q")
         )
         st.altair_chart(
@@ -1139,6 +1135,11 @@ def nutrition_insights():
         )
     else:
         st.info("No food estimates exist in the selected Monday–Sunday week.")
+
+    st.subheader("Overall average")
+    st.altair_chart(
+        style_chart(overall_bars + overall_target), use_container_width=True, theme=None
+    )
     st.markdown(
         "<div class='neutral-note'>Indicators use AI food estimates and are informational, "
         "not medical advice.</div>",
@@ -1173,6 +1174,14 @@ def appearance_page():
                 "directly."
             ),
         )
+        success_matches_accent = st.toggle(
+            "Match confirmation boxes to save buttons",
+            value=bool(getattr(prefs, "success_matches_accent", False)),
+            help=(
+                "Turn on to use the selected palette colour for saved-entry confirmations. "
+                "Turn off to use a lighter green."
+            ),
+        )
         st.markdown(
             f'<div style="font-family:{FONTS[font]};font-size:1.15rem;padding:.5rem 0">'
             f"Selected: {font} — The quick brown fox — 0123456789</div>",
@@ -1184,6 +1193,7 @@ def appearance_page():
                 prefs.color_mode = "dark"
                 prefs.font_family = font
                 prefs.smooth_charts = smooth_charts
+                prefs.success_matches_accent = success_matches_accent
                 session.commit()
                 st.session_state.appearance_saved = True
                 st.rerun()
