@@ -23,6 +23,7 @@ from health_tracker.config import LONDON, PROFILE, setting
 from health_tracker.db import (
     engine,
     get_daily,
+    get_latest_daily_before,
     get_nutrition,
     get_weekly_plan,
     init_db,
@@ -168,6 +169,9 @@ def dashboard():
     c.metric("7-day completion", f"{recent_completion}%")
     d.metric("Projected goal", projection.strftime("%d %b %Y") if projection else "Need more data")
     st.progress(max(0.0, min(1.0, progress)))
+    if latest_weight is not None and st.toggle("Show weight change from the beginning"):
+        weight_change = latest_weight - PROFILE.start_weight_kg
+        st.caption(f"This is {weight_change:+.1f} kg from the beginning.")
 
     latest_measurements = (
         df.dropna(subset=["bmi"]).sort_values("entry_date").iloc[-1]
@@ -406,6 +410,8 @@ def daily_entry():
             st.session_state.smartwatch_sync_requested = sync_date
             st.rerun()
     item = get_daily(selected)
+    previous_item = get_latest_daily_before(selected) if item is None else None
+    measurement_defaults = item or previous_item
     if item is not None:
         updated = item.updated_at
         if updated.tzinfo is not None:
@@ -469,31 +475,51 @@ def daily_entry():
             "Weight (kg)",
             30.0,
             250.0,
-            float(value(item, "weight_kg", PROFILE.start_weight_kg)),
+            float(value(measurement_defaults, "weight_kg", PROFILE.start_weight_kg)),
             0.1,
         )
         waist = c2.number_input(
-            "Waist (cm)", 30.0, 250.0, float(value(item, "waist_cm", 100.0)), 0.1
+            "Waist (cm)",
+            30.0,
+            250.0,
+            float(value(measurement_defaults, "waist_cm", 100.0)),
+            0.1,
         )
         bmi = weight / ((PROFILE.height_cm / 100) ** 2)
         c1, c2 = st.columns(2)
         systolic = c1.number_input(
-            "Blood pressure · systolic", 60, 250, int(value(item, "systolic", 120))
+            "Blood pressure · systolic",
+            60,
+            250,
+            int(value(measurement_defaults, "systolic", 120)),
         )
         diastolic = c2.number_input(
-            "Blood pressure · diastolic", 30, 160, int(value(item, "diastolic", 80))
+            "Blood pressure · diastolic",
+            30,
+            160,
+            int(value(measurement_defaults, "diastolic", 80)),
         )
         date_key = selected.isoformat()
-        mood = rating_input("Mood", f"mood_{date_key}", int(value(item, "mood", 5)))
-        energy = rating_input("Energy level", f"energy_{date_key}", int(value(item, "energy", 5)))
-        hunger = rating_input("Hunger", f"hunger_{date_key}", int(value(item, "hunger", 5)))
+        mood = rating_input(
+            "Mood", f"mood_{date_key}", int(value(measurement_defaults, "mood", 5))
+        )
+        energy = rating_input(
+            "Energy level",
+            f"energy_{date_key}",
+            int(value(measurement_defaults, "energy", 5)),
+        )
+        hunger = rating_input(
+            "Hunger", f"hunger_{date_key}", int(value(measurement_defaults, "hunger", 5))
+        )
         cravings = rating_input(
-            "Cravings", f"cravings_{date_key}", int(value(item, "cravings", 5))
+            "Cravings",
+            f"cravings_{date_key}",
+            int(value(measurement_defaults, "cravings", 5)),
         )
         satisfaction = rating_input(
             "Diet satisfaction",
             f"diet_satisfaction_{date_key}",
-            int(value(item, "diet_satisfaction", 7)),
+            int(value(measurement_defaults, "diet_satisfaction", 7)),
         )
 
         st.subheader("Habits")

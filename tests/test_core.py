@@ -2,7 +2,10 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
+from health_tracker import db
 from health_tracker.analytics import (
     bmi_status,
     current_streak,
@@ -14,6 +17,7 @@ from health_tracker.analytics import (
 from health_tracker.auth import create_remember_token, hash_password, valid_remember_token
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
+from health_tracker.models import Base, DailyEntry
 from health_tracker.nutrition import DailyNutritionEstimate
 from health_tracker.quotes import QUOTES, daily_item, quote_count
 from health_tracker.research import RESEARCH_INSIGHTS
@@ -31,6 +35,27 @@ def test_target_calculation_is_sensible():
     assert 1500 <= targets["calories"] <= 3000
     assert targets["protein"] >= 100
     assert targets["carbs"] >= 50
+
+
+def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        session.add_all(
+            [
+                DailyEntry(entry_date=date(2026, 8, 20), weight_kg=101.5),
+                DailyEntry(entry_date=date(2026, 8, 22), weight_kg=100.8),
+                DailyEntry(entry_date=date(2026, 8, 25), weight_kg=100.1),
+            ]
+        )
+        session.commit()
+    monkeypatch.setattr(db, "engine", test_engine)
+
+    latest = db.get_latest_daily_before(date(2026, 8, 24))
+
+    assert latest is not None
+    assert latest.entry_date == date(2026, 8, 22)
+    assert latest.weight_kg == 100.8
 
 
 def test_password_hash_is_deterministic_and_not_plaintext():

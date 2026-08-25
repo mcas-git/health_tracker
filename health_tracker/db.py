@@ -112,6 +112,16 @@ def get_daily(entry_date: date) -> DailyEntry | None:
         return session.scalar(select(DailyEntry).where(DailyEntry.entry_date == entry_date))
 
 
+def get_latest_daily_before(entry_date: date) -> DailyEntry | None:
+    with Session(engine) as session:
+        return session.scalar(
+            select(DailyEntry)
+            .where(DailyEntry.entry_date < entry_date)
+            .order_by(DailyEntry.entry_date.desc())
+            .limit(1)
+        )
+
+
 def get_nutrition(entry_date: date) -> NutritionLog | None:
     with Session(engine) as session:
         return session.scalar(select(NutritionLog).where(NutritionLog.entry_date == entry_date))
