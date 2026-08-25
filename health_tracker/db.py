@@ -42,6 +42,7 @@ def init_db() -> None:
             "diet_satisfaction": "INTEGER",
             "illness": "BOOLEAN NOT NULL DEFAULT FALSE",
             "injury": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "travel": "BOOLEAN NOT NULL DEFAULT FALSE",
             "unusual_day": "BOOLEAN NOT NULL DEFAULT FALSE",
         }
         for column, sql_type in column_types.items():

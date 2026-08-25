@@ -537,19 +537,23 @@ def daily_entry():
                 ("drugs", "Drugs"),
                 ("sleep_target", "Sleep target"),
                 ("illness", "Illness"),
-                ("injury", "Injury"),
-                ("unusual_day", "Unusual day"),
+                ("fasted", "Fasting"),
             ]
         ):
             habits[key] = cols[idx % 4].checkbox(label, value=bool(value(item, key, False)))
 
-        st.subheader("Fasting")
-        fasting_status = st.segmented_control(
-            "Fasting status",
-            ["Fasted", "Did not fast"],
-            default="Fasted" if bool(value(item, "fasted", False)) else "Did not fast",
-        )
-        fasted = fasting_status == "Fasted"
+        st.subheader("Extenuating circumstances")
+        circumstance_cols = st.columns(3)
+        circumstances = {}
+        for idx, (key, label) in enumerate(
+            [("injury", "Injury"), ("travel", "Travel"), ("unusual_day", "Unusual day")]
+        ):
+            circumstances[key] = circumstance_cols[idx].checkbox(
+                label, value=bool(value(item, key, False))
+            )
+
+        st.subheader("Fasting details")
+        fasted = habits["fasted"]
         fast_start = fast_end = None
         fasting_hours = 0.0
         if fasted:
@@ -588,12 +592,12 @@ def daily_entry():
                 "hunger": hunger,
                 "cravings": cravings,
                 "diet_satisfaction": satisfaction,
-                "fasted": fasted,
                 "fast_start": fast_start,
                 "fast_end": fast_end,
                 "fasting_hours": fasting_hours,
                 "notes": notes,
                 **habits,
+                **circumstances,
             }
         )
         st.session_state.pop("garmin_sync", None)

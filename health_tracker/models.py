@@ -42,6 +42,7 @@ class DailyEntry(Base):
     sleep_target: Mapped[bool] = mapped_column(Boolean, default=False)
     illness: Mapped[bool] = mapped_column(Boolean, default=False)
     injury: Mapped[bool] = mapped_column(Boolean, default=False)
+    travel: Mapped[bool] = mapped_column(Boolean, default=False)
     unusual_day: Mapped[bool] = mapped_column(Boolean, default=False)
     fasted: Mapped[bool] = mapped_column(Boolean, default=False)
     fast_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

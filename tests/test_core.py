@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
 from health_tracker import db
@@ -40,6 +40,8 @@ def test_target_calculation_is_sensible():
 def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
     test_engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(test_engine)
+    daily_columns = {column["name"] for column in inspect(test_engine).get_columns("daily_entries")}
+    assert "travel" in daily_columns
     with Session(test_engine) as session:
         session.add_all(
             [
