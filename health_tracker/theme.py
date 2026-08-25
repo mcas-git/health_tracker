@@ -473,6 +473,21 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             -webkit-text-fill-color:{input_placeholder} !important;
             opacity:1 !important;
         }}
+        [class*="st-key-food_note_"] [data-baseweb="textarea"],
+        [class*="st-key-food_note_"] [data-baseweb="base-input"],
+        [class*="st-key-food_note_"] textarea {{
+            background:{input_surface} !important;
+            background-color:{input_surface} !important;
+            color:{input_text} !important;
+            -webkit-text-fill-color:{input_text} !important;
+            caret-color:{input_text} !important;
+            opacity:1 !important;
+        }}
+        [class*="st-key-food_note_"] textarea::placeholder {{
+            color:{input_placeholder} !important;
+            -webkit-text-fill-color:{input_placeholder} !important;
+            opacity:1 !important;
+        }}
         [data-testid="stTextInput"] input:-webkit-autofill,
         [data-testid="stTextArea"] textarea:-webkit-autofill {{
             -webkit-box-shadow:0 0 0 1000px {input_surface} inset !important;

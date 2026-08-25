@@ -774,7 +774,22 @@ def food_log():
     if saved_message := st.session_state.pop("food_journal_saved", None):
         st.success(saved_message)
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
-    selected = st.date_input("Date", date.today(), key="food_date")
+    today = datetime.now(LONDON).date()
+    update_another_day = st.toggle(
+        "Update a different day",
+        value=False,
+        help="Turn this on only to review or replace a previous food journal.",
+        key="food_update_another_day",
+    )
+    if update_another_day:
+        selected = st.date_input(
+            "Date to update",
+            value=today - timedelta(days=1),
+            max_value=today,
+            key="historical_food_date",
+        )
+    else:
+        selected = today
     existing = get_nutrition(selected)
     food_note_key = f"food_note_{selected.isoformat()}"
     note = st.text_area(
@@ -789,6 +804,7 @@ def food_log():
         key=f"clear_{food_note_key}",
         on_click=clear_text,
         args=(food_note_key,),
+        use_container_width=True,
     )
     if st.button(
         "Recalculate and replace" if existing else "Analyse and save day",
