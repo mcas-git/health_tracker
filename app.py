@@ -655,8 +655,6 @@ def daily_entry():
                     ("alcohol_free", "Alcohol-free"),
                     ("physio", "Physio"),
                     ("drugs", "Drugs"),
-                    ("sleep_target", "Sleep target"),
-                    ("illness", "Illness"),
                     ("fasted", "Fasting"),
                 ]
             ):
@@ -665,26 +663,20 @@ def daily_entry():
                 )
 
             st.subheader("Extenuating circumstances")
-            circumstance_cols = st.columns(3)
+            circumstance_cols = st.columns(4)
             circumstances = {}
             for idx, (key, label) in enumerate(
-                [("injury", "Injury"), ("travel", "Travel"), ("unusual_day", "Unusual day")]
+                [
+                    ("illness", "Illness"),
+                    ("injury", "Injury"),
+                    ("travel", "Travel"),
+                    ("unusual_day", "Unusual day"),
+                ]
             ):
                 circumstances[key] = circumstance_cols[idx].checkbox(
                     label, value=bool(value(item, key, False)), key=f"{key}_{date_key}"
                 )
 
-            notes_key = f"daily_notes_{date_key}"
-            notes = st.text_area(
-                "General notes", value=value(item, "notes", ""), height=100, key=notes_key
-            )
-            st.form_submit_button(
-                "Clean response",
-                key=f"clear_{notes_key}",
-                on_click=clear_text,
-                args=(notes_key,),
-                use_container_width=True,
-            )
             evening_submitted = st.form_submit_button(
                 "Save evening check-in", use_container_width=True, type="primary"
             )
@@ -700,7 +692,6 @@ def daily_entry():
                     "energy": energy,
                     "cravings": cravings,
                     "diet_satisfaction": satisfaction,
-                    "notes": notes,
                     **habits,
                     **circumstances,
                 }
