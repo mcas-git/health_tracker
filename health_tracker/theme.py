@@ -554,6 +554,18 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             -webkit-box-shadow:0 0 0 1000px {input_surface} inset !important;
             -webkit-text-fill-color:{input_text} !important;
         }}
+        [class*="st-key-food_note_"] textarea {{
+            color:#FFFFFF !important;
+            -webkit-text-fill-color:#FFFFFF !important;
+            caret-color:#FFFFFF !important;
+            font-weight:500 !important;
+            opacity:1 !important;
+        }}
+        [class*="st-key-food_note_"] textarea::placeholder {{
+            color:#FFFFFF !important;
+            -webkit-text-fill-color:#FFFFFF !important;
+            opacity:1 !important;
+        }}
         [data-testid="stExpander"] details,
         [data-testid="stExpander"] details[open],
         [data-testid="stExpander"] summary,
