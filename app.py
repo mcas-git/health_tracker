@@ -706,6 +706,16 @@ def weekly_coaching():
     with st.form("weekly_plan"):
         st.subheader("Plan this week")
         week_key = week_start.isoformat()
+        c1, c2, c3 = st.columns(3)
+        gym_sessions = c1.number_input(
+            "Planned gym sessions", 0, 7, int(value(saved, "planned_gym_sessions", 3))
+        )
+        cardio_sessions = c2.number_input(
+            "Planned cardio sessions", 0, 7, int(value(saved, "planned_cardio_sessions", 2))
+        )
+        minimum_steps = c3.number_input(
+            "Daily step floor", 0, 50000, int(value(saved, "minimum_steps", 7000)), 500
+        )
         focus_key = f"weekly_focus_{week_key}"
         focus = st.text_input(
             "One behaviour to focus on",
@@ -718,16 +728,6 @@ def weekly_coaching():
             on_click=clear_text,
             args=(focus_key,),
             use_container_width=True,
-        )
-        c1, c2, c3 = st.columns(3)
-        gym_sessions = c1.number_input(
-            "Planned gym sessions", 0, 7, int(value(saved, "planned_gym_sessions", 3))
-        )
-        cardio_sessions = c2.number_input(
-            "Planned cardio sessions", 0, 7, int(value(saved, "planned_cardio_sessions", 2))
-        )
-        minimum_steps = c3.number_input(
-            "Daily step floor", 0, 50000, int(value(saved, "minimum_steps", 7000)), 500
         )
         barrier_key = f"weekly_barrier_{week_key}"
         barrier = st.text_input(
@@ -756,9 +756,6 @@ def weekly_coaching():
             args=(if_then_key,),
             use_container_width=True,
         )
-        maintenance = st.toggle(
-            "Maintenance mode", value=bool(value(saved, "maintenance_mode", False))
-        )
         if st.form_submit_button("Save weekly plan", type="primary", use_container_width=True):
             upsert_weekly_plan(
                 {
@@ -769,7 +766,6 @@ def weekly_coaching():
                     "minimum_steps": minimum_steps,
                     "anticipated_barrier": barrier,
                     "if_then_plan": if_then,
-                    "maintenance_mode": maintenance,
                 }
             )
             st.success("Weekly plan saved.")

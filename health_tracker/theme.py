@@ -634,6 +634,25 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
 
         .stButton > button,
         .stFormSubmitButton > button {{ width:100% !important; }}
+        [class*="st-key-clear_"] button {{
+            background:{background} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+            border:1px solid {neutral_border} !important;
+            box-shadow:none !important;
+        }}
+        [class*="st-key-clear_"] button:hover,
+        [class*="st-key-clear_"] button:focus {{
+            background:{secondary} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+            border-color:{accent} !important;
+            box-shadow:none !important;
+        }}
+        [class*="st-key-clear_"] button * {{
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
 
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
         [data-testid="stExpandSidebarButton"],
