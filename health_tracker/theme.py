@@ -748,6 +748,39 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             -webkit-text-fill-color:{text} !important;
         }}
 
+        /* High-contrast journal and coaching fields; keep every BaseWeb layer dark. */
+        [class*="st-key-food_note_"] [data-baseweb="textarea"],
+        [class*="st-key-food_note_"] [data-baseweb="textarea"] > div,
+        [class*="st-key-food_note_"] [data-baseweb="base-input"],
+        [class*="st-key-food_note_"] textarea,
+        [class*="st-key-weekly_focus_"] [data-baseweb="input"],
+        [class*="st-key-weekly_focus_"] [data-baseweb="input"] > div,
+        [class*="st-key-weekly_focus_"] [data-baseweb="base-input"],
+        [class*="st-key-weekly_focus_"] input,
+        [class*="st-key-weekly_barrier_"] [data-baseweb="input"],
+        [class*="st-key-weekly_barrier_"] [data-baseweb="input"] > div,
+        [class*="st-key-weekly_barrier_"] [data-baseweb="base-input"],
+        [class*="st-key-weekly_barrier_"] input,
+        [class*="st-key-weekly_if_then_"] [data-baseweb="input"],
+        [class*="st-key-weekly_if_then_"] [data-baseweb="input"] > div,
+        [class*="st-key-weekly_if_then_"] [data-baseweb="base-input"],
+        [class*="st-key-weekly_if_then_"] input {{
+            background:#202124 !important;
+            background-color:#202124 !important;
+            color:#FFFFFF !important;
+            -webkit-text-fill-color:#FFFFFF !important;
+            caret-color:#FFFFFF !important;
+            opacity:1 !important;
+        }}
+        [class*="st-key-food_note_"] textarea::placeholder,
+        [class*="st-key-weekly_focus_"] input::placeholder,
+        [class*="st-key-weekly_barrier_"] input::placeholder,
+        [class*="st-key-weekly_if_then_"] input::placeholder {{
+            color:#D8D8D8 !important;
+            -webkit-text-fill-color:#D8D8D8 !important;
+            opacity:1 !important;
+        }}
+
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
         [data-testid="stExpandSidebarButton"],
         [data-testid="stExpandSidebarButton"] *,
