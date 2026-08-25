@@ -808,6 +808,58 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             opacity:1 !important;
         }}
 
+        /* Current Streamlit dropdowns use React Aria rather than BaseWeb. */
+        [data-testid="stSelectbox"] .react-aria-ComboBox > div {{
+            box-sizing:border-box !important;
+            background:{background} !important;
+            background-color:{background} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:10px !important;
+            overflow:hidden !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [data-testid="stSelectbox"] .react-aria-ComboBox > div:focus-within {{
+            border-color:{accent} !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [data-testid="stSelectbox"] .react-aria-ComboBox input,
+        [data-testid="stSelectbox"] .react-aria-ComboBox button {{
+            background:transparent !important;
+            background-color:transparent !important;
+            border:0 !important;
+            border-radius:0 !important;
+            box-shadow:none !important;
+            outline:none !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+        [data-testid="stSelectboxVirtualDropdown"] {{
+            box-sizing:border-box !important;
+            background:{background} !important;
+            background-color:{background} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:10px !important;
+            overflow:hidden !important;
+            box-shadow:none !important;
+        }}
+        [data-testid="stSelectboxVirtualDropdown"] [role="listbox"],
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"],
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"] * {{
+            background:{background} !important;
+            background-color:{background} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"]:hover,
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"][aria-selected="true"],
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"]:hover *,
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"][aria-selected="true"] * {{
+            background:{secondary} !important;
+            background-color:{secondary} !important;
+        }}
+
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
         [data-testid="stExpandSidebarButton"],
         [data-testid="stExpandSidebarButton"] *,
