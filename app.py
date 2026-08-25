@@ -248,6 +248,20 @@ def dashboard():
             )
         )
         weight_chart = weight_line + goal_line
+        if _smooth_charts:
+            latest_raw_point = (
+                alt.Chart(weight.tail(1))
+                .mark_point(filled=True, size=150, color=accent, stroke="#FFFFFF", strokeWidth=2)
+                .encode(
+                    x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                    y=alt.Y("weight_kg:Q", title="Weight (kg)", scale=alt.Scale(zero=False)),
+                    tooltip=[
+                        alt.Tooltip("entry_date:T", title="Latest date"),
+                        alt.Tooltip("weight_kg:Q", title="Latest weight (kg)", format=".1f"),
+                    ],
+                )
+            )
+            weight_chart = weight_chart + latest_raw_point
         if show_milestones:
             milestones, weekly_pace = weight_milestones(journey_start.date())
             milestone_frame = pd.DataFrame(milestones)
@@ -287,6 +301,11 @@ def dashboard():
             style_chart(weight_chart.properties(height=chart_height)),
             use_container_width=True,
             theme=None,
+        )
+        latest_weight_row = weight.iloc[-1]
+        st.caption(
+            f"Latest recorded weight: {latest_weight_row['weight_kg']:.1f} kg on "
+            f"{latest_weight_row['entry_date']:%d %b %Y}."
         )
     else:
         st.caption("No weight entries yet.")
@@ -375,6 +394,18 @@ def dashboard():
         "text/csv",
         use_container_width=True,
     )
+    smooth_charts = st.toggle(
+        "Smooth line graphs",
+        value=_smooth_charts,
+        help="Use seven-entry rolling averages. Turn off to plot every recorded value directly.",
+        key="dashboard_smooth_charts",
+    )
+    if smooth_charts != _smooth_charts:
+        with Session(engine) as session:
+            preferences = session.get(AppPreferences, 1)
+            preferences.smooth_charts = smooth_charts
+            session.commit()
+        st.rerun()
 
 
 def daily_entry():
@@ -924,11 +955,6 @@ def appearance_page():
             list(FONTS),
             index=(list(FONTS).index(prefs.font_family) if prefs.font_family in FONTS else 0),
         )
-        smooth_charts = st.toggle(
-            "Smooth line graphs",
-            value=bool(prefs.smooth_charts),
-            help="Use rolling averages for clearer trends. Turn off to show every recorded value.",
-        )
         st.markdown(
             f'<div style="font-family:{FONTS[font]};font-size:1.15rem;padding:.5rem 0">'
             f"Selected: {font} — The quick brown fox — 0123456789</div>",
@@ -939,7 +965,6 @@ def appearance_page():
                 prefs.accent = normalize_color(typed_color or picked_color)
                 prefs.color_mode = mode or "light"
                 prefs.font_family = font
-                prefs.smooth_charts = smooth_charts
                 session.commit()
                 st.session_state.appearance_saved = True
                 st.rerun()
