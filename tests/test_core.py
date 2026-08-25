@@ -5,8 +5,7 @@ import pandas as pd
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
-from health_tracker import db
-from health_tracker import garmin
+from health_tracker import db, garmin
 from health_tracker.analytics import (
     bmi_status,
     current_streak,

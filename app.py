@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import json
 import math
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 import altair as alt
 import pandas as pd
@@ -21,6 +21,7 @@ from health_tracker.analytics import (
 )
 from health_tracker.auth import require_login
 from health_tracker.config import LONDON, Profile, setting
+from health_tracker.config import PROFILE as DEFAULT_PROFILE
 from health_tracker.db import (
     engine,
     get_daily,
@@ -52,12 +53,16 @@ with Session(engine) as _theme_session:
     _theme_values = (_preferences.color_mode, _preferences.accent, _preferences.font_family)
     _smooth_charts = bool(_preferences.smooth_charts)
     _profile = Profile(
-        age=_preferences.age,
-        sex=_preferences.sex,
-        height_cm=_preferences.height_cm,
-        start_weight_kg=_preferences.start_weight_kg,
-        target_weight_kg=_preferences.target_weight_kg,
-        target_date=_preferences.target_date,
+        age=getattr(_preferences, "age", DEFAULT_PROFILE.age),
+        sex=getattr(_preferences, "sex", DEFAULT_PROFILE.sex),
+        height_cm=getattr(_preferences, "height_cm", DEFAULT_PROFILE.height_cm),
+        start_weight_kg=getattr(
+            _preferences, "start_weight_kg", DEFAULT_PROFILE.start_weight_kg
+        ),
+        target_weight_kg=getattr(
+            _preferences, "target_weight_kg", DEFAULT_PROFILE.target_weight_kg
+        ),
+        target_date=getattr(_preferences, "target_date", DEFAULT_PROFILE.target_date),
     )
 apply_theme(*_theme_values)
 
@@ -1055,25 +1060,45 @@ def settings_page():
         with st.form("profile_settings"):
             st.subheader("Profile and weight goal")
             profile_cols = st.columns(3)
-            age = profile_cols[0].number_input("Age", 18, 100, preferences.age)
+            age = profile_cols[0].number_input(
+                "Age", 18, 100, getattr(preferences, "age", DEFAULT_PROFILE.age)
+            )
             sex_options = ["male", "female", "other"]
             sex = profile_cols[1].selectbox(
                 "Gender",
                 sex_options,
-                index=sex_options.index(preferences.sex) if preferences.sex in sex_options else 2,
+                index=(
+                    sex_options.index(getattr(preferences, "sex", DEFAULT_PROFILE.sex))
+                    if getattr(preferences, "sex", DEFAULT_PROFILE.sex) in sex_options
+                    else 2
+                ),
                 format_func=str.title,
             )
             height = profile_cols[2].number_input(
-                "Height (cm)", 120.0, 230.0, preferences.height_cm, 0.5
+                "Height (cm)",
+                120.0,
+                230.0,
+                getattr(preferences, "height_cm", DEFAULT_PROFILE.height_cm),
+                0.5,
             )
             goal_cols = st.columns(3)
             starting_weight = goal_cols[0].number_input(
-                "Starting weight (kg)", 30.0, 300.0, preferences.start_weight_kg, 0.1
+                "Starting weight (kg)",
+                30.0,
+                300.0,
+                getattr(preferences, "start_weight_kg", DEFAULT_PROFILE.start_weight_kg),
+                0.1,
             )
             goal_weight = goal_cols[1].number_input(
-                "Final goal (kg)", 30.0, 300.0, preferences.target_weight_kg, 0.1
+                "Final goal (kg)",
+                30.0,
+                300.0,
+                getattr(preferences, "target_weight_kg", DEFAULT_PROFILE.target_weight_kg),
+                0.1,
             )
-            goal_date = goal_cols[2].date_input("Goal date", preferences.target_date)
+            goal_date = goal_cols[2].date_input(
+                "Goal date", getattr(preferences, "target_date", DEFAULT_PROFILE.target_date)
+            )
             if st.form_submit_button(
                 "Save profile and goal", type="primary", use_container_width=True
             ):
