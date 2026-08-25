@@ -977,6 +977,12 @@ def apply_theme(
             color:{accent_text} !important;
             -webkit-text-fill-color:{accent_text} !important;
         }}
+        [data-testid="stSpinner"] [data-testid="stSpinnerIcon"],
+        [data-testid="stSpinner"] [data-testid="stSpinnerIcon"] * {{
+            color:{accent} !important;
+            fill:{accent} !important;
+            stroke:{accent} !important;
+        }}
 
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
         [data-testid="stExpandSidebarButton"],

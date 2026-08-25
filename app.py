@@ -557,21 +557,25 @@ def dashboard():
     )
 def daily_entry():
     st.title("Daily check-in")
-    if saved_message := st.session_state.pop("daily_checkin_saved", None):
-        st.success(saved_message)
+    confirmation_area = st.container()
+    st.session_state.pop("daily_checkin_saved", None)
     london_now = datetime.now(LONDON)
     today = london_now.date()
+    smartwatch_confirmation = None
+    smartwatch_error = None
     if requested_date := st.session_state.pop("smartwatch_sync_requested", None):
         try:
             with st.spinner("Loading smartwatch data…"):
                 smartwatch_data = sync_day(requested_date)
             st.session_state.garmin_sync = {"date": requested_date, "data": smartwatch_data}
-            st.success(
+            for field_key in ("resting_hr", "sleep", "steps", "burned"):
+                st.session_state.pop(f"{field_key}_{requested_date.isoformat()}", None)
+            smartwatch_confirmation = (
                 f"Smartwatch data loaded for {requested_date:%d %b %Y} · "
                 f"{len(smartwatch_data['activities'])} activities."
             )
         except Exception as exc:
-            st.error(f"Smartwatch sync failed: {exc}")
+            smartwatch_error = f"Smartwatch sync failed: {exc}"
     update_another_day = st.toggle(
         "Update a different day",
         value=False,
@@ -596,9 +600,16 @@ def daily_entry():
         updated = item.updated_at
         if updated.tzinfo is not None:
             updated = updated.astimezone(LONDON)
-        st.success(
-            f"Entry saved for {selected:%d %b %Y} · Last updated {updated:%d %b %Y at %H:%M}"
-        )
+    with confirmation_area:
+        if item is not None:
+            st.success(
+                f"Entry saved for {selected:%d %b %Y} · "
+                f"Last updated {updated:%d %b %Y at %H:%M}"
+            )
+        if smartwatch_confirmation:
+            st.success(smartwatch_confirmation)
+        if smartwatch_error:
+            st.error(smartwatch_error)
     sync_record = st.session_state.get("garmin_sync", {})
     synced = sync_record.get("data", {}) if sync_record.get("date") == selected else {}
     date_key = selected.isoformat()
@@ -643,16 +654,17 @@ def daily_entry():
                 "Save morning check-in", use_container_width=True, type="primary"
             )
         if morning_submitted:
-            upsert_daily(
-                {
-                    "entry_date": selected,
-                    "weight_kg": weight,
-                    "waist_cm": waist,
-                    "bmi": bmi,
-                    "systolic": systolic,
-                    "diastolic": diastolic,
-                }
-            )
+            with st.spinner("Saving morning check-in…"):
+                upsert_daily(
+                    {
+                        "entry_date": selected,
+                        "weight_kg": weight,
+                        "waist_cm": waist,
+                        "bmi": bmi,
+                        "systolic": systolic,
+                        "diastolic": diastolic,
+                    }
+                )
             st.session_state["daily_checkin_saved"] = (
                 f"Morning check-in saved for {selected:%d %b %Y}."
             )
@@ -662,7 +674,8 @@ def daily_entry():
         st.subheader("Smartwatch data")
         st.caption(
             "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin assigns "
-            "to that date, normally the night ending that morning."
+            "to that date, normally the night ending that morning. Data comes from Garmin "
+            "Connect after the watch has finished syncing."
         )
         with st.container(key="smartwatch_load"):
             if st.button(
@@ -676,6 +689,38 @@ def daily_entry():
         def smartwatch_value(field):
             imported = synced.get(field)
             return imported if imported is not None else value(item, field)
+
+        if synced:
+            active_calories = synced.get("active_calories")
+            resting_calories = synced.get("resting_calories")
+            steps_label = "—" if synced.get("steps") is None else f"{synced['steps']:,}"
+            sleep_label = (
+                "—"
+                if synced.get("sleep_hours") is None
+                else f"{synced['sleep_hours']:.2f}"
+            )
+            heart_label = (
+                "—"
+                if synced.get("resting_heart_rate") is None
+                else f"{synced['resting_heart_rate']}"
+            )
+            total_calorie_label = (
+                "—"
+                if synced.get("calories_burned") is None
+                else f"{synced['calories_burned']:,.0f}"
+            )
+            calorie_detail = ""
+            if active_calories is not None or resting_calories is not None:
+                calorie_detail = (
+                    f" · {active_calories or 0:,.0f} active + "
+                    f"{resting_calories or 0:,.0f} resting kcal"
+                )
+            st.caption(
+                f"Garmin Connect returned {steps_label} steps · "
+                f"{sleep_label} h sleep · {heart_label} bpm resting · "
+                f"{total_calorie_label} total kcal"
+                f"{calorie_detail}."
+            )
 
         with st.form(f"evening_form_{date_key}"):
             c1, c2, c3, c4 = st.columns(4)
@@ -712,12 +757,13 @@ def daily_entry():
             )
             burned_value = smartwatch_value("calories_burned")
             burned = c4.number_input(
-                "Calories burned",
+                "Total calories burned",
                 0,
                 10000,
                 value=int(burned_value) if burned_value is not None else None,
                 disabled=True,
                 placeholder="No data",
+                help="Garmin total calories combine active and resting (BMR) calories.",
                 key=f"burned_{date_key}",
             )
 
@@ -779,21 +825,22 @@ def daily_entry():
                 "Save evening check-in", use_container_width=True, type="primary"
             )
         if evening_submitted:
-            upsert_daily(
-                {
-                    "entry_date": selected,
-                    "resting_heart_rate": resting_hr,
-                    "sleep_hours": sleep,
-                    "steps": steps,
-                    "calories_burned": burned,
-                    "mood": mood,
-                    "energy": energy,
-                    "cravings": cravings,
-                    "diet_satisfaction": satisfaction,
-                    **habits,
-                    **circumstances,
-                }
-            )
+            with st.spinner("Saving evening check-in…"):
+                upsert_daily(
+                    {
+                        "entry_date": selected,
+                        "resting_heart_rate": resting_hr,
+                        "sleep_hours": sleep,
+                        "steps": steps,
+                        "calories_burned": burned,
+                        "mood": mood,
+                        "energy": energy,
+                        "cravings": cravings,
+                        "diet_satisfaction": satisfaction,
+                        **habits,
+                        **circumstances,
+                    }
+                )
             st.session_state.pop("garmin_sync", None)
             st.session_state["daily_checkin_saved"] = (
                 f"Evening check-in saved for {selected:%d %b %Y}."
@@ -892,17 +939,18 @@ def weekly_coaching():
             use_container_width=True,
         )
         if st.form_submit_button("Save weekly plan", type="primary", use_container_width=True):
-            upsert_weekly_plan(
-                {
-                    "week_start": week_start,
-                    "focus": focus,
-                    "planned_gym_sessions": gym_sessions,
-                    "planned_cardio_sessions": cardio_sessions,
-                    "minimum_steps": minimum_steps,
-                    "anticipated_barrier": barrier,
-                    "if_then_plan": if_then,
-                }
-            )
+            with st.spinner("Saving weekly plan…"):
+                upsert_weekly_plan(
+                    {
+                        "week_start": week_start,
+                        "focus": focus,
+                        "planned_gym_sessions": gym_sessions,
+                        "planned_cardio_sessions": cardio_sessions,
+                        "minimum_steps": minimum_steps,
+                        "anticipated_barrier": barrier,
+                        "if_then_plan": if_then,
+                    }
+                )
             st.success("Weekly plan saved.")
 
 
@@ -1260,7 +1308,8 @@ def settings_page():
                     preferences.start_weight_kg = starting_weight
                     preferences.target_weight_kg = goal_weight
                     preferences.target_date = goal_date
-                    session.commit()
+                    with st.spinner("Saving profile and goal…"):
+                        session.commit()
                     st.success("Profile and goal saved.")
                     st.rerun()
         with st.form("goals"):
@@ -1283,7 +1332,8 @@ def settings_page():
                 goals.carbs_target_g, goals.fat_target_g = carbs, fat
                 goals.fibre_target_g, goals.fasting_target_hours = fibre, fasting
                 goals.sleep_target_hours = sleep
-                session.commit()
+                with st.spinner("Saving targets…"):
+                    session.commit()
                 st.success("Targets saved.")
     st.subheader("Export")
     data = load_data()
@@ -1296,9 +1346,10 @@ def settings_page():
     st.download_button(
         "Download all data as CSV", csv, "health-journey.csv", "text/csv", use_container_width=True
     )
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        excel_safe_data(export).to_excel(writer, index=False, sheet_name="Journey")
+    with st.spinner("Preparing Excel export…"):
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+            excel_safe_data(export).to_excel(writer, index=False, sheet_name="Journey")
     st.download_button(
         "Download all data as Excel",
         buffer.getvalue(),

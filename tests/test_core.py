@@ -84,7 +84,13 @@ def test_garmin_sync_uses_selected_date_for_stats_and_overnight_sleep(monkeypatc
 
         def get_stats(self, day):
             calls.append(("stats", day))
-            return {"totalSteps": 8000, "totalKilocalories": 2200}
+            return {
+                "calendarDate": day,
+                "totalSteps": 8000,
+                "totalKilocalories": 2200,
+                "activeKilocalories": 500,
+                "bmrKilocalories": 1700,
+            }
 
         def get_sleep_data(self, day):
             calls.append(("sleep", day))
@@ -110,6 +116,45 @@ def test_garmin_sync_uses_selected_date_for_stats_and_overnight_sleep(monkeypatc
         ("activities", "2026-08-25", "2026-08-25"),
     ]
     assert result["sleep_hours"] == 7.5
+    assert result["calories_burned"] == 2200
+    assert result["active_calories"] == 500
+    assert result["resting_calories"] == 1700
+    assert result["source_date"] == "2026-08-25"
+
+
+def test_garmin_sync_reconstructs_total_calories_without_discarding_zero(monkeypatch):
+    class FakeGarmin:
+        def __init__(self, email, password):
+            pass
+
+        def login(self):
+            pass
+
+        def get_stats(self, day):
+            return {
+                "totalSteps": 0,
+                "activeKilocalories": 450,
+                "bmrKilocalories": 1650,
+                "restingHeartRate": 0,
+            }
+
+        def get_sleep_data(self, day):
+            return {"dailySleepDTO": {"sleepTimeSeconds": 0}}
+
+        def get_heart_rates(self, day):
+            return {"restingHeartRate": 0}
+
+        def get_activities_by_date(self, start, end):
+            return []
+
+    monkeypatch.setattr(garmin, "Garmin", FakeGarmin)
+    monkeypatch.setattr(garmin, "setting", lambda name: f"test-{name.lower()}")
+
+    result = garmin.sync_day(date(2026, 8, 25))
+
+    assert result["calories_burned"] == 2100
+    assert result["sleep_hours"] == 0
+    assert result["resting_heart_rate"] == 0
 
 
 def test_password_hash_is_deterministic_and_not_plaintext():
