@@ -79,7 +79,7 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     input_text = "#FFFFFF"
     input_placeholder = "#C4C7C5"
     font = FONTS.get(font_name, FONTS["Modern sans"])
-    garmin_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "garmin-white.svg"
+    garmin_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "garmin.svg"
     garmin_logo_css = (
         'background-image:url("data:image/svg+xml;base64,'
         + b64encode(garmin_logo.read_bytes()).decode()
@@ -223,17 +223,17 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
         .st-key-smartwatch_load button {{
-            background-color:{secondary} !important; {garmin_logo_css}
+            background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;
-            background-size:150px auto !important; border-color:{accent} !important;
-            color:{text} !important; min-height:3.5rem !important;
+            background-size:150px auto !important; border-color:#00A6CE !important;
+            color:#111111 !important; min-height:3.5rem !important;
         }}
         .st-key-smartwatch_load button:hover,
         .st-key-smartwatch_load button:focus {{
-            background-color:{surface} !important; border-color:{link_color} !important;
-            color:{text} !important; box-shadow:none !important;
+            background-color:#F2FAFC !important; border-color:#007CC3 !important;
+            color:#111111 !important; box-shadow:0 0 0 2px #007CC344 !important;
         }}
-        .st-key-smartwatch_load button * {{ color:{text} !important; }}
+        .st-key-smartwatch_load button * {{ color:#111111 !important; }}
         .st-key-smartwatch_load button p {{ opacity:0 !important; font-size:0 !important; }}
         .garmin-action-label {{
             color:{text}; font-weight:650; margin:.5rem 0 .35rem;
@@ -247,9 +247,9 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
         [data-testid="stAlert"] svg,
         [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
-        [data-testid="stProgress"] [role="progressbar"] > div,
-        [data-testid="stProgressBar"] [role="progressbar"] > div,
-        [data-baseweb="progress-bar"] [role="progressbar"] > div {{
+        [data-testid="stProgressBarTrack"] > div,
+        [data-testid="stProgress"] [data-testid="stProgressBarTrack"] > div,
+        [data-testid="stProgressBar"] [data-testid="stProgressBarTrack"] > div {{
             background:#4F8A55 !important;
             background-color:#4F8A55 !important;
         }}
@@ -704,15 +704,15 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         }}
 
         .st-key-smartwatch_load button {{
-            background-color:{secondary} !important; border-color:{accent} !important;
-            color:{text} !important;
+            background-color:#FFFFFF !important; border-color:#00A6CE !important;
+            color:#111111 !important;
         }}
         .st-key-smartwatch_load button:hover,
         .st-key-smartwatch_load button:focus {{
-            background-color:{surface} !important; border-color:{link_color} !important;
-            color:{text} !important;
+            background-color:#F2FAFC !important; border-color:#007CC3 !important;
+            color:#111111 !important;
         }}
-        .st-key-smartwatch_load button * {{ color:{text} !important; }}
+        .st-key-smartwatch_load button * {{ color:#111111 !important; }}
 
         .stButton > button,
         .stFormSubmitButton > button {{ width:100% !important; }}

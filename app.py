@@ -743,7 +743,6 @@ def daily_entry():
                 [
                     ("gym", "Gym"),
                     ("cardio", "Cardio"),
-                    ("erg", "ERG"),
                     ("supplements", "Supplements"),
                     ("protein_powder", "Protein powder"),
                     ("alcohol_free", "Alcohol-free"),
