@@ -230,7 +230,7 @@ def dashboard():
     palette = derived_palette(*_theme_values[:2])
     series_colors = palette["series"]
     journey_start = pd.Timestamp(df.entry_date.min()).normalize()
-    journey_end = pd.Timestamp(_profile.target_date)
+    journey_end = max(pd.Timestamp(projection or _profile.target_date), journey_start)
     date_scale = alt.Scale(domain=[journey_start, journey_end])
     date_axis = alt.Axis(
         title=None,
@@ -244,11 +244,6 @@ def dashboard():
     show_milestones = st.toggle("Show weight milestones", value=False)
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
-        weight_date_scale = (
-            date_scale
-            if show_milestones
-            else alt.Scale(domain=[weight.entry_date.min(), weight.entry_date.max()])
-        )
         weight_scale = alt.Scale(
             domain=[
                 _profile.target_weight_kg,
@@ -275,7 +270,7 @@ def dashboard():
                 strokeWidth=4,
             )
             .encode(
-                x=alt.X("entry_date:T", axis=date_axis, scale=weight_date_scale),
+                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
                 y=alt.Y(
                     "display_value:Q",
                     title=None,
@@ -302,7 +297,7 @@ def dashboard():
                 alt.Chart(weight)
                 .mark_point(filled=True, size=90, color=accent, stroke="#FFFFFF", strokeWidth=2)
                 .encode(
-                    x=alt.X("entry_date:T", axis=date_axis, scale=weight_date_scale),
+                    x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
                     y=alt.Y("weight_kg:Q", title=None, scale=weight_scale),
                     tooltip=[
                         alt.Tooltip("entry_date:T", title="Date"),
