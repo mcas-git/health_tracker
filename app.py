@@ -568,8 +568,10 @@ def daily_entry():
             with st.spinner("Loading smartwatch data…"):
                 smartwatch_data = sync_day(requested_date)
             st.session_state.garmin_sync = {"date": requested_date, "data": smartwatch_data}
-            for field_key in ("resting_hr", "sleep", "steps", "burned"):
-                st.session_state.pop(f"{field_key}_{requested_date.isoformat()}", None)
+            revision_key = f"garmin_sync_revision_{requested_date.isoformat()}"
+            st.session_state[revision_key] = int(
+                st.session_state.get(revision_key, 0)
+            ) + 1
             smartwatch_confirmation = (
                 f"Smartwatch data loaded for {requested_date:%d %b %Y} · "
                 f"{len(smartwatch_data['activities'])} activities."
@@ -613,6 +615,7 @@ def daily_entry():
     sync_record = st.session_state.get("garmin_sync", {})
     synced = sync_record.get("data", {}) if sync_record.get("date") == selected else {}
     date_key = selected.isoformat()
+    sync_revision = int(st.session_state.get(f"garmin_sync_revision_{date_key}", 0))
 
     with st.expander("Morning check-in", expanded=True):
         st.caption("Record weight, waist and blood pressure.")
@@ -732,7 +735,7 @@ def daily_entry():
                 value=int(resting_value) if resting_value is not None else None,
                 disabled=True,
                 placeholder="No data",
-                key=f"resting_hr_{date_key}",
+                key=f"resting_hr_{date_key}_{sync_revision}",
             )
             sleep_value = smartwatch_value("sleep_hours")
             sleep = c2.number_input(
@@ -743,7 +746,7 @@ def daily_entry():
                 step=0.01,
                 disabled=True,
                 placeholder="No data",
-                key=f"sleep_{date_key}",
+                key=f"sleep_{date_key}_{sync_revision}",
             )
             steps_value = smartwatch_value("steps")
             steps = c3.number_input(
@@ -753,7 +756,7 @@ def daily_entry():
                 value=int(steps_value) if steps_value is not None else None,
                 disabled=True,
                 placeholder="No data",
-                key=f"steps_{date_key}",
+                key=f"steps_{date_key}_{sync_revision}",
             )
             burned_value = smartwatch_value("calories_burned")
             burned = c4.number_input(
@@ -764,7 +767,7 @@ def daily_entry():
                 disabled=True,
                 placeholder="No data",
                 help="Garmin total calories combine active and resting (BMR) calories.",
-                key=f"burned_{date_key}",
+                key=f"burned_{date_key}_{sync_revision}",
             )
 
             st.subheader("Evening measurements")
