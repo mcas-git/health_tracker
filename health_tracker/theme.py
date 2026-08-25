@@ -553,6 +553,32 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             color:{neutral_icon} !important;
             fill:{neutral_icon} !important;
         }}
+        .st-key-additional_kpi [data-baseweb="select"],
+        .st-key-additional_kpi [data-baseweb="select"] > div,
+        .st-key-additional_kpi [role="combobox"],
+        .st-key-additional_kpi [aria-haspopup="listbox"] {{
+            background:{input_surface} !important;
+            background-color:{input_surface} !important;
+            color:{input_text} !important;
+            -webkit-text-fill-color:{input_text} !important;
+        }}
+        .st-key-additional_kpi [data-baseweb="select"] span,
+        .st-key-additional_kpi [data-baseweb="select"] p,
+        [data-baseweb="popover"] [role="listbox"],
+        [data-baseweb="popover"] [role="option"],
+        [data-baseweb="popover"] [role="option"] * {{
+            background-color:{input_surface} !important;
+            color:{input_text} !important;
+            -webkit-text-fill-color:{input_text} !important;
+        }}
+        [data-baseweb="popover"] [role="option"]:hover,
+        [data-baseweb="popover"] [role="option"][aria-selected="true"],
+        [data-baseweb="popover"] [role="option"]:hover *,
+        [data-baseweb="popover"] [role="option"][aria-selected="true"] * {{
+            background-color:{secondary} !important;
+            color:{input_text} !important;
+            -webkit-text-fill-color:{input_text} !important;
+        }}
 
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; border-color:#00A6CE !important;

@@ -333,11 +333,9 @@ def dashboard():
         "waist_cm": "Waist",
         "steps": "Steps",
         "sleep_hours": "Sleep",
-        "calories": "Calories eaten",
         "calories_burned": "Calories burned",
         "mood": "Mood",
         "energy": "Energy",
-        "fasting_hours": "Fasting hours",
         "resting_heart_rate": "Resting heart rate",
         "systolic": "Blood pressure (systolic)",
         "diastolic": "Blood pressure (diastolic)",
@@ -346,7 +344,9 @@ def dashboard():
         label: field for field, label in labels.items() if field in df and df[field].notna().any()
     }
     if available:
-        selected_label = st.selectbox("Additional KPI", available, label_visibility="collapsed")
+        selected_label = st.selectbox(
+            "Additional KPI", available, label_visibility="collapsed", key="additional_kpi"
+        )
         selected_kpi = available[selected_label]
         recent = df[["entry_date", selected_kpi]].dropna().tail(30).copy()
         recent["display_value"] = (
