@@ -53,14 +53,21 @@ def init_db() -> None:
     preference_columns = {
         column["name"] for column in inspect(engine).get_columns("app_preferences")
     }
-    if "smooth_charts" not in preference_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE app_preferences ADD COLUMN smooth_charts "
-                    "BOOLEAN NOT NULL DEFAULT TRUE"
+    preference_column_types = {
+        "smooth_charts": "BOOLEAN NOT NULL DEFAULT TRUE",
+        "age": "INTEGER NOT NULL DEFAULT 39",
+        "sex": "VARCHAR(20) NOT NULL DEFAULT 'male'",
+        "height_cm": "FLOAT NOT NULL DEFAULT 177.0",
+        "start_weight_kg": "FLOAT NOT NULL DEFAULT 105.0",
+        "target_weight_kg": "FLOAT NOT NULL DEFAULT 77.0",
+        "target_date": "DATE NOT NULL DEFAULT '2027-09-01'",
+    }
+    with engine.begin() as connection:
+        for column, sql_type in preference_column_types.items():
+            if column not in preference_columns:
+                connection.execute(
+                    text(f"ALTER TABLE app_preferences ADD COLUMN {column} {sql_type}")
                 )
-            )
     with Session(engine) as session:
         if session.get(GoalSettings, 1) is None:
             targets = calculate_targets()

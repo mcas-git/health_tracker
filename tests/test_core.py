@@ -43,6 +43,17 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
     Base.metadata.create_all(test_engine)
     daily_columns = {column["name"] for column in inspect(test_engine).get_columns("daily_entries")}
     assert "travel" in daily_columns
+    preference_columns = {
+        column["name"] for column in inspect(test_engine).get_columns("app_preferences")
+    }
+    assert {
+        "age",
+        "sex",
+        "height_cm",
+        "start_weight_kg",
+        "target_weight_kg",
+        "target_date",
+    } <= preference_columns
     with Session(test_engine) as session:
         session.add_all(
             [

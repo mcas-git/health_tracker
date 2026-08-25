@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 from datetime import date, datetime, timedelta
 
 import altair as alt
@@ -19,7 +20,7 @@ from health_tracker.analytics import (
     weight_milestones,
 )
 from health_tracker.auth import require_login
-from health_tracker.config import LONDON, PROFILE, setting
+from health_tracker.config import LONDON, Profile, setting
 from health_tracker.db import (
     engine,
     get_daily,
@@ -50,6 +51,14 @@ with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
     _theme_values = (_preferences.color_mode, _preferences.accent, _preferences.font_family)
     _smooth_charts = bool(_preferences.smooth_charts)
+    _profile = Profile(
+        age=_preferences.age,
+        sex=_preferences.sex,
+        height_cm=_preferences.height_cm,
+        start_weight_kg=_preferences.start_weight_kg,
+        target_weight_kg=_preferences.target_weight_kg,
+        target_date=_preferences.target_date,
+    )
 apply_theme(*_theme_values)
 
 
@@ -71,6 +80,25 @@ def rating_input(label: str, key: str, initial: int) -> int:
         step=1,
         key=key,
     )
+
+
+def kpi_axis_domain(field: str, values: pd.Series) -> list[float]:
+    first = float(values.iloc[0])
+    ideals = {
+        "bmi": 25.0,
+        "waist_cm": _profile.height_cm * 0.5,
+        "steps": 8000.0,
+        "sleep_hours": 7.0,
+        "mood": 10.0,
+        "energy": 10.0,
+        "resting_heart_rate": 60.0,
+        "systolic": 120.0,
+        "diastolic": 80.0,
+    }
+    anchor = ideals.get(field, first)
+    recorded_min = float(values.min())
+    recorded_max = float(values.max())
+    return [min(anchor, recorded_min), max(float(math.ceil(first)), anchor, recorded_max)]
 
 
 def style_chart(chart):
@@ -106,7 +134,7 @@ def style_chart(chart):
 
 
 def health_status_cards(item) -> None:
-    indicator = daily_health_score(item) if item is not None else None
+    indicator = daily_health_score(item, _profile) if item is not None else None
     if indicator:
         score, score_label, included = indicator
         score_color = "#4F8A55" if score >= 75 else "#C5A33B" if score >= 45 else "#B64B4B"
@@ -156,17 +184,21 @@ def home():
 def dashboard():
     page_watermark("runner", _theme_values[1])
     st.title("Your health journey")
-    st.caption(f"One calm day at a time · Goal: {PROFILE.target_weight_kg:g} kg by 1 Sep 2027")
+    st.caption(
+        f"One calm day at a time · Goal: {_profile.target_weight_kg:g} kg by "
+        f"{_profile.target_date:%d %b %Y}"
+    )
     df = load_data()
     latest_weight = df.weight_kg.dropna().iloc[-1] if not df.empty and "weight_kg" in df else None
+    goal_range = _profile.start_weight_kg - _profile.target_weight_kg
     progress = (
-        (PROFILE.start_weight_kg - latest_weight)
-        / (PROFILE.start_weight_kg - PROFILE.target_weight_kg)
-        if latest_weight is not None
+        (_profile.start_weight_kg - latest_weight)
+        / goal_range
+        if latest_weight is not None and goal_range > 0
         else 0
     )
-    projection = projected_target_date(df)
-    recent_completion = weekly_coaching_summary(df)["completion"]
+    projection = projected_target_date(df, _profile)
+    recent_completion = weekly_coaching_summary(df, profile=_profile)["completion"]
     a, b, c, d = st.columns(4)
     a.metric("Current weight", f"{latest_weight:.1f} kg" if latest_weight else "—")
     b.metric("Goal progress", f"{max(0, min(100, progress * 100)):.0f}%")
@@ -174,7 +206,7 @@ def dashboard():
     d.metric("Projected goal", projection.strftime("%d %b %Y") if projection else "Need more data")
     st.progress(max(0.0, min(1.0, progress)))
     if latest_weight is not None and st.toggle("Show weight change from the beginning"):
-        weight_change = latest_weight - PROFILE.start_weight_kg
+        weight_change = latest_weight - _profile.start_weight_kg
         st.caption(f"This is {weight_change:+.1f} kg from the beginning.")
 
     latest_measurements = (
@@ -193,7 +225,7 @@ def dashboard():
     palette = derived_palette(*_theme_values[:2])
     series_colors = palette["series"]
     journey_start = pd.Timestamp(df.entry_date.min()).normalize()
-    journey_end = pd.Timestamp(PROFILE.target_date)
+    journey_end = pd.Timestamp(_profile.target_date)
     date_scale = alt.Scale(domain=[journey_start, journey_end])
     date_axis = alt.Axis(
         title=None,
@@ -207,6 +239,13 @@ def dashboard():
     show_milestones = st.toggle("Show weight milestones", value=False)
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
+        weight_scale = alt.Scale(
+            domain=[
+                _profile.target_weight_kg,
+                max(_profile.target_weight_kg + 1, math.ceil(float(weight.weight_kg.iloc[0]))),
+            ],
+            nice=False,
+        )
         weight["display_value"] = (
             weight.weight_kg.rolling(7, min_periods=1).mean()
             if _smooth_charts
@@ -229,9 +268,9 @@ def dashboard():
                 x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
                 y=alt.Y(
                     "display_value:Q",
-                    title="Weight (kg)",
+                    title=None,
                     axis=alt.Axis(labels=True, ticks=True, domain=True),
-                    scale=alt.Scale(zero=False),
+                    scale=weight_scale,
                 ),
                 tooltip=[
                     alt.Tooltip("entry_date:T", title="Date"),
@@ -240,7 +279,7 @@ def dashboard():
             )
         )
         goal_line = (
-            alt.Chart(pd.DataFrame({"goal": [PROFILE.target_weight_kg]}))
+            alt.Chart(pd.DataFrame({"goal": [_profile.target_weight_kg]}))
             .mark_rule(color=series_colors[1], strokeWidth=3, strokeDash=[8, 5], opacity=0.8)
             .encode(
                 y="goal:Q",
@@ -254,7 +293,7 @@ def dashboard():
                 .mark_point(filled=True, size=150, color=accent, stroke="#FFFFFF", strokeWidth=2)
                 .encode(
                     x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
-                    y=alt.Y("weight_kg:Q", title="Weight (kg)", scale=alt.Scale(zero=False)),
+                    y=alt.Y("weight_kg:Q", title=None, scale=weight_scale),
                     tooltip=[
                         alt.Tooltip("entry_date:T", title="Latest date"),
                         alt.Tooltip("weight_kg:Q", title="Latest weight (kg)", format=".1f"),
@@ -263,7 +302,7 @@ def dashboard():
             )
             weight_chart = weight_chart + latest_raw_point
         if show_milestones:
-            milestones, weekly_pace = weight_milestones(journey_start.date())
+            milestones, weekly_pace = weight_milestones(journey_start.date(), _profile)
             milestone_frame = pd.DataFrame(milestones)
             milestone_frame["milestone_date"] = pd.to_datetime(milestone_frame["milestone_date"])
             milestone_frame["display_label"] = milestone_frame.apply(
@@ -274,7 +313,7 @@ def dashboard():
                 .mark_point(filled=True, size=150, color=series_colors[1])
                 .encode(
                     x=alt.X("milestone_date:T", axis=date_axis, scale=date_scale),
-                    y=alt.Y("weight_kg:Q", title="Weight (kg)", scale=alt.Scale(zero=False)),
+                    y=alt.Y("weight_kg:Q", title=None, scale=weight_scale),
                     tooltip=[
                         alt.Tooltip("label:N", title="Milestone"),
                         alt.Tooltip("milestone_date:T", title="Date"),
@@ -287,7 +326,7 @@ def dashboard():
                 .mark_text(dy=-14, color=series_colors[1], fontWeight=600)
                 .encode(
                     x=alt.X("milestone_date:T", axis=date_axis, scale=date_scale),
-                    y=alt.Y("weight_kg:Q", scale=alt.Scale(zero=False)),
+                    y=alt.Y("weight_kg:Q", title=None, scale=weight_scale),
                     text="display_label:N",
                 )
             )
@@ -354,6 +393,9 @@ def dashboard():
             if _smooth_charts
             else recent[selected_kpi]
         )
+        kpi_scale = alt.Scale(
+            domain=kpi_axis_domain(selected_kpi, recent[selected_kpi]), nice=False
+        )
         kpi_chart = (
             alt.Chart(recent)
             .mark_line(
@@ -371,9 +413,9 @@ def dashboard():
                 x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
                 y=alt.Y(
                     "display_value:Q",
-                    title=selected_label,
+                    title=None,
                     axis=alt.Axis(labels=True, ticks=True, domain=True),
-                    scale=alt.Scale(zero=False),
+                    scale=kpi_scale,
                 ),
                 tooltip=[
                     alt.Tooltip("entry_date:T", title="Date"),
@@ -465,7 +507,7 @@ def daily_entry():
                 "Weight (kg)",
                 30.0,
                 250.0,
-                float(value(measurement_defaults, "weight_kg", PROFILE.start_weight_kg)),
+                float(value(measurement_defaults, "weight_kg", _profile.start_weight_kg)),
                 0.1,
                 key=f"weight_{date_key}",
             )
@@ -477,7 +519,7 @@ def daily_entry():
                 0.1,
                 key=f"waist_{date_key}",
             )
-            bmi = weight / ((PROFILE.height_cm / 100) ** 2)
+            bmi = weight / ((_profile.height_cm / 100) ** 2)
             c1, c2 = st.columns(2)
             systolic = c1.number_input(
                 "Blood pressure · systolic",
@@ -672,7 +714,7 @@ def weekly_coaching():
     today = datetime.now(LONDON).date()
     week_start = today - timedelta(days=today.weekday())
     df = load_data()
-    summary = weekly_coaching_summary(df, today)
+    summary = weekly_coaching_summary(df, today, _profile)
 
     cols = st.columns(4)
     cols[0].metric("Days logged", f"{summary['logged_days']}/7")
@@ -1009,6 +1051,44 @@ def settings_page():
     st.title("Targets, backup and privacy")
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)
+        preferences = session.get(AppPreferences, 1)
+        with st.form("profile_settings"):
+            st.subheader("Profile and weight goal")
+            profile_cols = st.columns(3)
+            age = profile_cols[0].number_input("Age", 18, 100, preferences.age)
+            sex_options = ["male", "female", "other"]
+            sex = profile_cols[1].selectbox(
+                "Gender",
+                sex_options,
+                index=sex_options.index(preferences.sex) if preferences.sex in sex_options else 2,
+                format_func=str.title,
+            )
+            height = profile_cols[2].number_input(
+                "Height (cm)", 120.0, 230.0, preferences.height_cm, 0.5
+            )
+            goal_cols = st.columns(3)
+            starting_weight = goal_cols[0].number_input(
+                "Starting weight (kg)", 30.0, 300.0, preferences.start_weight_kg, 0.1
+            )
+            goal_weight = goal_cols[1].number_input(
+                "Final goal (kg)", 30.0, 300.0, preferences.target_weight_kg, 0.1
+            )
+            goal_date = goal_cols[2].date_input("Goal date", preferences.target_date)
+            if st.form_submit_button(
+                "Save profile and goal", type="primary", use_container_width=True
+            ):
+                if goal_weight >= starting_weight:
+                    st.error("Final goal must be lower than starting weight.")
+                else:
+                    preferences.age = age
+                    preferences.sex = sex
+                    preferences.height_cm = height
+                    preferences.start_weight_kg = starting_weight
+                    preferences.target_weight_kg = goal_weight
+                    preferences.target_date = goal_date
+                    session.commit()
+                    st.success("Profile and goal saved.")
+                    st.rerun()
         with st.form("goals"):
             st.subheader("Daily targets")
             cols = st.columns(4)

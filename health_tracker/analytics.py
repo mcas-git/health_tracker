@@ -6,7 +6,7 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from health_tracker.config import PROFILE
+from health_tracker.config import PROFILE, Profile
 from health_tracker.db import engine
 from health_tracker.models import DailyEntry, NutritionLog
 
@@ -57,7 +57,7 @@ def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def daily_health_score(item) -> tuple[int, str, list[str]] | None:
+def daily_health_score(item, profile: Profile = PROFILE) -> tuple[int, str, list[str]] | None:
     """Create a non-diagnostic indicator from the measurements recorded for one day."""
     components: list[tuple[str, float]] = []
     bmi = getattr(item, "bmi", None)
@@ -67,7 +67,7 @@ def daily_health_score(item) -> tuple[int, str, list[str]] | None:
         )
     waist = getattr(item, "waist_cm", None)
     if waist:
-        ratio = waist / PROFILE.height_cm
+        ratio = waist / profile.height_cm
         components.append(("Waist-to-height", 100 if ratio < 0.5 else 55 if ratio < 0.6 else 20))
     systolic = getattr(item, "systolic", None)
     diastolic = getattr(item, "diastolic", None)
@@ -122,7 +122,9 @@ def bmi_status(bmi: float | None) -> tuple[str, str, str] | None:
     return "Severe obesity", "attention", "Within the standard severe-obesity range"
 
 
-def weekly_coaching_summary(df: pd.DataFrame, end_date: date | None = None) -> dict:
+def weekly_coaching_summary(
+    df: pd.DataFrame, end_date: date | None = None, profile: Profile = PROFILE
+) -> dict:
     end_date = end_date or date.today()
     if df.empty:
         return {"logged_days": 0, "completion": 0, "recommendation": "Log the first day."}
@@ -165,7 +167,7 @@ def weekly_coaching_summary(df: pd.DataFrame, end_date: date | None = None) -> d
         )
     recommendation = "Protect logging consistency: aim for at least 5 complete days."
     if logged_days >= 5:
-        if averages.get("protein_g", 10**9) < PROFILE.target_weight_kg * 1.5:
+        if averages.get("protein_g", 10**9) < profile.target_weight_kg * 1.5:
             recommendation = "Prioritise a clear protein source at each main meal."
         elif averages.get("steps", 10**9) < 7000:
             recommendation = "Raise the daily movement floor with one planned walk."
@@ -175,7 +177,7 @@ def weekly_coaching_summary(df: pd.DataFrame, end_date: date | None = None) -> d
             recommendation = "Keep the current routine repeatable for another week."
     if plateau and logged_days >= 5:
         recommendation = "Review portions, weekends and activity before adjusting calorie targets."
-    start_weight = PROFILE.start_weight_kg
+    start_weight = profile.start_weight_kg
     latest_weight = (
         float(data.weight_kg.dropna().iloc[-1])
         if "weight_kg" in data and data.weight_kg.notna().any()
@@ -196,19 +198,19 @@ def weekly_coaching_summary(df: pd.DataFrame, end_date: date | None = None) -> d
     }
 
 
-def weight_milestones(start_date: date) -> tuple[list[dict], float]:
+def weight_milestones(start_date: date, profile: Profile = PROFILE) -> tuple[list[dict], float]:
     """Return fixed plan milestones using a gradual 0.5–1.0 kg weekly pace."""
-    target_date = PROFILE.target_date
+    target_date = profile.target_date
     total_weeks = max((target_date - start_date).days / 7, 1)
-    required_pace = (PROFILE.start_weight_kg - PROFILE.target_weight_kg) / total_weeks
+    required_pace = (profile.start_weight_kg - profile.target_weight_kg) / total_weeks
     weekly_pace = min(1.0, max(0.5, required_pace))
     milestones = []
     for months in (1, 3, 6, 9):
         milestone_date = (pd.Timestamp(start_date) + pd.DateOffset(months=months)).date()
         elapsed_weeks = max(0, (milestone_date - start_date).days / 7)
         weight = max(
-            PROFILE.target_weight_kg,
-            PROFILE.start_weight_kg - weekly_pace * elapsed_weeks,
+            profile.target_weight_kg,
+            profile.start_weight_kg - weekly_pace * elapsed_weeks,
         )
         milestones.append(
             {
@@ -234,7 +236,7 @@ def current_streak(df: pd.DataFrame) -> int:
     return streak
 
 
-def projected_target_date(df: pd.DataFrame) -> date | None:
+def projected_target_date(df: pd.DataFrame, profile: Profile = PROFILE) -> date | None:
     if df.empty or "weight_kg" not in df or df["weight_kg"].dropna().shape[0] < 2:
         return None
     weights = df[["entry_date", "weight_kg"]].dropna().tail(28).copy()
@@ -244,5 +246,5 @@ def projected_target_date(df: pd.DataFrame) -> date | None:
     slope = weights["day"].cov(weights["weight_kg"]) / weights["day"].var()
     if pd.isna(slope) or slope >= 0:
         return None
-    remaining = (PROFILE.target_weight_kg - weights.iloc[-1].weight_kg) / slope
+    remaining = (profile.target_weight_kg - weights.iloc[-1].weight_kg) / slope
     return pd.Timestamp(weights.iloc[-1].entry_date).date() + timedelta(days=max(0, int(remaining)))
