@@ -57,33 +57,15 @@ def value(item, name, default=None):
     return default if result is None else result
 
 
-def adjust_rating(key: str, change: int) -> None:
-    st.session_state[key] = max(1, min(10, int(st.session_state.get(key, 5)) + change))
-
-
-def mobile_rating(label: str, key: str, initial: int) -> int:
-    if key not in st.session_state:
-        st.session_state[key] = initial
-    with st.container(key=f"rating_{key}"):
-        minus, scale, plus = st.columns([1, 6, 1], vertical_alignment="bottom")
-        minus.form_submit_button(
-            "−",
-            key=f"{key}_minus",
-            help=f"Decrease {label.lower()}",
-            on_click=adjust_rating,
-            args=(key, -1),
-            use_container_width=True,
-        )
-        rating = scale.slider(label, 1, 10, key=key)
-        plus.form_submit_button(
-            "+",
-            key=f"{key}_plus",
-            help=f"Increase {label.lower()}",
-            on_click=adjust_rating,
-            args=(key, 1),
-            use_container_width=True,
-        )
-    return rating
+def rating_input(label: str, key: str, initial: int) -> int:
+    return st.number_input(
+        label,
+        min_value=1,
+        max_value=10,
+        value=max(1, min(10, int(initial))),
+        step=1,
+        key=key,
+    )
 
 
 def style_chart(chart):
@@ -502,13 +484,13 @@ def daily_entry():
             "Blood pressure · diastolic", 30, 160, int(value(item, "diastolic", 80))
         )
         date_key = selected.isoformat()
-        mood = mobile_rating("Mood", f"mood_{date_key}", int(value(item, "mood", 5)))
-        energy = mobile_rating("Energy level", f"energy_{date_key}", int(value(item, "energy", 5)))
-        hunger = mobile_rating("Hunger", f"hunger_{date_key}", int(value(item, "hunger", 5)))
-        cravings = mobile_rating(
+        mood = rating_input("Mood", f"mood_{date_key}", int(value(item, "mood", 5)))
+        energy = rating_input("Energy level", f"energy_{date_key}", int(value(item, "energy", 5)))
+        hunger = rating_input("Hunger", f"hunger_{date_key}", int(value(item, "hunger", 5)))
+        cravings = rating_input(
             "Cravings", f"cravings_{date_key}", int(value(item, "cravings", 5))
         )
-        satisfaction = mobile_rating(
+        satisfaction = rating_input(
             "Diet satisfaction",
             f"diet_satisfaction_{date_key}",
             int(value(item, "diet_satisfaction", 7)),
