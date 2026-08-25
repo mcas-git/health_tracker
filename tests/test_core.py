@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
 from health_tracker import db
+from health_tracker import garmin
 from health_tracker.analytics import (
     bmi_status,
     current_streak,
@@ -58,6 +59,46 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
     assert latest is not None
     assert latest.entry_date == date(2026, 8, 22)
     assert latest.weight_kg == 100.8
+
+
+def test_garmin_sync_uses_selected_date_for_stats_and_overnight_sleep(monkeypatch):
+    calls = []
+
+    class FakeGarmin:
+        def __init__(self, email, password):
+            pass
+
+        def login(self):
+            pass
+
+        def get_stats(self, day):
+            calls.append(("stats", day))
+            return {"totalSteps": 8000, "totalKilocalories": 2200}
+
+        def get_sleep_data(self, day):
+            calls.append(("sleep", day))
+            return {"dailySleepDTO": {"sleepTimeSeconds": 27000}}
+
+        def get_heart_rates(self, day):
+            calls.append(("heart_rate", day))
+            return {"restingHeartRate": 55}
+
+        def get_activities_by_date(self, start, end):
+            calls.append(("activities", start, end))
+            return []
+
+    monkeypatch.setattr(garmin, "Garmin", FakeGarmin)
+    monkeypatch.setattr(garmin, "setting", lambda name: f"test-{name.lower()}")
+
+    result = garmin.sync_day(date(2026, 8, 25))
+
+    assert calls == [
+        ("stats", "2026-08-25"),
+        ("sleep", "2026-08-25"),
+        ("heart_rate", "2026-08-25"),
+        ("activities", "2026-08-25", "2026-08-25"),
+    ]
+    assert result["sleep_hours"] == 7.5
 
 
 def test_password_hash_is_deterministic_and_not_plaintext():

@@ -430,20 +430,6 @@ def daily_entry():
         except Exception as exc:
             st.error(f"Smartwatch sync failed: {exc}")
     selected = st.date_input("Date", key="daily_entry_date")
-    use_selected_date = st.toggle(
-        "Use specified date for smartwatch data",
-        value=False,
-        help="Off loads yesterday. On loads the date selected above.",
-    )
-    sync_date = selected if use_selected_date else yesterday
-    with st.container(key="smartwatch_load"):
-        st.markdown(
-            '<div class="garmin-action-label">Load smartwatch data</div>',
-            unsafe_allow_html=True,
-        )
-        if st.button("Load smartwatch data from Garmin", use_container_width=True):
-            st.session_state.smartwatch_sync_requested = sync_date
-            st.rerun()
     item = get_daily(selected)
     previous_item = get_latest_daily_before(selected) if item is None else None
     measurement_defaults = item or previous_item
@@ -456,200 +442,248 @@ def daily_entry():
         )
     sync_record = st.session_state.get("garmin_sync", {})
     synced = sync_record.get("data", {}) if sync_record.get("date") == selected else {}
+    date_key = selected.isoformat()
 
-    with st.form("daily_form"):
+    with st.expander("Morning check-in", expanded=True):
+        st.caption("Record weight, waist and blood pressure.")
+        with st.form(f"morning_form_{date_key}"):
+            c1, c2 = st.columns(2)
+            weight = c1.number_input(
+                "Weight (kg)",
+                30.0,
+                250.0,
+                float(value(measurement_defaults, "weight_kg", PROFILE.start_weight_kg)),
+                0.1,
+                key=f"weight_{date_key}",
+            )
+            waist = c2.number_input(
+                "Waist (cm)",
+                30.0,
+                250.0,
+                float(value(measurement_defaults, "waist_cm", 100.0)),
+                0.1,
+                key=f"waist_{date_key}",
+            )
+            bmi = weight / ((PROFILE.height_cm / 100) ** 2)
+            c1, c2 = st.columns(2)
+            systolic = c1.number_input(
+                "Blood pressure · systolic",
+                60,
+                250,
+                int(value(measurement_defaults, "systolic", 120)),
+                key=f"systolic_{date_key}",
+            )
+            diastolic = c2.number_input(
+                "Blood pressure · diastolic",
+                30,
+                160,
+                int(value(measurement_defaults, "diastolic", 80)),
+                key=f"diastolic_{date_key}",
+            )
+            morning_submitted = st.form_submit_button(
+                "Save morning check-in", use_container_width=True, type="primary"
+            )
+        if morning_submitted:
+            upsert_daily(
+                {
+                    "entry_date": selected,
+                    "weight_kg": weight,
+                    "waist_cm": waist,
+                    "bmi": bmi,
+                    "systolic": systolic,
+                    "diastolic": diastolic,
+                }
+            )
+            st.session_state["daily_checkin_saved"] = (
+                f"Morning check-in saved for {selected:%d %b %Y}."
+            )
+            st.rerun()
+
+    with st.expander("Evening check-in", expanded=False):
+        st.subheader("Smartwatch data")
+        st.caption(
+            "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin assigns "
+            "to that date, normally the night ending that morning."
+        )
+        with st.container(key="smartwatch_load"):
+            if st.button(
+                "Load smartwatch data from Garmin",
+                use_container_width=True,
+                key=f"load_garmin_{date_key}",
+            ):
+                st.session_state.smartwatch_sync_requested = selected
+                st.rerun()
 
         def smartwatch_value(field):
             imported = synced.get(field)
             return imported if imported is not None else value(item, field)
 
-        st.subheader("Smartwatch data")
-        st.caption("Loaded from Garmin and read-only. Sync again to update these values.")
-        c1, c2, c3, c4 = st.columns(4)
-        resting_value = smartwatch_value("resting_heart_rate")
-        resting_hr = c1.number_input(
-            "Resting heart rate",
-            30,
-            220,
-            value=int(resting_value) if resting_value is not None else None,
-            disabled=True,
-            placeholder="No data",
-        )
-        sleep_value = smartwatch_value("sleep_hours")
-        sleep = c2.number_input(
-            "Sleep (hours)",
-            0.0,
-            24.0,
-            value=float(sleep_value) if sleep_value is not None else None,
-            step=0.01,
-            disabled=True,
-            placeholder="No data",
-        )
-        steps_value = smartwatch_value("steps")
-        steps = c3.number_input(
-            "Steps",
-            0,
-            100000,
-            value=int(steps_value) if steps_value is not None else None,
-            disabled=True,
-            placeholder="No data",
-        )
-        burned_value = smartwatch_value("calories_burned")
-        burned = c4.number_input(
-            "Calories burned",
-            0,
-            10000,
-            value=int(burned_value) if burned_value is not None else None,
-            disabled=True,
-            placeholder="No data",
-        )
-
-        st.subheader("Your daily measurements")
-        c1, c2 = st.columns(2)
-        weight = c1.number_input(
-            "Weight (kg)",
-            30.0,
-            250.0,
-            float(value(measurement_defaults, "weight_kg", PROFILE.start_weight_kg)),
-            0.1,
-        )
-        waist = c2.number_input(
-            "Waist (cm)",
-            30.0,
-            250.0,
-            float(value(measurement_defaults, "waist_cm", 100.0)),
-            0.1,
-        )
-        bmi = weight / ((PROFILE.height_cm / 100) ** 2)
-        c1, c2 = st.columns(2)
-        systolic = c1.number_input(
-            "Blood pressure · systolic",
-            60,
-            250,
-            int(value(measurement_defaults, "systolic", 120)),
-        )
-        diastolic = c2.number_input(
-            "Blood pressure · diastolic",
-            30,
-            160,
-            int(value(measurement_defaults, "diastolic", 80)),
-        )
-        date_key = selected.isoformat()
-        mood = rating_input(
-            "Mood", f"mood_{date_key}", int(value(measurement_defaults, "mood", 5))
-        )
-        energy = rating_input(
-            "Energy level",
-            f"energy_{date_key}",
-            int(value(measurement_defaults, "energy", 5)),
-        )
-        hunger = rating_input(
-            "Hunger", f"hunger_{date_key}", int(value(measurement_defaults, "hunger", 5))
-        )
-        cravings = rating_input(
-            "Cravings",
-            f"cravings_{date_key}",
-            int(value(measurement_defaults, "cravings", 5)),
-        )
-        satisfaction = rating_input(
-            "Diet satisfaction",
-            f"diet_satisfaction_{date_key}",
-            int(value(measurement_defaults, "diet_satisfaction", 7)),
-        )
-
-        st.subheader("Habits")
-        cols = st.columns(4)
-        habits = {}
-        for idx, (key, label) in enumerate(
-            [
-                ("gym", "Gym"),
-                ("cardio", "Cardio"),
-                ("erg", "ERG"),
-                ("supplements", "Supplements"),
-                ("protein_powder", "Protein powder"),
-                ("alcohol_free", "Alcohol-free"),
-                ("physio", "Physio"),
-                ("drugs", "Drugs"),
-                ("sleep_target", "Sleep target"),
-                ("illness", "Illness"),
-                ("fasted", "Fasting"),
-            ]
-        ):
-            habits[key] = cols[idx % 4].checkbox(label, value=bool(value(item, key, False)))
-
-        st.subheader("Extenuating circumstances")
-        circumstance_cols = st.columns(3)
-        circumstances = {}
-        for idx, (key, label) in enumerate(
-            [("injury", "Injury"), ("travel", "Travel"), ("unusual_day", "Unusual day")]
-        ):
-            circumstances[key] = circumstance_cols[idx].checkbox(
-                label, value=bool(value(item, key, False))
+        with st.form(f"evening_form_{date_key}"):
+            c1, c2, c3, c4 = st.columns(4)
+            resting_value = smartwatch_value("resting_heart_rate")
+            resting_hr = c1.number_input(
+                "Resting heart rate",
+                30,
+                220,
+                value=int(resting_value) if resting_value is not None else None,
+                disabled=True,
+                placeholder="No data",
+                key=f"resting_hr_{date_key}",
+            )
+            sleep_value = smartwatch_value("sleep_hours")
+            sleep = c2.number_input(
+                "Sleep (hours)",
+                0.0,
+                24.0,
+                value=float(sleep_value) if sleep_value is not None else None,
+                step=0.01,
+                disabled=True,
+                placeholder="No data",
+                key=f"sleep_{date_key}",
+            )
+            steps_value = smartwatch_value("steps")
+            steps = c3.number_input(
+                "Steps",
+                0,
+                100000,
+                value=int(steps_value) if steps_value is not None else None,
+                disabled=True,
+                placeholder="No data",
+                key=f"steps_{date_key}",
+            )
+            burned_value = smartwatch_value("calories_burned")
+            burned = c4.number_input(
+                "Calories burned",
+                0,
+                10000,
+                value=int(burned_value) if burned_value is not None else None,
+                disabled=True,
+                placeholder="No data",
+                key=f"burned_{date_key}",
             )
 
-        st.subheader("Fasting details")
-        fasted = habits["fasted"]
-        fast_start = fast_end = None
-        fasting_hours = 0.0
-        if fasted:
-            fc1, fc2 = st.columns(2)
-            default_start = value(
-                item, "fast_start", datetime.combine(selected, time(20, 0), LONDON)
+            st.subheader("Evening measurements")
+            mood = rating_input(
+                "Mood", f"mood_{date_key}", int(value(measurement_defaults, "mood", 5))
             )
-            default_end = value(item, "fast_end", datetime.combine(selected, time(12, 0), LONDON))
-            start_date = fc1.date_input("Fast started · date", default_start.date())
-            start_time = fc1.time_input("Fast started · time", default_start.time())
-            end_date = fc2.date_input("Fast broken · date", default_end.date())
-            end_time = fc2.time_input("Fast broken at", default_end.time())
-            fast_start = datetime.combine(start_date, start_time, LONDON)
-            fast_end = datetime.combine(end_date, end_time, LONDON)
-            fasting_hours = max(0, (fast_end - fast_start).total_seconds() / 3600)
-            st.metric("Fasting duration", f"{fasting_hours:.1f} hours")
-        notes_key = f"daily_notes_{date_key}"
-        notes = st.text_area(
-            "General notes", value=value(item, "notes", ""), height=100, key=notes_key
-        )
-        st.form_submit_button(
-            "Clear general notes",
-            key=f"clear_{notes_key}",
-            on_click=clear_text,
-            args=(notes_key,),
-        )
-        submitted = st.form_submit_button(
-            "Save daily check-in", use_container_width=True, type="primary"
-        )
-    if submitted:
-        upsert_daily(
-            {
-                "entry_date": selected,
-                "weight_kg": weight,
-                "waist_cm": waist,
-                "bmi": bmi,
-                "resting_heart_rate": resting_hr,
-                "systolic": systolic,
-                "diastolic": diastolic,
-                "sleep_hours": sleep,
-                "steps": steps,
-                "calories_burned": burned,
-                "mood": mood,
-                "energy": energy,
-                "hunger": hunger,
-                "cravings": cravings,
-                "diet_satisfaction": satisfaction,
-                "fast_start": fast_start,
-                "fast_end": fast_end,
-                "fasting_hours": fasting_hours,
-                "notes": notes,
-                **habits,
-                **circumstances,
-            }
-        )
-        st.session_state.pop("garmin_sync", None)
-        action = "updated" if item is not None else "saved"
-        st.session_state["daily_checkin_saved"] = (
-            f"Daily check-in {action} for {selected:%d %b %Y}."
-        )
-        st.rerun()
+            energy = rating_input(
+                "Energy level",
+                f"energy_{date_key}",
+                int(value(measurement_defaults, "energy", 5)),
+            )
+            hunger = rating_input(
+                "Hunger", f"hunger_{date_key}", int(value(measurement_defaults, "hunger", 5))
+            )
+            cravings = rating_input(
+                "Cravings",
+                f"cravings_{date_key}",
+                int(value(measurement_defaults, "cravings", 5)),
+            )
+            satisfaction = rating_input(
+                "Diet satisfaction",
+                f"diet_satisfaction_{date_key}",
+                int(value(measurement_defaults, "diet_satisfaction", 7)),
+            )
+
+            st.subheader("Habits")
+            cols = st.columns(4)
+            habits = {}
+            for idx, (key, label) in enumerate(
+                [
+                    ("gym", "Gym"),
+                    ("cardio", "Cardio"),
+                    ("erg", "ERG"),
+                    ("supplements", "Supplements"),
+                    ("protein_powder", "Protein powder"),
+                    ("alcohol_free", "Alcohol-free"),
+                    ("physio", "Physio"),
+                    ("drugs", "Drugs"),
+                    ("sleep_target", "Sleep target"),
+                    ("illness", "Illness"),
+                    ("fasted", "Fasting"),
+                ]
+            ):
+                habits[key] = cols[idx % 4].checkbox(
+                    label, value=bool(value(item, key, False)), key=f"{key}_{date_key}"
+                )
+
+            st.subheader("Extenuating circumstances")
+            circumstance_cols = st.columns(3)
+            circumstances = {}
+            for idx, (key, label) in enumerate(
+                [("injury", "Injury"), ("travel", "Travel"), ("unusual_day", "Unusual day")]
+            ):
+                circumstances[key] = circumstance_cols[idx].checkbox(
+                    label, value=bool(value(item, key, False)), key=f"{key}_{date_key}"
+                )
+
+            st.subheader("Fasting details")
+            fasted = habits["fasted"]
+            fast_start = fast_end = None
+            fasting_hours = 0.0
+            if fasted:
+                fc1, fc2 = st.columns(2)
+                default_start = value(
+                    item, "fast_start", datetime.combine(selected, time(20, 0), LONDON)
+                )
+                default_end = value(
+                    item, "fast_end", datetime.combine(selected, time(12, 0), LONDON)
+                )
+                start_date = fc1.date_input(
+                    "Fast started · date", default_start.date(), key=f"fast_start_date_{date_key}"
+                )
+                start_time = fc1.time_input(
+                    "Fast started · time", default_start.time(), key=f"fast_start_time_{date_key}"
+                )
+                end_date = fc2.date_input(
+                    "Fast broken · date", default_end.date(), key=f"fast_end_date_{date_key}"
+                )
+                end_time = fc2.time_input(
+                    "Fast broken at", default_end.time(), key=f"fast_end_time_{date_key}"
+                )
+                fast_start = datetime.combine(start_date, start_time, LONDON)
+                fast_end = datetime.combine(end_date, end_time, LONDON)
+                fasting_hours = max(0, (fast_end - fast_start).total_seconds() / 3600)
+                st.metric("Fasting duration", f"{fasting_hours:.1f} hours")
+            notes_key = f"daily_notes_{date_key}"
+            notes = st.text_area(
+                "General notes", value=value(item, "notes", ""), height=100, key=notes_key
+            )
+            st.form_submit_button(
+                "Clear general notes",
+                key=f"clear_{notes_key}",
+                on_click=clear_text,
+                args=(notes_key,),
+            )
+            evening_submitted = st.form_submit_button(
+                "Save evening check-in", use_container_width=True, type="primary"
+            )
+        if evening_submitted:
+            upsert_daily(
+                {
+                    "entry_date": selected,
+                    "resting_heart_rate": resting_hr,
+                    "sleep_hours": sleep,
+                    "steps": steps,
+                    "calories_burned": burned,
+                    "mood": mood,
+                    "energy": energy,
+                    "hunger": hunger,
+                    "cravings": cravings,
+                    "diet_satisfaction": satisfaction,
+                    "fast_start": fast_start,
+                    "fast_end": fast_end,
+                    "fasting_hours": fasting_hours,
+                    "notes": notes,
+                    **habits,
+                    **circumstances,
+                }
+            )
+            st.session_state.pop("garmin_sync", None)
+            st.session_state["daily_checkin_saved"] = (
+                f"Evening check-in saved for {selected:%d %b %Y}."
+            )
+            st.rerun()
 
 
 def weekly_coaching():
