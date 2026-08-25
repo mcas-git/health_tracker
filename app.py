@@ -58,6 +58,10 @@ def value(item, name, default=None):
     return default if result is None else result
 
 
+def clear_text(key: str) -> None:
+    st.session_state[key] = ""
+
+
 def rating_input(label: str, key: str, initial: int) -> int:
     return st.number_input(
         label,
@@ -570,7 +574,16 @@ def daily_entry():
             fast_end = datetime.combine(end_date, end_time, LONDON)
             fasting_hours = max(0, (fast_end - fast_start).total_seconds() / 3600)
             st.metric("Fasting duration", f"{fasting_hours:.1f} hours")
-        notes = st.text_area("General notes", value=value(item, "notes", ""), height=100)
+        notes_key = f"daily_notes_{date_key}"
+        notes = st.text_area(
+            "General notes", value=value(item, "notes", ""), height=100, key=notes_key
+        )
+        st.form_submit_button(
+            "Clear general notes",
+            key=f"clear_{notes_key}",
+            on_click=clear_text,
+            args=(notes_key,),
+        )
         submitted = st.form_submit_button(
             "Save daily check-in", use_container_width=True, type="primary"
         )
@@ -648,9 +661,15 @@ def weekly_coaching():
     saved = get_weekly_plan(week_start)
     with st.form("weekly_plan"):
         st.subheader("Plan this week")
+        week_key = week_start.isoformat()
+        focus_key = f"weekly_focus_{week_key}"
         focus = st.text_input(
             "One behaviour to focus on",
             value=value(saved, "focus", summary["recommendation"]),
+            key=focus_key,
+        )
+        st.form_submit_button(
+            "Clear focus", key=f"clear_{focus_key}", on_click=clear_text, args=(focus_key,)
         )
         c1, c2, c3 = st.columns(3)
         gym_sessions = c1.number_input(
@@ -662,13 +681,30 @@ def weekly_coaching():
         minimum_steps = c3.number_input(
             "Daily step floor", 0, 50000, int(value(saved, "minimum_steps", 7000)), 500
         )
+        barrier_key = f"weekly_barrier_{week_key}"
         barrier = st.text_input(
-            "Anticipated barrier", value=value(saved, "anticipated_barrier", "")
+            "Anticipated barrier",
+            value=value(saved, "anticipated_barrier", ""),
+            key=barrier_key,
         )
+        st.form_submit_button(
+            "Clear barrier",
+            key=f"clear_{barrier_key}",
+            on_click=clear_text,
+            args=(barrier_key,),
+        )
+        if_then_key = f"weekly_if_then_{week_key}"
         if_then = st.text_input(
             "If–then response",
             value=value(saved, "if_then_plan", ""),
             placeholder="If work runs late, then I will use the prepared dinner.",
+            key=if_then_key,
+        )
+        st.form_submit_button(
+            "Clear response",
+            key=f"clear_{if_then_key}",
+            on_click=clear_text,
+            args=(if_then_key,),
         )
         maintenance = st.toggle(
             "Maintenance mode", value=bool(value(saved, "maintenance_mode", False))
@@ -697,11 +733,19 @@ def food_log():
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     selected = st.date_input("Date", date.today(), key="food_date")
     existing = get_nutrition(selected)
+    food_note_key = f"food_note_{selected.isoformat()}"
     note = st.text_area(
         "Full-day food journal",
         value=existing.raw_note if existing else "",
         height=220,
         placeholder="Breakfast was porridge with banana… Lunch… Later I had…",
+        key=food_note_key,
+    )
+    st.button(
+        "Clear food journal",
+        key=f"clear_{food_note_key}",
+        on_click=clear_text,
+        args=(food_note_key,),
     )
     if st.button(
         "Recalculate and replace" if existing else "Analyse and save day",

@@ -76,6 +76,9 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
     sidebar_icon = "#FFFFFF" if dark else neutral_icon
     neutral_border = "#666666" if dark else "#C8C8C8"
     neutral_surface = "#303030" if dark else "#F2F2F2"
+    input_surface = "#202124" if dark else "#FFFFFF"
+    input_text = "#FFFFFF" if dark else "#202124"
+    input_placeholder = "#C4C7C5" if dark else "#666666"
     font = FONTS.get(font_name, FONTS["Modern sans"])
     garmin_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "garmin.svg"
     garmin_logo_css = (
@@ -427,7 +430,8 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
         [data-testid="stTimeInput"] [data-baseweb="input"],
         [data-testid="stTextArea"] [data-baseweb="textarea"],
         [data-baseweb="select"] > div {{
-            background:{surface} !important;
+            background:{input_surface} !important;
+            background-color:{input_surface} !important;
             border:1px solid {neutral_border} !important;
             border-radius:8px !important;
             box-shadow:none !important;
@@ -459,14 +463,20 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             border-radius:0 !important;
             box-shadow:none !important;
             outline:none !important;
-            color:{text} !important;
-            -webkit-text-fill-color:{text} !important;
-            caret-color:{text} !important;
+            color:{input_text} !important;
+            -webkit-text-fill-color:{input_text} !important;
+            caret-color:{input_text} !important;
+        }}
+        [data-testid="stTextInput"] input::placeholder,
+        [data-testid="stTextArea"] textarea::placeholder {{
+            color:{input_placeholder} !important;
+            -webkit-text-fill-color:{input_placeholder} !important;
+            opacity:1 !important;
         }}
         [data-testid="stTextInput"] input:-webkit-autofill,
         [data-testid="stTextArea"] textarea:-webkit-autofill {{
-            -webkit-box-shadow:0 0 0 1000px {surface} inset !important;
-            -webkit-text-fill-color:{text} !important;
+            -webkit-box-shadow:0 0 0 1000px {input_surface} inset !important;
+            -webkit-text-fill-color:{input_text} !important;
         }}
         [data-testid="stExpander"] details,
         [data-testid="stExpander"] details[open],
