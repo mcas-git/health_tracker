@@ -241,7 +241,28 @@ def dashboard():
     )
 
     st.subheader("Weight trend")
-    show_milestones = st.toggle("Show weight milestones", value=False)
+    milestones, weekly_pace = weight_milestones(journey_start.date(), _profile)
+    show_milestones = st.toggle(
+        "Show weight milestones",
+        value=False,
+        help=(
+            f"Milestones use the {weekly_pace:.2f} kg/week pace required by your plan, "
+            "within [NHS guidance of 0.5–1 kg/week](https://www.nhs.uk/live-well/"
+            "healthy-weight/managing-your-weight/tips-to-help-you-lose-weight/)."
+        ),
+    )
+    smooth_charts = st.toggle(
+        "Smooth line graphs",
+        value=_smooth_charts,
+        help="Use seven-entry rolling averages. Turn off to plot every recorded value directly.",
+        key="dashboard_smooth_charts",
+    )
+    if smooth_charts != _smooth_charts:
+        with Session(engine) as session:
+            preferences = session.get(AppPreferences, 1)
+            preferences.smooth_charts = smooth_charts
+            session.commit()
+        st.rerun()
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
         weight_scale = alt.Scale(
@@ -307,7 +328,6 @@ def dashboard():
             )
             weight_chart = weight_chart + raw_weight_points
         if show_milestones:
-            milestones, weekly_pace = weight_milestones(journey_start.date(), _profile)
             milestone_frame = pd.DataFrame(milestones)
             milestone_frame["milestone_date"] = pd.to_datetime(milestone_frame["milestone_date"])
             milestone_frame["display_label"] = milestone_frame.apply(
@@ -336,11 +356,6 @@ def dashboard():
                 )
             )
             weight_chart = weight_chart + milestone_points + milestone_labels
-            st.caption(
-                f"Milestones use the {weekly_pace:.2f} kg/week pace required by your plan, "
-                "within [NHS guidance of 0.5–1 kg/week](https://www.nhs.uk/live-well/"
-                "healthy-weight/managing-your-weight/tips-to-help-you-lose-weight/)."
-            )
         st.altair_chart(
             style_chart(weight_chart.properties(height=chart_height)),
             use_container_width=True,
@@ -441,20 +456,6 @@ def dashboard():
         "text/csv",
         use_container_width=True,
     )
-    smooth_charts = st.toggle(
-        "Smooth line graphs",
-        value=_smooth_charts,
-        help="Use seven-entry rolling averages. Turn off to plot every recorded value directly.",
-        key="dashboard_smooth_charts",
-    )
-    if smooth_charts != _smooth_charts:
-        with Session(engine) as session:
-            preferences = session.get(AppPreferences, 1)
-            preferences.smooth_charts = smooth_charts
-            session.commit()
-        st.rerun()
-
-
 def daily_entry():
     page_watermark("barbell", _theme_values[1])
     st.title("Daily check-in")
