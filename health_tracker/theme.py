@@ -473,6 +473,38 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             -webkit-text-fill-color:{input_placeholder} !important;
             opacity:1 !important;
         }}
+        [class*="st-key-weekly_focus_"] [data-baseweb="input"],
+        [class*="st-key-weekly_barrier_"] [data-baseweb="input"] {{
+            background:{background} !important;
+            background-color:{background} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:10px !important;
+            box-shadow:none !important;
+            outline:none !important;
+            overflow:hidden !important;
+        }}
+        [class*="st-key-weekly_focus_"] [data-baseweb="input"]:focus-within,
+        [class*="st-key-weekly_barrier_"] [data-baseweb="input"]:focus-within {{
+            border-color:{accent} !important;
+        }}
+        [class*="st-key-weekly_focus_"] [data-baseweb="base-input"],
+        [class*="st-key-weekly_barrier_"] [data-baseweb="base-input"],
+        [class*="st-key-weekly_focus_"] input,
+        [class*="st-key-weekly_barrier_"] input {{
+            background:transparent !important;
+            background-color:transparent !important;
+            border:0 !important;
+            color:{input_text} !important;
+            -webkit-text-fill-color:{input_text} !important;
+            caret-color:{input_text} !important;
+            opacity:1 !important;
+        }}
+        [class*="st-key-weekly_focus_"] input::placeholder,
+        [class*="st-key-weekly_barrier_"] input::placeholder {{
+            color:{input_placeholder} !important;
+            -webkit-text-fill-color:{input_placeholder} !important;
+            opacity:1 !important;
+        }}
         [data-testid="stTextInput"] [data-baseweb="input"],
         [data-testid="stTextArea"] [data-baseweb="textarea"] {{
             background:{background} !important;
