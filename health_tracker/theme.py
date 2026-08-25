@@ -860,6 +860,89 @@ def apply_theme(mode: str, accent: str, font_name: str) -> None:
             background-color:{secondary} !important;
         }}
 
+        /* React Aria date fields and calendars must use the selected palette, never teal. */
+        [data-testid="stDateInput"] [data-testid="stDateInputField"] {{
+            box-sizing:border-box !important;
+            background:{background} !important;
+            background-color:{background} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:10px !important;
+            overflow:hidden !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [data-testid="stDateInput"] [data-testid="stDateInputField"]:focus-within {{
+            border-color:{accent} !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [data-testid="stDateInputField"] .react-aria-DateField,
+        [data-testid="stDateInputField"] [role="group"],
+        [data-testid="stDateInputField"] input {{
+            background:transparent !important;
+            background-color:transparent !important;
+            border:0 !important;
+            box-shadow:none !important;
+            outline:none !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+        [data-testid="stDateInputField"] [role="spinbutton"]:focus {{
+            background:{secondary} !important;
+            background-color:{secondary} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+            border-radius:4px !important;
+        }}
+        [data-testid="stDateInputCalendar"] {{
+            box-sizing:border-box !important;
+            background:{background} !important;
+            background-color:{background} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:10px !important;
+            overflow:hidden !important;
+            box-shadow:0 8px 24px #00000055 !important;
+            color:{text} !important;
+        }}
+        [data-testid="stDateInputCalendar"] [role="application"],
+        [data-testid="stDateInputCalendar"] [role="grid"],
+        [data-testid="stDateInputCalendar"] [role="row"],
+        [data-testid="stDateInputCalendar"] [role="gridcell"] {{
+            background:transparent !important;
+            background-color:transparent !important;
+            color:{text} !important;
+        }}
+        [data-testid="stDateInputCalendar"] [role="button"] {{
+            background:transparent !important;
+            background-color:transparent !important;
+            border:0 !important;
+            box-shadow:none !important;
+            outline:none !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+        [data-testid="stDateInputCalendar"] [role="gridcell"] [role="button"]:hover,
+        [data-testid="stDateInputCalendar"] [role="gridcell"] [role="button"]:focus {{
+            background:{secondary} !important;
+            background-color:{secondary} !important;
+            color:{text} !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+        [data-testid="stDateInputCalendar"] [role="gridcell"][aria-selected="true"]
+        [role="button"],
+        [data-testid="stDateInputCalendar"] [role="gridcell"] [data-selected="true"] {{
+            background:{accent} !important;
+            background-color:{accent} !important;
+            color:{accent_text} !important;
+            -webkit-text-fill-color:{accent_text} !important;
+            border-color:{accent} !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [data-testid="stDateInputCalendar"] [role="gridcell"] [data-today="true"] {{
+            border:1px solid {accent} !important;
+        }}
+
         /* This rule comes last so dark-mode sidebar inheritance cannot recolour the arrows. */
         [data-testid="stExpandSidebarButton"],
         [data-testid="stExpandSidebarButton"] *,
