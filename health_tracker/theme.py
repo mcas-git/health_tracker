@@ -336,8 +336,7 @@ def apply_theme(
         [data-testid="stCheckbox"] input:checked + div {{
             background:{accent} !important; border-color:{neutral_border} !important;
         }}
-        [data-testid="stCheckbox"] label:has(input:checked) span:first-of-type,
-        [data-baseweb="checkbox"] label:has(input:checked) span:first-of-type {{
+        [data-baseweb="checkbox"] label:has(input:checked) > span:first-of-type {{
             background:{accent} !important; border-color:{neutral_border} !important;
         }}
         [data-testid="stCheckbox"] label:has(input:checked) > span + div {{
