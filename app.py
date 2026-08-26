@@ -13,10 +13,8 @@ from sqlalchemy.orm import Session
 from health_tracker.analytics import (
     bmi_status,
     daily_health_score,
-    evening_measurement_status,
     excel_safe_data,
     load_data,
-    morning_measurement_status,
     projected_target_date,
     recent_kpi_table,
     weekly_coaching_summary,
@@ -639,34 +637,6 @@ def daily_entry():
             st.success(
                 f"Entry saved for {selected:%d %b %Y} · "
                 f"Last updated {updated:%d %b %Y at %H:%M}"
-            )
-            morning_status = morning_measurement_status(item)
-            st.caption(
-                "Morning measurements · "
-                + " · ".join(
-                    f"{label}: {measurement}"
-                    for label, measurement in morning_status.items()
-                )
-            )
-            evening_status = evening_measurement_status(item)
-            smartwatch_labels = (
-                "Resting heart rate",
-                "Sleep",
-                "Steps",
-                "Calories burned",
-            )
-            rating_labels = ("Mood", "Energy", "Cravings", "Diet satisfaction")
-            st.caption(
-                "Smartwatch measurements · "
-                + " · ".join(
-                    f"{label}: {evening_status[label]}" for label in smartwatch_labels
-                )
-            )
-            st.caption(
-                "Evening ratings · "
-                + " · ".join(
-                    f"{label}: {evening_status[label]}" for label in rating_labels
-                )
             )
         if smartwatch_confirmation:
             st.success(smartwatch_confirmation)

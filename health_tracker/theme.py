@@ -414,6 +414,12 @@ def apply_theme(
         }}
         [data-testid="stAlert"] svg,
         [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
+        [data-testid="stProgressBarTrack"],
+        [data-testid="stProgress"] [data-testid="stProgressBarTrack"],
+        [data-testid="stProgressBar"] [data-testid="stProgressBarTrack"] {{
+            background:#243E26 !important;
+            background-color:#243E26 !important;
+        }}
         [data-testid="stProgressBarTrack"] > div,
         [data-testid="stProgress"] [data-testid="stProgressBarTrack"] > div,
         [data-testid="stProgressBar"] [data-testid="stProgressBarTrack"] > div {{
