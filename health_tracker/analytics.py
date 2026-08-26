@@ -69,6 +69,23 @@ def recent_kpi_table(df: pd.DataFrame, limit: int = 14) -> pd.DataFrame:
     return data[columns].tail(limit).sort_values("entry_date", ascending=False)
 
 
+def morning_measurement_status(item) -> dict[str, str]:
+    """Format recorded morning measurements and make absent values explicit."""
+    weight = getattr(item, "weight_kg", None) if item is not None else None
+    waist = getattr(item, "waist_cm", None) if item is not None else None
+    systolic = getattr(item, "systolic", None) if item is not None else None
+    diastolic = getattr(item, "diastolic", None) if item is not None else None
+    return {
+        "Weight": f"{weight:.1f} kg" if weight is not None else "Missing",
+        "Waist": f"{waist:.1f} cm" if waist is not None else "Missing",
+        "Blood pressure": (
+            f"{systolic}/{diastolic} mmHg"
+            if systolic is not None and diastolic is not None
+            else "Missing"
+        ),
+    }
+
+
 def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
     """Return an Excel-compatible copy with timezone information removed."""
     result = df.copy()

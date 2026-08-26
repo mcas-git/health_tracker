@@ -15,6 +15,7 @@ from health_tracker.analytics import (
     daily_health_score,
     excel_safe_data,
     load_data,
+    morning_measurement_status,
     projected_target_date,
     recent_kpi_table,
     weekly_coaching_summary,
@@ -40,6 +41,23 @@ from health_tracker.quotes import QUOTES, weekly_item
 from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import FONTS, apply_theme, derived_palette, normalize_color
 
+PALETTE_PREFERENCES = {
+    "background_color": "background",
+    "surface_color": "surface",
+    "text_color": "foreground",
+    "muted_color": "muted",
+    "link_color": "link",
+    "border_color": "border",
+}
+PALETTE_WIDGETS = {
+    "palette_background": "background",
+    "palette_surface": "surface",
+    "palette_text": "foreground",
+    "palette_muted": "muted",
+    "palette_link": "link",
+    "palette_border": "border",
+}
+
 st.set_page_config(
     page_title="Health Journey",
     layout="wide",
@@ -52,14 +70,7 @@ with Session(engine) as _theme_session:
     _theme_values = ("dark", _preferences.accent, _preferences.font_family)
     _palette_overrides = {
         palette_key: color
-        for preference_key, palette_key in {
-            "background_color": "background",
-            "surface_color": "surface",
-            "text_color": "foreground",
-            "muted_color": "muted",
-            "link_color": "link",
-            "border_color": "border",
-        }.items()
+        for preference_key, palette_key in PALETTE_PREFERENCES.items()
         if (color := getattr(_preferences, preference_key, None))
     }
     _smooth_charts = bool(_preferences.smooth_charts)
@@ -88,6 +99,14 @@ apply_theme(
 
 def app_palette() -> dict[str, str | list[str]]:
     return derived_palette(*_theme_values[:2], overrides=_palette_overrides)
+
+
+def reset_palette_controls() -> None:
+    generated = derived_palette(
+        "dark", normalize_color(st.session_state["base_palette_color"])
+    )
+    for widget_key, palette_key in PALETTE_WIDGETS.items():
+        st.session_state[widget_key] = str(generated[palette_key])
 
 
 def value(item, name, default=None):
@@ -618,6 +637,14 @@ def daily_entry():
                 f"Entry saved for {selected:%d %b %Y} · "
                 f"Last updated {updated:%d %b %Y at %H:%M}"
             )
+            morning_status = morning_measurement_status(item)
+            st.caption(
+                "Morning measurements · "
+                + " · ".join(
+                    f"{label}: {measurement}"
+                    for label, measurement in morning_status.items()
+                )
+            )
         if smartwatch_confirmation:
             st.success(smartwatch_confirmation)
         if smartwatch_error:
@@ -630,43 +657,50 @@ def daily_entry():
     with st.expander("Morning check-in", expanded=True):
         st.caption("Record weight, waist and blood pressure.")
         with st.form(f"morning_form_{date_key}"):
+            morning_item = item if update_another_day else None
+            morning_key_mode = "historical" if update_another_day else "today_blank_v2"
+            morning_keys = {
+                field: f"{field}_{morning_key_mode}_{date_key}"
+                for field in ("weight", "waist", "systolic", "diastolic")
+            }
             c1, c2 = st.columns(2)
-            weight_value = value(item, "weight_kg")
+            weight_value = value(morning_item, "weight_kg")
             weight = c1.number_input(
                 "Weight (kg)",
                 min_value=30.0,
                 max_value=250.0,
                 value=float(weight_value) if weight_value is not None else None,
                 step=0.1,
-                key=f"weight_{date_key}",
+                key=morning_keys["weight"],
             )
-            waist_value = value(item, "waist_cm")
+            waist_value = value(morning_item, "waist_cm")
             waist = c2.number_input(
                 "Waist (cm)",
                 min_value=30.0,
                 max_value=250.0,
                 value=float(waist_value) if waist_value is not None else None,
                 step=0.1,
-                key=f"waist_{date_key}",
+                key=morning_keys["waist"],
             )
             bmi = weight / ((_profile.height_cm / 100) ** 2) if weight is not None else None
             c1, c2 = st.columns(2)
-            systolic_value = value(item, "systolic")
+            systolic_value = value(morning_item, "systolic")
             systolic = c1.number_input(
                 "Blood pressure · systolic",
                 min_value=60,
                 max_value=250,
                 value=int(systolic_value) if systolic_value is not None else None,
-                key=f"systolic_{date_key}",
+                key=morning_keys["systolic"],
             )
-            diastolic_value = value(item, "diastolic")
+            diastolic_value = value(morning_item, "diastolic")
             diastolic = c2.number_input(
                 "Blood pressure · diastolic",
                 min_value=30,
                 max_value=160,
                 value=int(diastolic_value) if diastolic_value is not None else None,
-                key=f"diastolic_{date_key}",
+                key=morning_keys["diastolic"],
             )
+            st.caption("Any field left blank will be saved as missing.")
             morning_submitted = st.form_submit_button(
                 "Save morning check-in", use_container_width=True, type="primary"
             )
@@ -685,6 +719,8 @@ def daily_entry():
             st.session_state["daily_checkin_saved"] = (
                 f"Morning check-in saved for {selected:%d %b %Y}."
             )
+            for morning_key in morning_keys.values():
+                st.session_state.pop(morning_key, None)
             st.rerun()
 
     with st.expander("Evening check-in", expanded=False):
@@ -1083,15 +1119,18 @@ def nutrition_insights():
         return
     nutrition = df[["entry_date", *fields.values()]].dropna(subset=["calories"]).copy()
     nutrition["entry_date"] = pd.to_datetime(nutrition["entry_date"])
-    selector_cols = st.columns([1, 2])
+    selector_cols = st.columns(
+        2, gap="medium", vertical_alignment="bottom", width="stretch"
+    )
     selected = selector_cols[0].date_input(
-        "Inspect a day", nutrition.entry_date.max().date()
+        "Inspect a day", nutrition.entry_date.max().date(), width="stretch"
     )
     period_view = selector_cols[1].segmented_control(
         "View",
         ["Week", "Two weeks", "Month"],
         default="Week",
         key="nutrition_period_view",
+        width="stretch",
     ) or "Week"
 
     status_colors = {
@@ -1283,7 +1322,12 @@ def appearance_page():
     st.caption("Make the tracker feel like your own")
     with Session(engine) as session:
         prefs = session.get(AppPreferences, 1)
-        picked_color = st.color_picker("Base palette colour", prefs.accent)
+        picked_color = st.color_picker(
+            "Base palette colour",
+            prefs.accent,
+            key="base_palette_color",
+            on_change=reset_palette_controls,
+        )
         hide_example_placeholders = st.toggle(
             "Hide example placeholders",
             value=not bool(getattr(prefs, "show_placeholders", True)),
@@ -1295,18 +1339,14 @@ def appearance_page():
             help="Turn this on to hide the additional editable colours.",
         )
         preview_accent = normalize_color(picked_color)
+        base_color_changed = preview_accent != normalize_color(prefs.accent)
         stored_palette_overrides = {
             palette_key: color
-            for preference_key, palette_key in {
-                "background_color": "background",
-                "surface_color": "surface",
-                "text_color": "foreground",
-                "muted_color": "muted",
-                "link_color": "link",
-                "border_color": "border",
-            }.items()
+            for preference_key, palette_key in PALETTE_PREFERENCES.items()
             if (color := getattr(prefs, preference_key, None))
         }
+        if base_color_changed:
+            stored_palette_overrides = {}
         preview_palette = derived_palette(
             "dark", preview_accent, overrides=stored_palette_overrides
         )
@@ -1376,8 +1416,15 @@ def appearance_page():
                 prefs.success_matches_accent = success_matches_accent
                 prefs.show_placeholders = not hide_example_placeholders
                 prefs.show_palette_preview = not hide_palette_preview
-                if selected_palette_colors is not None:
-                    for preference_key, color in selected_palette_colors.items():
+                palette_colors_to_save = selected_palette_colors
+                if palette_colors_to_save is None and base_color_changed:
+                    generated_palette = derived_palette("dark", preview_accent)
+                    palette_colors_to_save = {
+                        preference_key: str(generated_palette[palette_key])
+                        for preference_key, palette_key in PALETTE_PREFERENCES.items()
+                    }
+                if palette_colors_to_save is not None:
+                    for preference_key, color in palette_colors_to_save.items():
                         setattr(prefs, preference_key, normalize_color(color))
                 session.commit()
                 st.session_state.appearance_saved = True

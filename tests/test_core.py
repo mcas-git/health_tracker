@@ -11,6 +11,7 @@ from health_tracker.analytics import (
     current_streak,
     daily_health_score,
     excel_safe_data,
+    morning_measurement_status,
     recent_kpi_table,
     weekly_coaching_summary,
     weight_milestones,
@@ -25,6 +26,20 @@ from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import derived_palette, normalize_color
 from scripts.send_reminder import reminder_copy, should_send
 from scripts.send_weekly_report import build_weekly_message, should_send_weekly
+
+
+def test_morning_measurement_status_marks_unrecorded_values_as_missing():
+    item = type(
+        "Entry",
+        (),
+        {"weight_kg": 101.2, "waist_cm": None, "systolic": None, "diastolic": None},
+    )()
+
+    assert morning_measurement_status(item) == {
+        "Weight": "101.2 kg",
+        "Waist": "Missing",
+        "Blood pressure": "Missing",
+    }
 
 
 def test_profile_target_date_is_uk_interpretation():
