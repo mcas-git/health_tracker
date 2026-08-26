@@ -1611,5 +1611,6 @@ with st.sidebar:
     appearance_action = st.container(key="appearance_action")
     appearance_action.page_link(appearance, use_container_width=True)
     sign_out_action = st.container(key="sign_out_action")
-    sign_out_button(cookie_manager, sign_out_action)
+    with sign_out_action:
+        sign_out_button(cookie_manager)
 page.run()

@@ -48,8 +48,8 @@ def valid_remember_token(token: str | None, password_hash: str) -> bool:
         return False
 
 
-def sign_out_button(cookie_manager: stx.CookieManager, container=st.sidebar) -> None:
-    if container.button("Sign out", use_container_width=True):
+def sign_out_button(cookie_manager: stx.CookieManager) -> None:
+    if st.button("Sign out", use_container_width=True):
         cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
         st.session_state.authenticated = False
         st.rerun()
