@@ -17,7 +17,12 @@ from health_tracker.analytics import (
     weekly_coaching_summary,
     weight_milestones,
 )
-from health_tracker.auth import create_remember_token, hash_password, valid_remember_token
+from health_tracker.auth import (
+    create_remember_token,
+    email_is_allowed,
+    hash_password,
+    valid_remember_token,
+)
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.models import Base, DailyEntry
@@ -221,6 +226,15 @@ def test_remember_token_is_signed_and_bound_to_current_password():
     assert valid_remember_token(token, current_hash)
     assert not valid_remember_token(token, hash_password("changed"))
     assert not valid_remember_token(f"{token}x", current_hash)
+
+
+def test_google_email_allowlist_is_exact_and_case_insensitive():
+    configured = "owner@example.com, second@example.com"
+
+    assert email_is_allowed("OWNER@example.com", configured)
+    assert email_is_allowed("second@example.com", configured)
+    assert not email_is_allowed("intruder@example.com", configured)
+    assert not email_is_allowed("owner@example.com.evil.test", configured)
 
 
 def test_nutrition_schema_parses():

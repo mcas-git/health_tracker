@@ -15,7 +15,9 @@ OpenAI API; manually syncs selected Garmin data; displays progress KPIs; and exp
 - **Hosted database:** Postgres through `DATABASE_URL` (Supabase, Neon, or another provider).
 - **Food analysis:** OpenAI Responses API with Pydantic structured output. Only the food note is sent.
 - **Garmin:** user-triggered sync through the unofficial `garminconnect` package.
-- **Authentication:** a single password, stored only as a SHA-256 hash in server secrets.
+- **Authentication:** Google OpenID Connect in production, restricted to an email allowlist and
+  protected by the Google account's 2-Step Verification. A hashed password remains available only
+  as a local-development fallback when Google authentication is not configured.
 - **Reminders and report:** scheduled GitHub Actions emails over SMTP, independent of Streamlit
   uptime.
 - **Timezone:** Europe/London. Target date is interpreted as 1 September 2027.
@@ -55,7 +57,20 @@ APP_PASSWORD_HASH = "..."
 DATABASE_URL = "postgresql://USER:PASSWORD@HOST:5432/postgres?sslmode=require"
 GARMIN_EMAIL = "..."
 GARMIN_PASSWORD = "..."
+ALLOWED_EMAIL = "your-google-email@gmail.com"
+
+[auth]
+redirect_uri = "https://YOUR-APP.streamlit.app/oauth2callback"
+cookie_secret = "..."
+client_id = "...apps.googleusercontent.com"
+client_secret = "..."
+server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 ```
+
+Keep all root-level secrets above the `[auth]` section. Never commit the Google client secret or
+cookie secret. When `[auth]` is present, the deployed app uses Google sign-in and accepts only the
+address in `ALLOWED_EMAIL`. `APP_PASSWORD_HASH` is used only when Google authentication is absent,
+such as local development.
 
 Never commit API, database, email, or Garmin credentials. The OpenAI key remains on the Streamlit
 server and is never sent to browser code.
@@ -71,12 +86,13 @@ server and is never sent to browser code.
 Check the current free-tier and private-repository availability of each hosting provider before
 committing to it; service limits change. Database tables and default targets are created on first run.
 
-### Change the app password
+### Change the local-development password
 
 Generate a replacement hash locally with `uv run python scripts/make_password_hash.py`. In Streamlit
 Community Cloud, open the app's **Settings → Secrets**, replace only `APP_PASSWORD_HASH`, and save.
-After Streamlit restarts, sign in with the new plain-text password. Never paste the plain password or
-its hash into GitHub files.
+After Streamlit restarts locally, sign in with the new plain-text password. Never paste the plain
+password or its hash into GitHub files. Production Google authentication is managed through the
+Google Auth Platform and Streamlit secrets instead.
 
 ## Email reminders and weekly report
 

@@ -95,7 +95,7 @@ apply_theme(
     _success_matches_accent,
     palette_overrides=_palette_overrides,
 )
-cookie_manager = require_login()
+auth_context = require_login()
 
 
 def app_palette() -> dict[str, str | list[str]]:
@@ -1612,5 +1612,5 @@ with st.sidebar:
     appearance_action.page_link(appearance, use_container_width=True)
     sign_out_action = st.container(key="sign_out_action")
     with sign_out_action:
-        sign_out_button(cookie_manager)
+        sign_out_button(auth_context)
 page.run()

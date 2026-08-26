@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import extra_streamlit_components as stx
@@ -17,6 +18,19 @@ def hash_password(password: str) -> str:
 
 
 COOKIE_NAME = "health_journey_remember"
+OIDC_SETTINGS = {
+    "redirect_uri",
+    "cookie_secret",
+    "client_id",
+    "client_secret",
+    "server_metadata_url",
+}
+
+
+@dataclass(frozen=True)
+class AuthContext:
+    mode: str
+    cookie_manager: stx.CookieManager | None = None
 
 
 def _signing_key(password_hash: str) -> bytes:
@@ -48,17 +62,77 @@ def valid_remember_token(token: str | None, password_hash: str) -> bool:
         return False
 
 
-def sign_out_button(cookie_manager: stx.CookieManager) -> None:
+def email_is_allowed(email: str, configured_emails: str) -> bool:
+    allowed = {
+        item.strip().casefold() for item in configured_emails.split(",") if item.strip()
+    }
+    return email.strip().casefold() in allowed
+
+
+def oidc_configured() -> bool:
+    try:
+        auth = st.secrets["auth"]
+        return all(str(auth.get(name, "")).strip() for name in OIDC_SETTINGS)
+    except Exception:
+        return False
+
+
+def _login_shell_intro(message: str) -> None:
+    st.markdown('<p class="login-wordmark">HEALTH JOURNEY</p>', unsafe_allow_html=True)
+    st.title("Welcome back")
+    st.caption(message)
+
+
+def sign_out_button(auth_context: AuthContext | stx.CookieManager) -> None:
     if st.button("Sign out", use_container_width=True):
-        cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
+        if isinstance(auth_context, AuthContext) and auth_context.mode == "oidc":
+            st.logout()
+            return
+        cookie_manager = (
+            auth_context.cookie_manager
+            if isinstance(auth_context, AuthContext)
+            else auth_context
+        )
+        if cookie_manager is not None:
+            cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
         st.session_state.authenticated = False
         st.rerun()
 
 
-def require_login() -> stx.CookieManager:
+def _require_google_login() -> AuthContext:
+    allowed_emails = setting("ALLOWED_EMAIL")
+    if not allowed_emails:
+        st.error("ALLOWED_EMAIL is not configured in the app secrets.")
+        st.stop()
+    if not st.user.is_logged_in:
+        _, login_column, _ = st.columns([1, 1.15, 1])
+        with login_column, st.container(key="login_shell"):
+            _login_shell_intro("Use your approved Google account to continue.")
+            if st.button("Sign in with Google", type="primary", use_container_width=True):
+                st.login()
+            st.markdown(
+                '<p class="login-footnote">Google protects this sign-in with your '
+                '2-Step Verification settings.</p>',
+                unsafe_allow_html=True,
+            )
+        st.stop()
+    identity = st.user.to_dict()
+    email = str(identity.get("email", ""))
+    if not identity.get("email_verified") or not email_is_allowed(email, allowed_emails):
+        _, login_column, _ = st.columns([1, 1.15, 1])
+        with login_column, st.container(key="login_shell"):
+            _login_shell_intro("This Google account is not approved for this tracker.")
+            st.error("Access denied. Sign in with the authorised Google account.")
+            if st.button("Use a different Google account", use_container_width=True):
+                st.logout()
+        st.stop()
+    return AuthContext(mode="oidc")
+
+
+def _require_password_login() -> AuthContext:
     expected = setting("APP_PASSWORD_HASH")
     if not expected:
-        st.error("APP_PASSWORD_HASH is not configured. See README.md.")
+        st.error("Google authentication or APP_PASSWORD_HASH must be configured. See README.md.")
         st.stop()
     cookie_manager = stx.CookieManager(key="health_journey_cookie_manager")
     if not st.session_state.get("authenticated"):
@@ -66,12 +140,10 @@ def require_login() -> stx.CookieManager:
             cookie_manager.get(COOKIE_NAME), expected
         )
     if st.session_state.get("authenticated"):
-        return cookie_manager
+        return AuthContext(mode="password", cookie_manager=cookie_manager)
     _, login_column, _ = st.columns([1, 1.15, 1])
     with login_column, st.container(key="login_shell"):
-        st.markdown('<p class="login-wordmark">HEALTH JOURNEY</p>', unsafe_allow_html=True)
-        st.title("Welcome back")
-        st.caption("Sign in to continue to your private health tracker.")
+        _login_shell_intro("Sign in to continue to your private health tracker.")
         with st.form("login", border=False):
             password = st.text_input("Password", type="password")
             remember = st.checkbox("Remember me on this device for 30 days", value=True)
@@ -96,3 +168,9 @@ def require_login() -> stx.CookieManager:
     if submitted:
         st.error("Incorrect password")
     st.stop()
+
+
+def require_login() -> AuthContext:
+    if oidc_configured():
+        return _require_google_login()
+    return _require_password_login()
