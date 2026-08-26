@@ -22,7 +22,7 @@ from health_tracker.analytics import (
     weekly_coaching_summary,
     weight_milestones,
 )
-from health_tracker.auth import require_login
+from health_tracker.auth import require_login, sign_out_button
 from health_tracker.config import LONDON, Profile, setting
 from health_tracker.config import PROFILE as DEFAULT_PROFILE
 from health_tracker.db import (
@@ -63,7 +63,7 @@ st.set_page_config(
     layout="wide",
 )
 init_db()
-require_login()
+cookie_manager = require_login()
 
 with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
@@ -1586,16 +1586,28 @@ def settings_page():
     )
 
 
-page = st.navigation(
-    [
-        st.Page(home, title="Home", default=True),
-        st.Page(dashboard, title="Dashboard"),
-        st.Page(daily_entry, title="Daily check-in"),
-        st.Page(food_log, title="Food journal"),
-        st.Page(nutrition_insights, title="Nutrition insights"),
-        st.Page(weekly_coaching, title="Weekly coaching"),
-        st.Page(settings_page, title="Targets & export"),
-        st.Page(appearance_page, title="Appearance"),
-    ]
-)
+home_page = st.Page(home, title="Home", default=True)
+dashboard_page = st.Page(dashboard, title="Dashboard")
+check_in_page = st.Page(daily_entry, title="Check-in")
+journal_page = st.Page(food_log, title="Journal")
+nutrition_page = st.Page(nutrition_insights, title="Nutrition insights")
+coaching_page = st.Page(weekly_coaching, title="Coaching")
+targets_page = st.Page(settings_page, title="Targets")
+appearance = st.Page(appearance_page, title="Appearance")
+standard_pages = [
+    home_page,
+    dashboard_page,
+    check_in_page,
+    journal_page,
+    nutrition_page,
+    coaching_page,
+    targets_page,
+]
+page = st.navigation([*standard_pages, appearance], position="hidden")
+with st.sidebar:
+    for navigation_page in standard_pages:
+        st.page_link(navigation_page, use_container_width=True)
+    with st.container(key="appearance_action"):
+        st.page_link(appearance, use_container_width=True)
+sign_out_button(cookie_manager)
 page.run()

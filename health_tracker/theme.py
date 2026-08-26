@@ -281,6 +281,23 @@ def apply_theme(
         .sport-watermark svg {{ display:block; width:100%; height:auto; }}
         @media (max-width:768px) {{
             .sport-watermark {{ left:1rem; bottom:1rem; width:210px; opacity:.055; }}
+            .nutrition-metric-card {{
+                width:100%; min-height:0; margin:0 0 10px; padding:11px 14px;
+                border-radius:12px; display:grid;
+                grid-template-columns:minmax(0,1fr) auto;
+                grid-template-areas:"title value" "status status";
+                align-items:center; column-gap:12px; row-gap:2px;
+            }}
+            .nutrition-metric-title {{
+                grid-area:title; min-width:0; font-size:.82rem; line-height:1.25;
+            }}
+            .nutrition-metric-value {{
+                grid-area:value; margin:0; font-size:1.35rem; line-height:1.15;
+                text-align:right;
+            }}
+            .nutrition-metric-status {{
+                grid-area:status; font-size:.8rem; line-height:1.25;
+            }}
         }}
         .neutral-note {{
             background:{surface}; color:{text}; border-left:4px solid {accent};
@@ -309,6 +326,19 @@ def apply_theme(
             font-weight:600; margin-top:.35rem;
         }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
+        .st-key-appearance_action {{ margin-top:1rem; }}
+        .st-key-appearance_action a {{
+            width:100% !important; min-height:2.5rem; box-sizing:border-box;
+            justify-content:center !important; background:{background} !important;
+            color:{text} !important; border:1px solid {text} !important;
+            border-radius:10px !important;
+        }}
+        .st-key-appearance_action a:hover,
+        .st-key-appearance_action a:focus {{
+            background:{surface} !important; color:{text} !important;
+            border-color:{text} !important; box-shadow:none !important;
+        }}
+        .st-key-appearance_action a p {{ color:{text} !important; }}
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;

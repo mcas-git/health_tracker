@@ -48,7 +48,14 @@ def valid_remember_token(token: str | None, password_hash: str) -> bool:
         return False
 
 
-def require_login() -> None:
+def sign_out_button(cookie_manager: stx.CookieManager) -> None:
+    if st.sidebar.button("Sign out", use_container_width=True):
+        cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
+        st.session_state.authenticated = False
+        st.rerun()
+
+
+def require_login() -> stx.CookieManager:
     expected = setting("APP_PASSWORD_HASH")
     if not expected:
         st.error("APP_PASSWORD_HASH is not configured. See README.md.")
@@ -59,11 +66,7 @@ def require_login() -> None:
             cookie_manager.get(COOKIE_NAME), expected
         )
     if st.session_state.get("authenticated"):
-        if st.sidebar.button("Sign out", use_container_width=True):
-            cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
-            st.session_state.authenticated = False
-            st.rerun()
-        return
+        return cookie_manager
     st.title("Welcome back")
     st.caption("Your private space for a stronger, healthier year")
     with st.form("login"):
