@@ -21,6 +21,7 @@ from health_tracker.analytics import (
     weight_milestones,
 )
 from health_tracker.auth import require_login, sign_out_button
+from health_tracker.branding import BRAND_MARK_DATA_URI
 from health_tracker.config import LONDON, Profile, setting
 from health_tracker.config import PROFILE as DEFAULT_PROFILE
 from health_tracker.db import (
@@ -1582,6 +1583,11 @@ standard_pages = [
 ]
 page = st.navigation([*standard_pages, appearance], position="hidden")
 with st.sidebar:
+    st.markdown(
+        f'<div class="sidebar-brand-mark"><img src="{BRAND_MARK_DATA_URI}" '
+        'alt="Health Journey"></div>',
+        unsafe_allow_html=True,
+    )
     for navigation_page in standard_pages:
         st.page_link(navigation_page, use_container_width=True)
     appearance_action = st.container(key="appearance_action")

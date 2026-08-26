@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 116 191" role="img" aria-label="Health Journey">
+  <g fill="none" stroke="#FFFFFF" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="58" cy="30" rx="26.5" ry="26.5"/>
+    <path d="M29 43C15 55 10 79 17 98C23 117 38 124 58 124C78 124 93 117 99 98C106 79 101 55 87 43"/>
+    <path d="M24 49C5 66-2 91 5 111C12 140 32 157 58 157C84 157 104 140 111 111C118 91 111 66 92 49"/>
+    <path d="M58 58V187"/>
+  </g>
+</svg>

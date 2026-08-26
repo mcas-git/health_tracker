@@ -334,6 +334,13 @@ def apply_theme(
         .st-key-login_shell h1 {{
             margin:.25rem 0 .35rem; font-size:clamp(2rem,4vw,2.8rem); line-height:1.05;
         }}
+        .login-brand-mark {{
+            display:flex; align-items:center; justify-content:center;
+            min-height:5.5rem; margin:0 0 .65rem;
+        }}
+        .login-brand-mark img {{
+            display:block; width:3.4rem; height:auto;
+        }}
         .st-key-login_shell [data-testid="stCaptionContainer"] {{ margin-bottom:1.3rem; }}
         .st-key-login_shell [data-testid="stForm"] {{ padding:0; border:0; }}
         .st-key-login_shell [data-testid="stFormSubmitButton"] {{ margin-top:.55rem; }}
@@ -366,6 +373,13 @@ def apply_theme(
         }}
         [data-testid="stSidebarUserContent"] {{
             position:relative; min-height:calc(100vh - 1rem);
+        }}
+        .sidebar-brand-mark {{
+            display:flex; align-items:center; justify-content:center;
+            min-height:4rem; margin:.15rem 0 .85rem;
+        }}
+        .sidebar-brand-mark img {{
+            display:block; width:2.35rem; height:auto;
         }}
         .st-key-appearance_action,
         .st-key-sign_out_action {{
