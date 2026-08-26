@@ -192,7 +192,7 @@ def apply_theme(
         }}
         .nutrition-metric-card {{
             min-height:132px; box-sizing:border-box;
-            background:color-mix(in srgb, var(--nutrient-color) 18%, {surface});
+            background:color-mix(in srgb, var(--nutrient-color) 30%, {surface});
             border:1px solid var(--nutrient-color); border-radius:16px;
             padding:16px; box-shadow:0 5px 20px #0000000d;
         }}

@@ -1089,7 +1089,7 @@ def nutrition_insights():
     }
     nutrient_colors = {
         "Calories": "#C5A33B",
-        "Protein": _theme_values[1],
+        "Protein": "#6FAED9",
         "Carbs": "#B8755A",
         "Fat": "#9A6C8A",
         "Fibre": "#4F8A55",
@@ -1143,22 +1143,21 @@ def nutrition_insights():
         if pd.notna(row[field])
     ]
     titles = {
-        "Week": ("Weekly trend", "Weekly average", "Monday to Sunday"),
+        "Week": ("Weekly trend and average", "Monday to Sunday"),
         "Two weeks": (
-            "Two-week trend",
-            "Two-week average",
+            "Two-week trend and average",
             "Monday to the following Sunday",
         ),
-        "Month": ("Monthly trend", "Monthly average", "Calendar month"),
+        "Month": ("Monthly trend and average", "Calendar month"),
     }
-    trend_title, average_title, period_label = titles[period_view]
+    section_title, period_label = titles[period_view]
     period_days = (period_end - period_start).days + 1
     tick_step = 1 if period_days <= 14 else max(1, math.ceil(period_days / 10))
     tick_values = list(pd.date_range(period_start, period_end, freq=f"{tick_step}D"))
     if tick_values[-1] != period_end:
         tick_values.append(period_end)
 
-    st.subheader(trend_title)
+    st.subheader(section_title)
     st.caption(
         f"{period_start:%d %b %Y}–{period_end:%d %b %Y} · {period_label}"
     )
@@ -1206,7 +1205,6 @@ def nutrition_insights():
     else:
         st.info("No food estimates exist in the selected period.")
 
-    st.subheader(average_title)
     if period_rows:
         period_average = []
         for label, field in fields.items():
@@ -1226,8 +1224,12 @@ def nutrition_insights():
             .encode(
                 x=alt.X(
                     "% of target:Q",
-                    title="Average target achievement (%)",
-                    axis=alt.Axis(grid=False),
+                    title=None,
+                    scale=alt.Scale(domain=[0, 200], clamp=True),
+                    axis=alt.Axis(
+                        grid=False,
+                        values=list(range(25, 201, 25)),
+                    ),
                 ),
                 y=alt.Y("Nutrient:N", sort=list(fields), title=None),
                 color=alt.Color(
