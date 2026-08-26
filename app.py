@@ -335,7 +335,11 @@ def dashboard():
         f"{_profile.target_date:%d %b %Y}"
     )
     df = load_data()
-    latest_weight = df.weight_kg.dropna().iloc[-1] if not df.empty and "weight_kg" in df else None
+    latest_weight = (
+        df.weight_kg.dropna().iloc[-1]
+        if "weight_kg" in df and df.weight_kg.notna().any()
+        else None
+    )
     goal_range = _profile.start_weight_kg - _profile.target_weight_kg
     progress = (
         (_profile.start_weight_kg - latest_weight)

@@ -815,24 +815,34 @@ def apply_theme(
             color:{neutral_icon} !important;
             fill:{neutral_icon} !important;
         }}
-        .st-key-additional_kpi [data-baseweb="select"],
-        .st-key-additional_kpi [data-baseweb="select"] > div,
-        .st-key-additional_kpi [role="combobox"],
-        .st-key-additional_kpi [aria-haspopup="listbox"] {{
+        .st-key-additional_kpi [data-baseweb="select"] {{
             background:{background} !important;
             background-color:{background} !important;
             color:{text} !important;
             -webkit-text-fill-color:{text} !important;
             border:1px solid #FFFFFF !important;
             border-color:#FFFFFF !important;
+            border-radius:8px !important;
+            overflow:hidden !important;
             box-shadow:none !important;
             outline:none !important;
         }}
-        .st-key-additional_kpi [data-baseweb="select"] > div:focus-within,
-        .st-key-additional_kpi [role="combobox"]:focus,
-        .st-key-additional_kpi [aria-haspopup="listbox"]:focus {{
+        .st-key-additional_kpi [data-baseweb="select"]:focus-within {{
             border:1px solid #FFFFFF !important;
             border-color:#FFFFFF !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        .st-key-additional_kpi [data-baseweb="select"] > div,
+        .st-key-additional_kpi [data-baseweb="select"] > div:focus-within,
+        .st-key-additional_kpi [role="combobox"],
+        .st-key-additional_kpi [role="combobox"]:focus,
+        .st-key-additional_kpi [aria-haspopup="listbox"],
+        .st-key-additional_kpi [aria-haspopup="listbox"]:focus {{
+            background:transparent !important;
+            background-color:transparent !important;
+            border:0 !important;
+            border-radius:0 !important;
             box-shadow:none !important;
             outline:none !important;
         }}
@@ -995,6 +1005,14 @@ def apply_theme(
         }}
         [data-testid="stSelectbox"] .react-aria-ComboBox > div:focus-within {{
             border-color:{accent} !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        .st-key-additional_kpi .react-aria-ComboBox > div,
+        .st-key-additional_kpi .react-aria-ComboBox > div:focus-within {{
+            border:1px solid #FFFFFF !important;
+            border-color:#FFFFFF !important;
+            border-radius:10px !important;
             box-shadow:none !important;
             outline:none !important;
         }}
