@@ -326,19 +326,62 @@ def apply_theme(
             font-weight:600; margin-top:.35rem;
         }}
         .stButton > button, .stFormSubmitButton > button {{ border-radius:10px; }}
-        .st-key-appearance_action {{ margin-top:1rem; }}
-        .st-key-appearance_action a {{
+        .st-key-login_shell {{
+            margin-top:clamp(1rem,4vh,2.5rem); padding:clamp(1.5rem,4vw,2.5rem);
+            background:{surface}; border:1px solid {neutral_border}; border-radius:22px;
+            box-shadow:0 22px 70px #00000040;
+        }}
+        .st-key-login_shell h1 {{
+            margin:.25rem 0 .35rem; font-size:clamp(2rem,4vw,2.8rem); line-height:1.05;
+        }}
+        .st-key-login_shell [data-testid="stCaptionContainer"] {{ margin-bottom:1.3rem; }}
+        .st-key-login_shell [data-testid="stForm"] {{ padding:0; border:0; }}
+        .st-key-login_shell [data-testid="stFormSubmitButton"] {{ margin-top:.55rem; }}
+        .st-key-login_shell .login-wordmark {{
+            margin:0 !important; color:{accent} !important; font-size:.72rem;
+            -webkit-text-fill-color:{accent} !important;
+            font-weight:800; letter-spacing:.18em;
+        }}
+        .st-key-login_shell .login-footnote {{
+            margin:1.15rem 0 0 !important; color:{muted} !important;
+            -webkit-text-fill-color:{muted} !important;
+            font-size:.78rem; line-height:1.4; text-align:center;
+        }}
+        .st-key-login_shell [data-testid="stTextInputRootElement"],
+        .st-key-login_shell [data-baseweb="input"] {{
+            background:{background} !important; background-color:{background} !important;
+        }}
+        .st-key-login_shell input:-webkit-autofill {{
+            -webkit-box-shadow:0 0 0 1000px {background} inset !important;
+            -webkit-text-fill-color:{text} !important;
+        }}
+        [data-testid="stSidebarUserContent"] {{
+            position:relative; min-height:calc(100vh - 1rem);
+        }}
+        .st-key-appearance_action,
+        .st-key-sign_out_action {{
+            position:absolute; right:1.25rem; left:1.25rem;
+        }}
+        .st-key-appearance_action {{
+            bottom:8.4rem; padding-top:1rem; border-top:1px solid {accent_text}44;
+        }}
+        .st-key-sign_out_action {{ bottom:4.7rem; }}
+        .st-key-appearance_action a,
+        .st-key-sign_out_action button {{
             width:100% !important; min-height:2.5rem; box-sizing:border-box;
             justify-content:center !important; background:{background} !important;
             color:{text} !important; border:1px solid {text} !important;
             border-radius:10px !important;
         }}
         .st-key-appearance_action a:hover,
-        .st-key-appearance_action a:focus {{
+        .st-key-appearance_action a:focus,
+        .st-key-sign_out_action button:hover,
+        .st-key-sign_out_action button:focus {{
             background:{surface} !important; color:{text} !important;
             border-color:{text} !important; box-shadow:none !important;
         }}
-        .st-key-appearance_action a p {{ color:{text} !important; }}
+        .st-key-appearance_action a p,
+        .st-key-sign_out_action button p {{ color:{text} !important; }}
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;

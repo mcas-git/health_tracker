@@ -60,10 +60,10 @@ PALETTE_WIDGETS = {
 
 st.set_page_config(
     page_title="Health Journey",
+    page_icon="⚕️",
     layout="wide",
 )
 init_db()
-cookie_manager = require_login()
 
 with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
@@ -95,6 +95,7 @@ apply_theme(
     _success_matches_accent,
     palette_overrides=_palette_overrides,
 )
+cookie_manager = require_login()
 
 
 def app_palette() -> dict[str, str | list[str]]:
@@ -1590,7 +1591,7 @@ home_page = st.Page(home, title="Home", default=True)
 dashboard_page = st.Page(dashboard, title="Dashboard")
 check_in_page = st.Page(daily_entry, title="Check-in")
 journal_page = st.Page(food_log, title="Journal")
-nutrition_page = st.Page(nutrition_insights, title="Nutrition insights")
+nutrition_page = st.Page(nutrition_insights, title="Insights")
 coaching_page = st.Page(weekly_coaching, title="Coaching")
 targets_page = st.Page(settings_page, title="Targets")
 appearance = st.Page(appearance_page, title="Appearance")
@@ -1607,7 +1608,8 @@ page = st.navigation([*standard_pages, appearance], position="hidden")
 with st.sidebar:
     for navigation_page in standard_pages:
         st.page_link(navigation_page, use_container_width=True)
-    with st.container(key="appearance_action"):
-        st.page_link(appearance, use_container_width=True)
-sign_out_button(cookie_manager)
+    appearance_action = st.container(key="appearance_action")
+    appearance_action.page_link(appearance, use_container_width=True)
+    sign_out_action = st.container(key="sign_out_action")
+    sign_out_button(cookie_manager, sign_out_action)
 page.run()

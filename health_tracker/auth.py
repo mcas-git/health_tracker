@@ -48,8 +48,8 @@ def valid_remember_token(token: str | None, password_hash: str) -> bool:
         return False
 
 
-def sign_out_button(cookie_manager: stx.CookieManager) -> None:
-    if st.sidebar.button("Sign out", use_container_width=True):
+def sign_out_button(cookie_manager: stx.CookieManager, container=st.sidebar) -> None:
+    if container.button("Sign out", use_container_width=True):
         cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
         st.session_state.authenticated = False
         st.rerun()
@@ -67,12 +67,22 @@ def require_login() -> stx.CookieManager:
         )
     if st.session_state.get("authenticated"):
         return cookie_manager
-    st.title("Welcome back")
-    st.caption("Your private space for a stronger, healthier year")
-    with st.form("login"):
-        password = st.text_input("Password", type="password")
-        remember = st.checkbox("Remember me on this device for 30 days", value=True)
-        submitted = st.form_submit_button("Sign in", use_container_width=True)
+    _, login_column, _ = st.columns([1, 1.15, 1])
+    with login_column, st.container(key="login_shell"):
+        st.markdown('<p class="login-wordmark">HEALTH JOURNEY</p>', unsafe_allow_html=True)
+        st.title("Welcome back")
+        st.caption("Sign in to continue to your private health tracker.")
+        with st.form("login", border=False):
+            password = st.text_input("Password", type="password")
+            remember = st.checkbox("Remember me on this device for 30 days", value=True)
+            submitted = st.form_submit_button(
+                "Sign in", type="primary", use_container_width=True
+            )
+        st.markdown(
+            '<p class="login-footnote">Your health data stays behind this private '
+            'access screen.</p>',
+            unsafe_allow_html=True,
+        )
     if submitted and hmac.compare_digest(hash_password(password), expected):
         st.session_state.authenticated = True
         if remember:
