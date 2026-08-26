@@ -580,6 +580,14 @@ def apply_theme(
             color:{text} !important;
             border-color:{neutral_border} !important;
         }}
+        [data-testid="stExpander"] details {{
+            overflow:hidden !important;
+        }}
+        [data-testid="stExpander"] details[open] >
+        [data-testid="stExpanderDetails"] {{
+            border-radius:0 0 7px 7px !important;
+            overflow:hidden !important;
+        }}
         [data-testid="stExpander"] summary:hover,
         [data-testid="stExpander"] summary:focus,
         [data-testid="stExpander"] details[open] summary:hover {{
