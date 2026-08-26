@@ -57,21 +57,6 @@ def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def nutrition_period_bounds(selected: date, view: str) -> tuple[pd.Timestamp, pd.Timestamp]:
-    """Return the complete calendar period containing the selected day."""
-    day = pd.Timestamp(selected).normalize()
-    if view == "Month":
-        start = day.replace(day=1)
-        return start, start + pd.offsets.MonthEnd(1)
-
-    start = day - pd.Timedelta(days=day.weekday())
-    if view == "Week":
-        return start, start + pd.Timedelta(days=6)
-    if view == "Two weeks":
-        return start, start + pd.Timedelta(days=13)
-    raise ValueError(f"Unsupported nutrition period: {view}")
-
-
 def daily_health_score(item, profile: Profile = PROFILE) -> tuple[int, str, list[str]] | None:
     """Create a non-diagnostic indicator from the measurements recorded for one day."""
     components: list[tuple[str, float]] = []

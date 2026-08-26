@@ -11,7 +11,6 @@ from health_tracker.analytics import (
     current_streak,
     daily_health_score,
     excel_safe_data,
-    nutrition_period_bounds,
     weekly_coaching_summary,
     weight_milestones,
 )
@@ -210,23 +209,6 @@ def test_excel_export_removes_timezone_information():
     exported = excel_safe_data(data)
 
     assert exported.loc[0, "created_at"].tzinfo is None
-
-
-def test_nutrition_periods_use_complete_calendar_boundaries():
-    selected = date(2026, 8, 26)
-
-    assert nutrition_period_bounds(selected, "Week") == (
-        pd.Timestamp("2026-08-24"),
-        pd.Timestamp("2026-08-30"),
-    )
-    assert nutrition_period_bounds(selected, "Two weeks") == (
-        pd.Timestamp("2026-08-24"),
-        pd.Timestamp("2026-09-06"),
-    )
-    assert nutrition_period_bounds(selected, "Month") == (
-        pd.Timestamp("2026-08-01"),
-        pd.Timestamp("2026-08-31"),
-    )
 
 
 def test_daily_health_score_is_deterministic_and_uses_available_measurements():

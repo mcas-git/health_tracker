@@ -15,7 +15,6 @@ from health_tracker.analytics import (
     daily_health_score,
     excel_safe_data,
     load_data,
-    nutrition_period_bounds,
     projected_target_date,
     weekly_coaching_summary,
     weight_milestones,
@@ -1119,7 +1118,17 @@ def nutrition_insights():
                 unsafe_allow_html=True,
             )
 
-    period_start, period_end = nutrition_period_bounds(selected, period_view)
+    selected_timestamp = pd.Timestamp(selected).normalize()
+    if period_view == "Month":
+        period_start = selected_timestamp.replace(day=1)
+        period_end = period_start + pd.offsets.MonthEnd(1)
+    else:
+        period_start = selected_timestamp - pd.Timedelta(
+            days=selected_timestamp.weekday()
+        )
+        period_end = period_start + pd.Timedelta(
+            days=13 if period_view == "Two weeks" else 6
+        )
     selected_period = nutrition[
         nutrition.entry_date.dt.normalize().between(period_start, period_end)
     ].copy()
