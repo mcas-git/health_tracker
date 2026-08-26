@@ -318,6 +318,41 @@ def test_daily_health_score_is_deterministic_and_uses_available_measurements():
     assert len(included) == 7
 
 
+def test_daily_health_score_ignores_nan_measurements():
+    item = pd.Series(
+        {
+            "bmi": 31.2,
+            "waist_cm": float("nan"),
+            "systolic": float("nan"),
+            "diastolic": float("nan"),
+            "resting_heart_rate": float("nan"),
+            "sleep_hours": float("nan"),
+            "steps": float("nan"),
+            "mood": float("nan"),
+            "energy": 7,
+        }
+    )
+
+    score, label, included = daily_health_score(item)
+
+    assert score == 52
+    assert label == "Watch"
+    assert included == ["BMI", "Energy"]
+
+
+def test_daily_health_score_returns_none_when_every_measurement_is_nan():
+    item = pd.Series(
+        {
+            "bmi": float("nan"),
+            "waist_cm": float("nan"),
+            "mood": float("nan"),
+            "energy": float("nan"),
+        }
+    )
+
+    assert daily_health_score(item) is None
+
+
 def test_bmi_status_uses_standard_adult_bands():
     assert bmi_status(24.9)[0] == "Healthy range"
     assert bmi_status(25.0)[0] == "Overweight"

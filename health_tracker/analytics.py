@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from datetime import date, datetime, timedelta
 
 import pandas as pd
@@ -9,6 +10,14 @@ from sqlalchemy.orm import Session
 from health_tracker.config import PROFILE, Profile
 from health_tracker.db import engine
 from health_tracker.models import DailyEntry, NutritionLog
+
+
+def _finite_number(value) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 def load_data() -> pd.DataFrame:
@@ -126,18 +135,18 @@ def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
 def daily_health_score(item, profile: Profile = PROFILE) -> tuple[int, str, list[str]] | None:
     """Create a non-diagnostic indicator from the measurements recorded for one day."""
     components: list[tuple[str, float]] = []
-    bmi = getattr(item, "bmi", None)
-    if bmi:
+    bmi = _finite_number(getattr(item, "bmi", None))
+    if bmi is not None and bmi > 0:
         components.append(
             ("BMI", 100 if 18.5 <= bmi < 25 else 65 if 25 <= bmi < 30 else 35 if bmi < 35 else 15)
         )
-    waist = getattr(item, "waist_cm", None)
-    if waist:
+    waist = _finite_number(getattr(item, "waist_cm", None))
+    if waist is not None and waist > 0:
         ratio = waist / profile.height_cm
         components.append(("Waist-to-height", 100 if ratio < 0.5 else 55 if ratio < 0.6 else 20))
-    systolic = getattr(item, "systolic", None)
-    diastolic = getattr(item, "diastolic", None)
-    if systolic and diastolic:
+    systolic = _finite_number(getattr(item, "systolic", None))
+    diastolic = _finite_number(getattr(item, "diastolic", None))
+    if systolic is not None and systolic > 0 and diastolic is not None and diastolic > 0:
         components.append(
             (
                 "Blood pressure",
@@ -148,23 +157,23 @@ def daily_health_score(item, profile: Profile = PROFILE) -> tuple[int, str, list
                 else 25,
             )
         )
-    resting_hr = getattr(item, "resting_heart_rate", None)
-    if resting_hr is not None:
+    resting_hr = _finite_number(getattr(item, "resting_heart_rate", None))
+    if resting_hr is not None and resting_hr > 0:
         components.append(
             (
                 "Resting heart rate",
                 100 if 50 <= resting_hr <= 90 else 65 if 40 <= resting_hr <= 100 else 25,
             )
         )
-    sleep = getattr(item, "sleep_hours", None)
-    if sleep is not None:
+    sleep = _finite_number(getattr(item, "sleep_hours", None))
+    if sleep is not None and sleep >= 0:
         components.append(("Sleep", 100 if 7 <= sleep <= 9 else 65 if 6 <= sleep <= 10 else 30))
-    steps = getattr(item, "steps", None)
-    if steps is not None:
+    steps = _finite_number(getattr(item, "steps", None))
+    if steps is not None and steps >= 0:
         components.append(("Activity", 100 if steps >= 8000 else 70 if steps >= 5000 else 40))
     for field, label in (("mood", "Mood"), ("energy", "Energy")):
-        rating = getattr(item, field, None)
-        if rating is not None:
+        rating = _finite_number(getattr(item, field, None))
+        if rating is not None and 1 <= rating <= 10:
             components.append((label, rating * 10))
     if not components:
         return None
