@@ -56,6 +56,12 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
         "success_matches_accent",
         "show_placeholders",
         "show_palette_preview",
+        "background_color",
+        "surface_color",
+        "text_color",
+        "muted_color",
+        "link_color",
+        "border_color",
     } <= preference_columns
     with Session(test_engine) as session:
         session.add_all(
@@ -286,6 +292,28 @@ def test_palette_exposes_read_only_app_hues():
         "border",
     } <= palette.keys()
     assert palette["surface"] == palette["secondary"]
+
+
+def test_palette_allows_saved_colour_overrides_and_keeps_hover_linked_to_cards():
+    palette = derived_palette(
+        "dark",
+        "#7B8451",
+        overrides={
+            "background": "#101112",
+            "surface": "#202122",
+            "foreground": "#F0F1F2",
+            "muted": "#A0A1A2",
+            "link": "#C0C1C2",
+            "border": "#505152",
+        },
+    )
+
+    assert palette["background"] == "#101112"
+    assert palette["surface"] == palette["secondary"] == "#202122"
+    assert palette["foreground"] == "#F0F1F2"
+    assert palette["muted"] == "#A0A1A2"
+    assert palette["link"] == "#C0C1C2"
+    assert palette["border"] == "#505152"
 
 
 def test_reminder_schedule_handles_bst_and_gmt():

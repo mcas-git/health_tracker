@@ -50,6 +50,18 @@ require_login()
 with Session(engine) as _theme_session:
     _preferences = _theme_session.get(AppPreferences, 1)
     _theme_values = ("dark", _preferences.accent, _preferences.font_family)
+    _palette_overrides = {
+        palette_key: color
+        for preference_key, palette_key in {
+            "background_color": "background",
+            "surface_color": "surface",
+            "text_color": "foreground",
+            "muted_color": "muted",
+            "link_color": "link",
+            "border_color": "border",
+        }.items()
+        if (color := getattr(_preferences, preference_key, None))
+    }
     _smooth_charts = bool(_preferences.smooth_charts)
     _success_matches_accent = bool(
         getattr(_preferences, "success_matches_accent", False)
@@ -67,7 +79,15 @@ with Session(engine) as _theme_session:
         ),
         target_date=getattr(_preferences, "target_date", DEFAULT_PROFILE.target_date),
     )
-apply_theme(*_theme_values, _success_matches_accent)
+apply_theme(
+    *_theme_values,
+    _success_matches_accent,
+    palette_overrides=_palette_overrides,
+)
+
+
+def app_palette() -> dict[str, str | list[str]]:
+    return derived_palette(*_theme_values[:2], overrides=_palette_overrides)
 
 
 def value(item, name, default=None):
@@ -209,7 +229,7 @@ def kpi_axis_domain(field: str, values: pd.Series) -> list[float]:
 
 
 def style_chart(chart):
-    palette = derived_palette(_theme_values[0], _theme_values[1])
+    palette = app_palette()
     foreground = palette["foreground"]
     grid = palette["grid"]
     accent = palette["accent"]
@@ -332,7 +352,7 @@ def dashboard():
     df["entry_date"] = pd.to_datetime(df["entry_date"])
     chart_height = 320
     accent = _theme_values[1]
-    palette = derived_palette(*_theme_values[:2])
+    palette = app_palette()
     series_colors = palette["series"]
     journey_start = pd.Timestamp(df.entry_date.min()).normalize()
     journey_end = max(pd.Timestamp(_profile.target_date), journey_start)
@@ -611,36 +631,40 @@ def daily_entry():
         st.caption("Record weight, waist and blood pressure.")
         with st.form(f"morning_form_{date_key}"):
             c1, c2 = st.columns(2)
+            weight_value = value(item, "weight_kg")
             weight = c1.number_input(
                 "Weight (kg)",
-                30.0,
-                250.0,
-                float(value(measurement_defaults, "weight_kg", _profile.start_weight_kg)),
-                0.1,
+                min_value=30.0,
+                max_value=250.0,
+                value=float(weight_value) if weight_value is not None else None,
+                step=0.1,
                 key=f"weight_{date_key}",
             )
+            waist_value = value(item, "waist_cm")
             waist = c2.number_input(
                 "Waist (cm)",
-                30.0,
-                250.0,
-                float(value(measurement_defaults, "waist_cm", 100.0)),
-                0.1,
+                min_value=30.0,
+                max_value=250.0,
+                value=float(waist_value) if waist_value is not None else None,
+                step=0.1,
                 key=f"waist_{date_key}",
             )
-            bmi = weight / ((_profile.height_cm / 100) ** 2)
+            bmi = weight / ((_profile.height_cm / 100) ** 2) if weight is not None else None
             c1, c2 = st.columns(2)
+            systolic_value = value(item, "systolic")
             systolic = c1.number_input(
                 "Blood pressure · systolic",
-                60,
-                250,
-                int(value(measurement_defaults, "systolic", 120)),
+                min_value=60,
+                max_value=250,
+                value=int(systolic_value) if systolic_value is not None else None,
                 key=f"systolic_{date_key}",
             )
+            diastolic_value = value(item, "diastolic")
             diastolic = c2.number_input(
                 "Blood pressure · diastolic",
-                30,
-                160,
-                int(value(measurement_defaults, "diastolic", 80)),
+                min_value=30,
+                max_value=160,
+                value=int(diastolic_value) if diastolic_value is not None else None,
                 key=f"diastolic_{date_key}",
             )
             morning_submitted = st.form_submit_button(
@@ -724,7 +748,6 @@ def daily_entry():
                 220,
                 value=int(resting_value) if resting_value is not None else None,
                 disabled=True,
-                placeholder="No data",
                 key=f"resting_hr_{date_key}_{sync_revision}",
             )
             sleep_value = smartwatch_value("sleep_hours")
@@ -735,7 +758,6 @@ def daily_entry():
                 value=float(sleep_value) if sleep_value is not None else None,
                 step=0.01,
                 disabled=True,
-                placeholder="No data",
                 key=f"sleep_{date_key}_{sync_revision}",
             )
             steps_value = smartwatch_value("steps")
@@ -745,7 +767,6 @@ def daily_entry():
                 100000,
                 value=int(steps_value) if steps_value is not None else None,
                 disabled=True,
-                placeholder="No data",
                 key=f"steps_{date_key}_{sync_revision}",
             )
             burned_value = smartwatch_value("calories_burned")
@@ -755,7 +776,6 @@ def daily_entry():
                 10000,
                 value=int(burned_value) if burned_value is not None else None,
                 disabled=True,
-                placeholder="No data",
                 help="Garmin total calories combine active and resting (BMR) calories.",
                 key=f"burned_{date_key}_{sync_revision}",
             )
@@ -1208,7 +1228,7 @@ def nutrition_insights():
                 {"Nutrient": label, "% of target": percent, "Status": status}
             )
         average_frame = pd.DataFrame(period_average)
-        muted_bar = derived_palette(_theme_values[0], _theme_values[1])["grid"]
+        muted_bar = app_palette()["grid"]
         average_bars = (
             alt.Chart(average_frame)
             .mark_bar(cornerRadiusEnd=8)
@@ -1270,33 +1290,57 @@ def appearance_page():
             help="Turn this on to remove example text from empty fields throughout the app.",
         )
         hide_palette_preview = st.toggle(
-            "Hide generated palette preview",
+            "Hide palette colour controls",
             value=not bool(getattr(prefs, "show_palette_preview", True)),
-            help="Turn this on to hide the read-only colours generated from your selection.",
+            help="Turn this on to hide the additional editable colours.",
         )
         preview_accent = normalize_color(picked_color)
-        preview_palette = derived_palette("dark", preview_accent)
-        preview_hues = [
-            ("Page", preview_palette["background"]),
-            ("Cards", preview_palette["surface"]),
-            ("Hover", preview_palette["secondary"]),
-            ("Primary", preview_palette["accent"]),
-            ("Text", preview_palette["foreground"]),
-            ("Muted text", preview_palette["muted"]),
-            ("Links", preview_palette["link"]),
-            ("Borders", preview_palette["border"]),
-        ]
-        swatches = "".join(
-            '<div class="palette-swatch">'
-            f'<span class="palette-swatch-color" style="background:{color}"></span>'
-            f"<strong>{label}</strong><small>{color}</small></div>"
-            for label, color in preview_hues
+        stored_palette_overrides = {
+            palette_key: color
+            for preference_key, palette_key in {
+                "background_color": "background",
+                "surface_color": "surface",
+                "text_color": "foreground",
+                "muted_color": "muted",
+                "link_color": "link",
+                "border_color": "border",
+            }.items()
+            if (color := getattr(prefs, preference_key, None))
+        }
+        preview_palette = derived_palette(
+            "dark", preview_accent, overrides=stored_palette_overrides
         )
+        selected_palette_colors = None
         if not hide_palette_preview:
-            st.caption("Generated palette · preview only")
-            st.markdown(
-                f'<div class="palette-preview">{swatches}</div>', unsafe_allow_html=True
+            st.caption("Palette colours · editable")
+            palette_columns = st.columns(3)
+            page_color = palette_columns[0].color_picker(
+                "Page", str(preview_palette["background"]), key="palette_background"
             )
+            surface_color = palette_columns[1].color_picker(
+                "Cards and hover", str(preview_palette["surface"]), key="palette_surface"
+            )
+            text_color = palette_columns[2].color_picker(
+                "Text", str(preview_palette["foreground"]), key="palette_text"
+            )
+            palette_columns = st.columns(3)
+            muted_color = palette_columns[0].color_picker(
+                "Muted text", str(preview_palette["muted"]), key="palette_muted"
+            )
+            link_color = palette_columns[1].color_picker(
+                "Links", str(preview_palette["link"]), key="palette_link"
+            )
+            border_color = palette_columns[2].color_picker(
+                "Borders", str(preview_palette["border"]), key="palette_border"
+            )
+            selected_palette_colors = {
+                "background_color": page_color,
+                "surface_color": surface_color,
+                "text_color": text_color,
+                "muted_color": muted_color,
+                "link_color": link_color,
+                "border_color": border_color,
+            }
         font = st.selectbox(
             "Font",
             list(FONTS),
@@ -1332,6 +1376,9 @@ def appearance_page():
                 prefs.success_matches_accent = success_matches_accent
                 prefs.show_placeholders = not hide_example_placeholders
                 prefs.show_palette_preview = not hide_palette_preview
+                if selected_palette_colors is not None:
+                    for preference_key, color in selected_palette_colors.items():
+                        setattr(prefs, preference_key, normalize_color(color))
                 session.commit()
                 st.session_state.appearance_saved = True
                 st.rerun()

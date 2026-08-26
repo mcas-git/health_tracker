@@ -41,10 +41,12 @@ def _mix(color: str, target: str, amount: float) -> str:
     return "#" + "".join(f"{value:02X}" for value in values)
 
 
-def derived_palette(mode: str, accent: str) -> dict[str, str | list[str]]:
+def derived_palette(
+    mode: str, accent: str, overrides: dict[str, str] | None = None
+) -> dict[str, str | list[str]]:
     accent = normalize_color(accent)
     surface = _mix(accent, "#000000", 0.72)
-    return {
+    palette: dict[str, str | list[str]] = {
         "accent": accent,
         "background": _mix(accent, "#000000", 0.84),
         "surface": surface,
@@ -66,18 +68,28 @@ def derived_palette(mode: str, accent: str) -> dict[str, str | list[str]]:
             _mix(accent, "#FFFFFF", 0.68),
         ],
     }
+    for key, color in (overrides or {}).items():
+        if key in {"background", "surface", "foreground", "muted", "link", "border"}:
+            palette[key] = normalize_color(color)
+    palette["secondary"] = palette["surface"]
+    return palette
 
 
 def apply_theme(
-    mode: str, accent: str, font_name: str, success_matches_accent: bool = False
+    mode: str,
+    accent: str,
+    font_name: str,
+    success_matches_accent: bool = False,
+    palette_overrides: dict[str, str] | None = None,
 ) -> None:
-    accent = normalize_color(accent)
-    background = _mix(accent, "#000000", 0.84)
-    surface = _mix(accent, "#000000", 0.72)
-    secondary = surface
-    text = _mix(accent, "#FFFFFF", 0.9)
-    muted = _mix(accent, "#FFFFFF", 0.55)
-    link_color = _mix(accent, "#FFFFFF", 0.42)
+    palette = derived_palette(mode, accent, palette_overrides)
+    accent = str(palette["accent"])
+    background = str(palette["background"])
+    surface = str(palette["surface"])
+    secondary = str(palette["secondary"])
+    text = str(palette["foreground"])
+    muted = str(palette["muted"])
+    link_color = str(palette["link"])
     accent_rgb = ", ".join(str(int(accent[index : index + 2], 16)) for index in (1, 3, 5))
     red, green, blue = (int(accent[index : index + 2], 16) for index in (1, 3, 5))
     accent_text = "#111111" if (0.2126 * red + 0.7152 * green + 0.0722 * blue) > 150 else "#FFFFFF"
@@ -86,7 +98,7 @@ def apply_theme(
     success_border = accent if success_matches_accent else "#8FC99A"
     neutral_icon = "#D8D8D8"
     sidebar_icon = "#FFFFFF"
-    neutral_border = "#666666"
+    neutral_border = str(palette["border"])
     neutral_surface = "#303030"
     input_surface = "#202124"
     input_text = "#FFFFFF"
@@ -174,7 +186,35 @@ def apply_theme(
         }}
         button[kind="primary"] {{ color:#ffffff !important; }}
         [data-testid="stHeader"], [data-testid="stToolbar"] {{
-            background-color:{background} !important;
+            background-color:transparent !important;
+        }}
+        [data-testid="stHeader"] button,
+        [data-testid="stToolbar"] button,
+        [data-testid="stHeader"] [role="button"],
+        [data-testid="stToolbar"] [role="button"] {{
+            background:transparent !important;
+            background-color:transparent !important;
+            border-color:transparent !important;
+            color:#FFFFFF !important;
+            -webkit-text-fill-color:#FFFFFF !important;
+            box-shadow:none !important;
+            outline:none !important;
+            accent-color:auto !important;
+        }}
+        [data-testid="stHeader"] button *,
+        [data-testid="stToolbar"] button * {{
+            color:#FFFFFF !important;
+            -webkit-text-fill-color:#FFFFFF !important;
+        }}
+        [data-testid="stHeader"] svg,
+        [data-testid="stToolbar"] svg {{
+            color:#FFFFFF !important;
+            fill:currentColor !important;
+            -webkit-text-fill-color:#FFFFFF !important;
+        }}
+        [data-testid="stHeader"] svg path[fill="none"],
+        [data-testid="stToolbar"] svg path[fill="none"] {{
+            fill:none !important;
         }}
         hr {{ border-color:{muted}55; }}
         """
