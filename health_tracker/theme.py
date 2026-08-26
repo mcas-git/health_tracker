@@ -360,28 +360,35 @@ def apply_theme(
         }}
         .st-key-appearance_action,
         .st-key-sign_out_action {{
-            position:absolute; right:1.25rem; left:1.25rem;
+            position:absolute; right:0; left:0;
         }}
         .st-key-appearance_action {{
-            bottom:8.4rem; padding-top:1rem; border-top:1px solid {accent_text}44;
+            bottom:7rem;
         }}
         .st-key-sign_out_action {{ bottom:4.7rem; }}
         .st-key-appearance_action a,
         .st-key-sign_out_action button {{
-            width:100% !important; min-height:2.5rem; box-sizing:border-box;
-            justify-content:center !important; background:{background} !important;
-            color:{text} !important; border:1px solid {text} !important;
-            border-radius:10px !important;
+            width:100% !important; min-height:2.25rem; box-sizing:border-box;
+            justify-content:flex-start !important; padding:.375rem .5rem !important;
+            background:transparent !important; color:{accent_text} !important;
+            border:0 !important; border-radius:.5rem !important;
+            text-align:left !important; box-shadow:none !important;
         }}
         .st-key-appearance_action a:hover,
         .st-key-appearance_action a:focus,
         .st-key-sign_out_action button:hover,
         .st-key-sign_out_action button:focus {{
-            background:{surface} !important; color:{text} !important;
-            border-color:{text} !important; box-shadow:none !important;
+            background:{accent_text}14 !important; color:{accent_text} !important;
+            border:0 !important; box-shadow:none !important;
         }}
         .st-key-appearance_action a p,
-        .st-key-sign_out_action button p {{ color:{text} !important; }}
+        .st-key-sign_out_action button p {{
+            width:100%; margin:0; color:{accent_text} !important; text-align:left !important;
+        }}
+        .st-key-sign_out_action button > div {{
+            width:100% !important; justify-content:flex-start !important;
+            text-align:left !important;
+        }}
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;
