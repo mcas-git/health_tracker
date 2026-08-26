@@ -719,12 +719,13 @@ def daily_entry():
     with st.expander("Evening check-in", expanded=False):
         evening_item = item if update_another_day else None
         evening_key_mode = "historical" if update_another_day else "today_blank_v2"
-        st.subheader("Smartwatch data")
-        st.caption(
-            "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin assigns "
-            "to that date, normally the night ending that morning. Data comes from Garmin "
-            "Connect after the watch has finished syncing."
-        )
+        with st.container(key="smartwatch_intro"):
+            st.subheader("Smartwatch data")
+            st.caption(
+                "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin "
+                "assigns to that date, normally the night ending that morning. Data comes "
+                "from Garmin Connect after the watch has finished syncing."
+            )
         with st.container(key="smartwatch_load"):
             if st.button(
                 "Load smartwatch data from Garmin",
@@ -763,12 +764,13 @@ def daily_entry():
                     f" · {active_calories or 0:,.0f} active + "
                     f"{resting_calories or 0:,.0f} resting kcal"
                 )
-            st.caption(
-                f"Garmin Connect returned {steps_label} steps · "
-                f"{sleep_label} h sleep · {heart_label} bpm resting · "
-                f"{total_calorie_label} total kcal"
-                f"{calorie_detail}."
-            )
+            with st.container(key="smartwatch_result"):
+                st.caption(
+                    f"Garmin Connect returned {steps_label} steps · "
+                    f"{sleep_label} h sleep · {heart_label} bpm resting · "
+                    f"{total_calorie_label} total kcal"
+                    f"{calorie_detail}."
+                )
 
         with st.form(f"evening_form_{date_key}"):
             evening_keys = {

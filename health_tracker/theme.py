@@ -112,6 +112,14 @@ def apply_theme(
         if garmin_logo.is_file()
         else ""
     )
+    google_logo = Path(__file__).resolve().parents[1] / "assets" / "logo" / "google.svg"
+    google_logo_css = (
+        'background-image:url("data:image/svg+xml;base64,'
+        + b64encode(google_logo.read_bytes()).decode()
+        + '") !important;'
+        if google_logo.is_file()
+        else ""
+    )
     dark_overrides = f"""
         [data-testid="stAppViewContainer"] h1,
         [data-testid="stAppViewContainer"] h2,
@@ -347,6 +355,12 @@ def apply_theme(
             -webkit-text-fill-color:{muted} !important;
             font-size:.78rem; line-height:1.4; text-align:center;
         }}
+        .st-key-google_sign_in button {{ position:relative; }}
+        .st-key-google_sign_in button::before {{
+            content:""; position:absolute; left:1rem; width:1.125rem; height:1.125rem;
+            {google_logo_css} background-repeat:no-repeat !important;
+            background-position:center !important; background-size:contain !important;
+        }}
         .st-key-login_shell [data-testid="stTextInputRootElement"],
         .st-key-login_shell [data-baseweb="input"] {{
             background:{background} !important; background-color:{background} !important;
@@ -393,7 +407,13 @@ def apply_theme(
             background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;
             background-size:150px auto !important; border-color:#00A6CE !important;
-            color:#111111 !important; min-height:3.5rem !important;
+            color:#111111 !important; min-height:2.5rem !important;
+            height:2.5rem !important;
+        }}
+        .st-key-smartwatch_intro,
+        .st-key-smartwatch_load,
+        .st-key-smartwatch_result {{
+            box-sizing:border-box; padding-inline:1rem;
         }}
         .st-key-smartwatch_load button:hover,
         .st-key-smartwatch_load button:focus {{

@@ -108,7 +108,12 @@ def _require_google_login() -> AuthContext:
         _, login_column, _ = st.columns([1, 1.15, 1])
         with login_column, st.container(key="login_shell"):
             _login_shell_intro("Use your approved Google account to continue.")
-            if st.button("Sign in with Google", type="primary", use_container_width=True):
+            if st.button(
+                "Sign in with Google",
+                type="primary",
+                use_container_width=True,
+                key="google_sign_in",
+            ):
                 st.login()
             st.markdown(
                 '<p class="login-footnote">Google protects this sign-in with your '
