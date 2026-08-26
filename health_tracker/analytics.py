@@ -86,6 +86,25 @@ def morning_measurement_status(item) -> dict[str, str]:
     }
 
 
+def evening_measurement_status(item) -> dict[str, str]:
+    """Format evening measurements and make absent values explicit."""
+    field_specs = {
+        "Resting heart rate": ("resting_heart_rate", lambda result: f"{result} bpm"),
+        "Sleep": ("sleep_hours", lambda result: f"{result:.2f} h"),
+        "Steps": ("steps", lambda result: f"{result:,}"),
+        "Calories burned": ("calories_burned", lambda result: f"{result:,} kcal"),
+        "Mood": ("mood", lambda result: f"{result}/10"),
+        "Energy": ("energy", lambda result: f"{result}/10"),
+        "Cravings": ("cravings", lambda result: f"{result}/10"),
+        "Diet satisfaction": ("diet_satisfaction", lambda result: f"{result}/10"),
+    }
+    status = {}
+    for label, (field, formatter) in field_specs.items():
+        result = getattr(item, field, None) if item is not None else None
+        status[label] = formatter(result) if result is not None else "Missing"
+    return status
+
+
 def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
     """Return an Excel-compatible copy with timezone information removed."""
     result = df.copy()

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from health_tracker.analytics import (
     bmi_status,
     daily_health_score,
+    evening_measurement_status,
     excel_safe_data,
     load_data,
     morning_measurement_status,
@@ -27,7 +28,6 @@ from health_tracker.config import PROFILE as DEFAULT_PROFILE
 from health_tracker.db import (
     engine,
     get_daily,
-    get_latest_daily_before,
     get_nutrition,
     get_weekly_plan,
     init_db,
@@ -122,12 +122,12 @@ def example_placeholder(example: str) -> str | None:
     return f"Example: {example}" if _show_placeholders else None
 
 
-def rating_input(label: str, key: str, initial: int) -> int:
+def rating_input(label: str, key: str, initial: int | None) -> int | None:
     return st.number_input(
         label,
         min_value=1,
         max_value=10,
-        value=max(1, min(10, int(initial))),
+        value=max(1, min(10, int(initial))) if initial is not None else None,
         step=1,
         key=key,
     )
@@ -625,8 +625,6 @@ def daily_entry():
         selected = today
         st.caption(f"Recording today · {today:%A, %d %B %Y}")
     item = get_daily(selected)
-    previous_item = get_latest_daily_before(selected) if item is None else None
-    measurement_defaults = item or previous_item
     if item is not None:
         updated = item.updated_at
         if updated.tzinfo is not None:
@@ -643,6 +641,26 @@ def daily_entry():
                 + " · ".join(
                     f"{label}: {measurement}"
                     for label, measurement in morning_status.items()
+                )
+            )
+            evening_status = evening_measurement_status(item)
+            smartwatch_labels = (
+                "Resting heart rate",
+                "Sleep",
+                "Steps",
+                "Calories burned",
+            )
+            rating_labels = ("Mood", "Energy", "Cravings", "Diet satisfaction")
+            st.caption(
+                "Smartwatch measurements · "
+                + " · ".join(
+                    f"{label}: {evening_status[label]}" for label in smartwatch_labels
+                )
+            )
+            st.caption(
+                "Evening ratings · "
+                + " · ".join(
+                    f"{label}: {evening_status[label]}" for label in rating_labels
                 )
             )
         if smartwatch_confirmation:
@@ -724,6 +742,8 @@ def daily_entry():
             st.rerun()
 
     with st.expander("Evening check-in", expanded=False):
+        evening_item = item if update_another_day else None
+        evening_key_mode = "historical" if update_another_day else "today_blank_v2"
         st.subheader("Smartwatch data")
         st.caption(
             "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin assigns "
@@ -741,7 +761,7 @@ def daily_entry():
 
         def smartwatch_value(field):
             imported = synced.get(field)
-            return imported if imported is not None else value(item, field)
+            return imported if imported is not None else value(evening_item, field)
 
         if synced:
             active_calories = synced.get("active_calories")
@@ -776,6 +796,16 @@ def daily_entry():
             )
 
         with st.form(f"evening_form_{date_key}"):
+            evening_keys = {
+                "resting_hr": f"resting_hr_{evening_key_mode}_{date_key}_{sync_revision}",
+                "sleep": f"sleep_{evening_key_mode}_{date_key}_{sync_revision}",
+                "steps": f"steps_{evening_key_mode}_{date_key}_{sync_revision}",
+                "burned": f"burned_{evening_key_mode}_{date_key}_{sync_revision}",
+                "mood": f"mood_{evening_key_mode}_{date_key}",
+                "energy": f"energy_{evening_key_mode}_{date_key}",
+                "cravings": f"cravings_{evening_key_mode}_{date_key}",
+                "satisfaction": f"diet_satisfaction_{evening_key_mode}_{date_key}",
+            }
             c1, c2, c3, c4 = st.columns(4)
             resting_value = smartwatch_value("resting_heart_rate")
             resting_hr = c1.number_input(
@@ -784,7 +814,7 @@ def daily_entry():
                 220,
                 value=int(resting_value) if resting_value is not None else None,
                 disabled=True,
-                key=f"resting_hr_{date_key}_{sync_revision}",
+                key=evening_keys["resting_hr"],
             )
             sleep_value = smartwatch_value("sleep_hours")
             sleep = c2.number_input(
@@ -794,7 +824,7 @@ def daily_entry():
                 value=float(sleep_value) if sleep_value is not None else None,
                 step=0.01,
                 disabled=True,
-                key=f"sleep_{date_key}_{sync_revision}",
+                key=evening_keys["sleep"],
             )
             steps_value = smartwatch_value("steps")
             steps = c3.number_input(
@@ -803,7 +833,7 @@ def daily_entry():
                 100000,
                 value=int(steps_value) if steps_value is not None else None,
                 disabled=True,
-                key=f"steps_{date_key}_{sync_revision}",
+                key=evening_keys["steps"],
             )
             burned_value = smartwatch_value("calories_burned")
             burned = c4.number_input(
@@ -813,28 +843,29 @@ def daily_entry():
                 value=int(burned_value) if burned_value is not None else None,
                 disabled=True,
                 help="Garmin total calories combine active and resting (BMR) calories.",
-                key=f"burned_{date_key}_{sync_revision}",
+                key=evening_keys["burned"],
             )
 
             st.subheader("Evening measurements")
             mood = rating_input(
-                "Mood", f"mood_{date_key}", int(value(measurement_defaults, "mood", 5))
+                "Mood", evening_keys["mood"], value(evening_item, "mood")
             )
             energy = rating_input(
                 "Energy level",
-                f"energy_{date_key}",
-                int(value(measurement_defaults, "energy", 5)),
+                evening_keys["energy"],
+                value(evening_item, "energy"),
             )
             cravings = rating_input(
                 "Cravings",
-                f"cravings_{date_key}",
-                int(value(measurement_defaults, "cravings", 5)),
+                evening_keys["cravings"],
+                value(evening_item, "cravings"),
             )
             satisfaction = rating_input(
                 "Diet satisfaction",
-                f"diet_satisfaction_{date_key}",
-                int(value(measurement_defaults, "diet_satisfaction", 7)),
+                evening_keys["satisfaction"],
+                value(evening_item, "diet_satisfaction"),
             )
+            st.caption("Any evening measurement left blank will be saved as missing.")
 
             st.subheader("Habits")
             cols = st.columns(4)
@@ -894,6 +925,8 @@ def daily_entry():
             st.session_state["daily_checkin_saved"] = (
                 f"Evening check-in saved for {selected:%d %b %Y}."
             )
+            for evening_key in evening_keys.values():
+                st.session_state.pop(evening_key, None)
             st.rerun()
 
 
@@ -1353,25 +1386,31 @@ def appearance_page():
         selected_palette_colors = None
         if not hide_palette_preview:
             st.caption("Palette colours · editable")
+
+            def palette_color_picker(column, label, palette_key, widget_key):
+                if widget_key not in st.session_state:
+                    st.session_state[widget_key] = str(preview_palette[palette_key])
+                return column.color_picker(label, key=widget_key)
+
             palette_columns = st.columns(3)
-            page_color = palette_columns[0].color_picker(
-                "Page", str(preview_palette["background"]), key="palette_background"
+            page_color = palette_color_picker(
+                palette_columns[0], "Page", "background", "palette_background"
             )
-            surface_color = palette_columns[1].color_picker(
-                "Cards and hover", str(preview_palette["surface"]), key="palette_surface"
+            surface_color = palette_color_picker(
+                palette_columns[1], "Cards and hover", "surface", "palette_surface"
             )
-            text_color = palette_columns[2].color_picker(
-                "Text", str(preview_palette["foreground"]), key="palette_text"
+            text_color = palette_color_picker(
+                palette_columns[2], "Text", "foreground", "palette_text"
             )
             palette_columns = st.columns(3)
-            muted_color = palette_columns[0].color_picker(
-                "Muted text", str(preview_palette["muted"]), key="palette_muted"
+            muted_color = palette_color_picker(
+                palette_columns[0], "Muted text", "muted", "palette_muted"
             )
-            link_color = palette_columns[1].color_picker(
-                "Links", str(preview_palette["link"]), key="palette_link"
+            link_color = palette_color_picker(
+                palette_columns[1], "Links", "link", "palette_link"
             )
-            border_color = palette_columns[2].color_picker(
-                "Borders", str(preview_palette["border"]), key="palette_border"
+            border_color = palette_color_picker(
+                palette_columns[2], "Borders", "border", "palette_border"
             )
             selected_palette_colors = {
                 "background_color": page_color,

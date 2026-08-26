@@ -10,6 +10,7 @@ from health_tracker.analytics import (
     bmi_status,
     current_streak,
     daily_health_score,
+    evening_measurement_status,
     excel_safe_data,
     morning_measurement_status,
     recent_kpi_table,
@@ -39,6 +40,34 @@ def test_morning_measurement_status_marks_unrecorded_values_as_missing():
         "Weight": "101.2 kg",
         "Waist": "Missing",
         "Blood pressure": "Missing",
+    }
+
+
+def test_evening_measurement_status_marks_unrecorded_values_as_missing():
+    item = type(
+        "Entry",
+        (),
+        {
+            "resting_heart_rate": 52,
+            "sleep_hours": 7.5,
+            "steps": 4551,
+            "calories_burned": None,
+            "mood": 7,
+            "energy": None,
+            "cravings": None,
+            "diet_satisfaction": 8,
+        },
+    )()
+
+    assert evening_measurement_status(item) == {
+        "Resting heart rate": "52 bpm",
+        "Sleep": "7.50 h",
+        "Steps": "4,551",
+        "Calories burned": "Missing",
+        "Mood": "7/10",
+        "Energy": "Missing",
+        "Cravings": "Missing",
+        "Diet satisfaction": "8/10",
     }
 
 
