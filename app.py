@@ -1585,7 +1585,11 @@ with st.sidebar:
     for navigation_page in standard_pages:
         st.page_link(navigation_page, use_container_width=True)
     appearance_action = st.container(key="appearance_action")
-    appearance_action.page_link(appearance, use_container_width=True)
+    appearance_action.page_link(
+        appearance,
+        icon=":material/palette:",
+        use_container_width=True,
+    )
     sign_out_action = st.container(key="sign_out_action")
     with sign_out_action:
         sign_out_button(auth_context)

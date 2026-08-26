@@ -94,7 +94,7 @@ def _login_shell_intro(message: str | None = None) -> None:
 
 
 def sign_out_button(auth_context: AuthContext | stx.CookieManager) -> None:
-    if st.button("Sign out", use_container_width=True):
+    if st.button("Log out", icon=":material/logout:", use_container_width=True):
         if isinstance(auth_context, AuthContext) and auth_context.mode == "oidc":
             st.logout()
             return
