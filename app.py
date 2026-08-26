@@ -16,6 +16,7 @@ from health_tracker.analytics import (
     excel_safe_data,
     load_data,
     projected_target_date,
+    recent_kpi_table,
     weekly_coaching_summary,
     weight_milestones,
 )
@@ -35,7 +36,7 @@ from health_tracker.db import (
 from health_tracker.garmin import sync_day
 from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
-from health_tracker.quotes import daily_item
+from health_tracker.quotes import QUOTES, weekly_item
 from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import FONTS, apply_theme, derived_palette, normalize_color
 
@@ -269,7 +270,8 @@ def health_status_cards(item) -> None:
 
 def home():
     london_day = datetime.now(LONDON).date()
-    research = daily_item(RESEARCH_INSIGHTS, london_day)
+    research = weekly_item(RESEARCH_INSIGHTS, london_day)
+    quote = weekly_item(QUOTES, london_day)
     st.markdown(
         f"""
         <div class="quote-card">
@@ -278,8 +280,8 @@ def home():
           <p><a href="{research["url"]}" target="_blank">{research["source"]}</a></p>
         </div>
         <div class="motivation-card">
-          <div class="research-motivation-label">TODAY'S MOTIVATION</div>
-          <div class="research-motivation">“{research["motivation"]}”</div>
+          <div class="research-motivation-label">THIS WEEK'S QUOTE</div>
+          <div class="research-motivation">“{quote}”</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -453,23 +455,6 @@ def dashboard():
         st.caption("No weight entries yet.")
 
     st.subheader("Additional KPI")
-    kpis = [
-        col
-        for col in [
-            "entry_date",
-            "weight_kg",
-            "bmi",
-            "waist_cm",
-            "steps",
-            "sleep_hours",
-            "calories",
-            "calories_burned",
-            "mood",
-            "energy",
-            "fasting_hours",
-        ]
-        if col in df
-    ]
     labels = {
         "bmi": "BMI",
         "waist_cm": "Waist",
@@ -552,7 +537,7 @@ def dashboard():
     else:
         st.caption("Add another measurement to display a recent KPI trend.")
 
-    recent_table = df[kpis].tail(14).sort_values("entry_date", ascending=False)
+    recent_table = recent_kpi_table(df)
     st.download_button(
         "Download recent KPI table",
         recent_table.to_csv(index=False).encode(),
@@ -896,15 +881,12 @@ def weekly_coaching():
     with st.form("weekly_plan"):
         st.subheader("Plan this week")
         week_key = week_start.isoformat()
-        c1, c2, c3 = st.columns(3)
+        c1, c2 = st.columns(2)
         gym_sessions = c1.number_input(
             "Planned gym sessions", 0, 7, int(value(saved, "planned_gym_sessions", 3))
         )
         cardio_sessions = c2.number_input(
             "Planned cardio sessions", 0, 7, int(value(saved, "planned_cardio_sessions", 2))
-        )
-        minimum_steps = c3.number_input(
-            "Daily step floor", 0, 50000, int(value(saved, "minimum_steps", 7000)), 500
         )
         focus_key = f"weekly_focus_{week_key}"
         focus = st.text_input(
@@ -958,7 +940,6 @@ def weekly_coaching():
                         "focus": focus,
                         "planned_gym_sessions": gym_sessions,
                         "planned_cardio_sessions": cardio_sessions,
-                        "minimum_steps": minimum_steps,
                         "anticipated_barrier": barrier,
                         "if_then_plan": if_then,
                     }
@@ -1282,27 +1263,18 @@ def appearance_page():
     st.caption("Make the tracker feel like your own")
     with Session(engine) as session:
         prefs = session.get(AppPreferences, 1)
-        st.caption("Dark mode is used throughout the tracker.")
         picked_color = st.color_picker("Base palette colour", prefs.accent)
         hide_example_placeholders = st.toggle(
             "Hide example placeholders",
             value=not bool(getattr(prefs, "show_placeholders", True)),
             help="Turn this on to remove example text from empty fields throughout the app.",
         )
-        typed_color = st.text_input(
-            "RGB or HEX override (optional)",
-            placeholder=(
-                None
-                if hide_example_placeholders
-                else "Example: #7B8451 or rgb(123, 132, 81)"
-            ),
-            help="Leave blank to use the colour picker above.",
-            key="appearance_color_override",
+        hide_palette_preview = st.toggle(
+            "Hide generated palette preview",
+            value=not bool(getattr(prefs, "show_palette_preview", True)),
+            help="Turn this on to hide the read-only colours generated from your selection.",
         )
-        try:
-            preview_accent = normalize_color(typed_color or picked_color)
-        except ValueError:
-            preview_accent = normalize_color(picked_color)
+        preview_accent = normalize_color(picked_color)
         preview_palette = derived_palette("dark", preview_accent)
         preview_hues = [
             ("Page", preview_palette["background"]),
@@ -1312,7 +1284,6 @@ def appearance_page():
             ("Text", preview_palette["foreground"]),
             ("Muted text", preview_palette["muted"]),
             ("Links", preview_palette["link"]),
-            ("Text fields", preview_palette["input"]),
             ("Borders", preview_palette["border"]),
         ]
         swatches = "".join(
@@ -1321,10 +1292,11 @@ def appearance_page():
             f"<strong>{label}</strong><small>{color}</small></div>"
             for label, color in preview_hues
         )
-        st.caption("Generated palette · preview only")
-        st.markdown(
-            f'<div class="palette-preview">{swatches}</div>', unsafe_allow_html=True
-        )
+        if not hide_palette_preview:
+            st.caption("Generated palette · preview only")
+            st.markdown(
+                f'<div class="palette-preview">{swatches}</div>', unsafe_allow_html=True
+            )
         font = st.selectbox(
             "Font",
             list(FONTS),
@@ -1353,12 +1325,13 @@ def appearance_page():
         )
         if st.button("Save appearance", type="primary", use_container_width=True):
             try:
-                prefs.accent = normalize_color(typed_color or picked_color)
+                prefs.accent = normalize_color(picked_color)
                 prefs.color_mode = "dark"
                 prefs.font_family = font
                 prefs.smooth_charts = smooth_charts
                 prefs.success_matches_accent = success_matches_accent
                 prefs.show_placeholders = not hide_example_placeholders
+                prefs.show_palette_preview = not hide_palette_preview
                 session.commit()
                 st.session_state.appearance_saved = True
                 st.rerun()

@@ -43,11 +43,12 @@ def _mix(color: str, target: str, amount: float) -> str:
 
 def derived_palette(mode: str, accent: str) -> dict[str, str | list[str]]:
     accent = normalize_color(accent)
+    surface = _mix(accent, "#000000", 0.72)
     return {
         "accent": accent,
         "background": _mix(accent, "#000000", 0.84),
-        "surface": _mix(accent, "#000000", 0.72),
-        "secondary": _mix(accent, "#000000", 0.66),
+        "surface": surface,
+        "secondary": surface,
         "foreground": _mix(accent, "#FFFFFF", 0.9),
         "muted": _mix(accent, "#FFFFFF", 0.55),
         "link": _mix(accent, "#FFFFFF", 0.42),
@@ -73,7 +74,7 @@ def apply_theme(
     accent = normalize_color(accent)
     background = _mix(accent, "#000000", 0.84)
     surface = _mix(accent, "#000000", 0.72)
-    secondary = _mix(accent, "#000000", 0.66)
+    secondary = surface
     text = _mix(accent, "#FFFFFF", 0.9)
     muted = _mix(accent, "#FFFFFF", 0.55)
     link_color = _mix(accent, "#FFFFFF", 0.42)
@@ -136,6 +137,13 @@ def apply_theme(
         input[type="date"]::-webkit-datetime-edit-year-field,
         input[type="time"]::-webkit-datetime-edit {{
             color:{text} !important; -webkit-text-fill-color:{text} !important;
+            opacity:1 !important;
+        }}
+        [data-testid="stColorPickerPopover"] input {{
+            background:#EAF4F1 !important;
+            color:#16302B !important;
+            -webkit-text-fill-color:#16302B !important;
+            caret-color:#16302B !important;
             opacity:1 !important;
         }}
         [data-baseweb="input"],
@@ -803,9 +811,7 @@ def apply_theme(
         [class*="st-key-weekly_barrier_"] [data-testid="stTextInputRootElement"],
         [class*="st-key-weekly_barrier_"] [data-baseweb="input"],
         [class*="st-key-weekly_if_then_"] [data-testid="stTextInputRootElement"],
-        [class*="st-key-weekly_if_then_"] [data-baseweb="input"],
-        [class*="st-key-appearance_color_override"] [data-testid="stTextInputRootElement"],
-        [class*="st-key-appearance_color_override"] [data-baseweb="input"] {{
+        [class*="st-key-weekly_if_then_"] [data-baseweb="input"] {{
             box-sizing:border-box !important;
             background:{background} !important;
             background-color:{background} !important;
@@ -822,11 +828,7 @@ def apply_theme(
         [class*="st-key-weekly_barrier_"] [data-testid="stTextInputRootElement"]:focus-within,
         [class*="st-key-weekly_barrier_"] [data-baseweb="input"]:focus-within,
         [class*="st-key-weekly_if_then_"] [data-testid="stTextInputRootElement"]:focus-within,
-        [class*="st-key-weekly_if_then_"] [data-baseweb="input"]:focus-within,
-        [class*="st-key-appearance_color_override"]
-        [data-testid="stTextInputRootElement"]:focus-within,
-        [class*="st-key-appearance_color_override"]
-        [data-baseweb="input"]:focus-within {{
+        [class*="st-key-weekly_if_then_"] [data-baseweb="input"]:focus-within {{
             border-color:{accent} !important;
         }}
         [class*="st-key-food_note_"] [data-baseweb="textarea"] > div,
@@ -840,10 +842,7 @@ def apply_theme(
         [class*="st-key-weekly_barrier_"] input,
         [class*="st-key-weekly_if_then_"] [data-baseweb="input"] > div,
         [class*="st-key-weekly_if_then_"] [data-baseweb="base-input"],
-        [class*="st-key-weekly_if_then_"] input,
-        [class*="st-key-appearance_color_override"] [data-baseweb="input"] > div,
-        [class*="st-key-appearance_color_override"] [data-baseweb="base-input"],
-        [class*="st-key-appearance_color_override"] input {{
+        [class*="st-key-weekly_if_then_"] input {{
             background:transparent !important;
             background-color:transparent !important;
             border:0 !important;
@@ -858,8 +857,7 @@ def apply_theme(
         [class*="st-key-food_note_"] textarea::placeholder,
         [class*="st-key-weekly_focus_"] input::placeholder,
         [class*="st-key-weekly_barrier_"] input::placeholder,
-        [class*="st-key-weekly_if_then_"] input::placeholder,
-        [class*="st-key-appearance_color_override"] input::placeholder {{
+        [class*="st-key-weekly_if_then_"] input::placeholder {{
             color:#D8D8D8 !important;
             -webkit-text-fill-color:#D8D8D8 !important;
             opacity:1 !important;

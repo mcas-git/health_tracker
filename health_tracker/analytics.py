@@ -39,6 +39,36 @@ def load_data() -> pd.DataFrame:
     return left.merge(right, on="entry_date", how="outer").sort_values("entry_date")
 
 
+def recent_kpi_table(df: pd.DataFrame, limit: int = 14) -> pd.DataFrame:
+    """Build the compact dashboard export, including recorded circumstances."""
+    data = df.copy()
+    circumstance_fields = ["illness", "injury", "travel", "unusual_day"]
+    recorded_circumstances = [field for field in circumstance_fields if field in data]
+    if recorded_circumstances:
+        data["extenuating_circumstance"] = (
+            data[recorded_circumstances]
+            .fillna(False)
+            .astype(bool)
+            .any(axis=1)
+            .map({True: "Yes", False: "No"})
+        )
+    export_fields = [
+        "entry_date",
+        "weight_kg",
+        "bmi",
+        "waist_cm",
+        "steps",
+        "sleep_hours",
+        "calories",
+        "calories_burned",
+        "mood",
+        "energy",
+        "extenuating_circumstance",
+    ]
+    columns = [field for field in export_fields if field in data]
+    return data[columns].tail(limit).sort_values("entry_date", ascending=False)
+
+
 def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
     """Return an Excel-compatible copy with timezone information removed."""
     result = df.copy()

@@ -11,6 +11,7 @@ from health_tracker.analytics import (
     current_streak,
     daily_health_score,
     excel_safe_data,
+    recent_kpi_table,
     weekly_coaching_summary,
     weight_milestones,
 )
@@ -19,7 +20,7 @@ from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.models import Base, DailyEntry
 from health_tracker.nutrition import DailyNutritionEstimate
-from health_tracker.quotes import QUOTES, daily_item, quote_count
+from health_tracker.quotes import QUOTES, daily_item, quote_count, weekly_item
 from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import derived_palette, normalize_color
 from scripts.send_reminder import reminder_copy, should_send
@@ -54,6 +55,7 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
         "target_date",
         "success_matches_accent",
         "show_placeholders",
+        "show_palette_preview",
     } <= preference_columns
     with Session(test_engine) as session:
         session.add_all(
@@ -212,6 +214,25 @@ def test_excel_export_removes_timezone_information():
     assert exported.loc[0, "created_at"].tzinfo is None
 
 
+def test_recent_kpi_table_excludes_fasting_and_marks_circumstances():
+    data = pd.DataFrame(
+        {
+            "entry_date": [date(2026, 8, 24), date(2026, 8, 25)],
+            "weight_kg": [101.5, 101.2],
+            "fasting_hours": [16.0, 14.0],
+            "illness": [False, True],
+            "injury": [False, False],
+            "travel": [False, False],
+            "unusual_day": [False, False],
+        }
+    )
+
+    exported = recent_kpi_table(data)
+
+    assert "fasting_hours" not in exported
+    assert exported["extenuating_circumstance"].tolist() == ["Yes", "No"]
+
+
 def test_daily_health_score_is_deterministic_and_uses_available_measurements():
     item = type(
         "Entry",
@@ -264,6 +285,7 @@ def test_palette_exposes_read_only_app_hues():
         "input",
         "border",
     } <= palette.keys()
+    assert palette["surface"] == palette["secondary"]
 
 
 def test_reminder_schedule_handles_bst_and_gmt():
@@ -294,17 +316,30 @@ def test_daily_quote_is_stable_for_the_day():
     assert daily_item(QUOTES, day) == daily_item(QUOTES, day)
 
 
+def test_weekly_item_is_stable_monday_to_sunday_and_changes_next_week():
+    monday = date(2026, 8, 24)
+    assert all(
+        weekly_item(QUOTES, monday + timedelta(days=offset))
+        == weekly_item(QUOTES, monday)
+        for offset in range(7)
+    )
+    assert weekly_item(QUOTES, monday + timedelta(days=7)) != weekly_item(QUOTES, monday)
+
+
 def test_every_research_note_has_a_source_and_motivation():
+    assert len(RESEARCH_INSIGHTS) >= 25
+    assert len({item["insight"] for item in RESEARCH_INSIGHTS}) >= 25
     assert all(item["insight"] and item["source"] and item["url"] for item in RESEARCH_INSIGHTS)
     assert all(item["motivation"] for item in RESEARCH_INSIGHTS)
 
 
-def test_research_note_rotates_with_calendar_day():
-    start = date(2026, 8, 21)
-    daily_notes = [
-        daily_item(RESEARCH_INSIGHTS, start + timedelta(days=offset)) for offset in range(7)
+def test_research_note_rotates_with_calendar_week():
+    start = date(2026, 8, 24)
+    weekly_notes = [
+        weekly_item(RESEARCH_INSIGHTS, start + timedelta(weeks=offset))
+        for offset in range(25)
     ]
-    assert all(daily_notes[index] != daily_notes[index + 1] for index in range(6))
+    assert len({item["insight"] for item in weekly_notes}) == 25
 
 
 def test_weekly_coaching_summary_reports_completion_and_trends():

@@ -57,6 +57,7 @@ def init_db() -> None:
         "smooth_charts": "BOOLEAN NOT NULL DEFAULT TRUE",
         "success_matches_accent": "BOOLEAN NOT NULL DEFAULT FALSE",
         "show_placeholders": "BOOLEAN NOT NULL DEFAULT TRUE",
+        "show_palette_preview": "BOOLEAN NOT NULL DEFAULT TRUE",
         "age": "INTEGER NOT NULL DEFAULT 39",
         "sex": "VARCHAR(20) NOT NULL DEFAULT 'male'",
         "height_cm": "FLOAT NOT NULL DEFAULT 177.0",

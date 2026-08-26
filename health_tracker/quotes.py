@@ -74,3 +74,10 @@ def daily_item(items: list, day: date):
     """Choose one stable item for a calendar day."""
     index = day.toordinal() % len(items)
     return items[index]
+
+
+def weekly_item(items: list, day: date):
+    """Choose one stable item for a Monday-to-Sunday calendar week."""
+    monday_ordinal = day.toordinal() - day.weekday()
+    index = (monday_ordinal // 7) % len(items)
+    return items[index]
