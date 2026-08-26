@@ -3,14 +3,23 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-from base64 import urlsafe_b64decode, urlsafe_b64encode
+from base64 import b64encode, urlsafe_b64decode, urlsafe_b64encode
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import extra_streamlit_components as stx
 import streamlit as st
 
 from health_tracker.config import setting
+
+GOOGLE_LOGO = Path(__file__).resolve().parents[1] / "assets" / "logo" / "google.svg"
+GOOGLE_SIGN_IN_LABEL = "Sign in with Google"
+if GOOGLE_LOGO.is_file():
+    google_logo_data = b64encode(GOOGLE_LOGO.read_bytes()).decode()
+    GOOGLE_SIGN_IN_LABEL = (
+        f"![](data:image/svg+xml;base64,{google_logo_data}) Sign in with Google"
+    )
 
 
 def hash_password(password: str) -> str:
@@ -77,10 +86,11 @@ def oidc_configured() -> bool:
         return False
 
 
-def _login_shell_intro(message: str) -> None:
+def _login_shell_intro(message: str | None = None) -> None:
     st.markdown('<p class="login-wordmark">HEALTH JOURNEY</p>', unsafe_allow_html=True)
     st.title("Welcome back")
-    st.caption(message)
+    if message:
+        st.caption(message)
 
 
 def sign_out_button(auth_context: AuthContext | stx.CookieManager) -> None:
@@ -107,17 +117,16 @@ def _require_google_login() -> AuthContext:
     if not st.user.is_logged_in:
         _, login_column, _ = st.columns([1, 1.15, 1])
         with login_column, st.container(key="login_shell"):
-            _login_shell_intro("Use your approved Google account to continue.")
+            _login_shell_intro()
             if st.button(
-                "Sign in with Google",
+                GOOGLE_SIGN_IN_LABEL,
                 type="primary",
                 use_container_width=True,
                 key="google_sign_in",
             ):
                 st.login()
             st.markdown(
-                '<p class="login-footnote">Google protects this sign-in with your '
-                '2-Step Verification settings.</p>',
+                '<p class="login-footnote">Use your approved Google account to continue.</p>',
                 unsafe_allow_html=True,
             )
         st.stop()
