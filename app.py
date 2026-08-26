@@ -1129,7 +1129,7 @@ def food_log():
 
 
 def nutrition_insights():
-    st.title("Nutrition insights")
+    st.title("Insights")
     st.caption("Daily estimates compared with your adjustable targets")
     df = load_data()
     with Session(engine) as session:
