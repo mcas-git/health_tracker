@@ -15,6 +15,7 @@ from health_tracker.analytics import (
     daily_health_score,
     excel_safe_data,
     load_data,
+    nutrition_period_bounds,
     projected_target_date,
     weekly_coaching_summary,
     weight_milestones,
@@ -1071,49 +1072,29 @@ def nutrition_insights():
         return
     nutrition = df[["entry_date", *fields.values()]].dropna(subset=["calories"]).copy()
     nutrition["entry_date"] = pd.to_datetime(nutrition["entry_date"])
-    selected = st.date_input("Inspect a day", nutrition.entry_date.max().date())
+    selector_cols = st.columns([1, 2])
+    selected = selector_cols[0].date_input(
+        "Inspect a day", nutrition.entry_date.max().date()
+    )
+    period_view = selector_cols[1].segmented_control(
+        "View",
+        ["Week", "Two weeks", "Month"],
+        default="Week",
+        key="nutrition_period_view",
+    ) or "Week"
 
     status_colors = {
         "Low": "#C5A33B",
         "On target": "#4F8A55",
         "High": "#B64B4B",
     }
-    overall = []
-    for label, field in fields.items():
-        percent = nutrition[field].mean() / targets[label] * 100
-        status = "Low" if percent < 80 else "High" if percent > 120 else "On target"
-        overall.append({"Nutrient": label, "% of target": percent, "Status": status})
-    overall_frame = pd.DataFrame(overall)
-    overall_bars = (
-        alt.Chart(overall_frame)
-        .mark_bar(cornerRadiusEnd=8)
-        .encode(
-            x=alt.X(
-                "% of target:Q",
-                title="Average target achievement (%)",
-                axis=alt.Axis(grid=False),
-            ),
-            y=alt.Y("Nutrient:N", sort=list(fields), title=None),
-            color=alt.Color(
-                "Status:N",
-                scale=alt.Scale(
-                    domain=list(status_colors), range=list(status_colors.values())
-                ),
-                legend=None,
-            ),
-            opacity=alt.value(0.72),
-            tooltip=[
-                "Nutrient:N",
-                "Status:N",
-                alt.Tooltip("% of target:Q", title="Average", format=".0f"),
-            ],
-        )
-    )
-    overall_target = (
-        alt.Chart(pd.DataFrame({"target": [100]}))
-        .mark_rule(color="#D8D8D8", strokeDash=[4, 4], strokeWidth=2)
-        .encode(x="target:Q")
-    )
+    nutrient_colors = {
+        "Calories": "#C5A33B",
+        "Protein": _theme_values[1],
+        "Carbs": "#B8755A",
+        "Fat": "#9A6C8A",
+        "Fibre": "#4F8A55",
+    }
     day = nutrition[nutrition.entry_date.dt.date == selected]
     st.subheader("Selected day")
     if day.empty:
@@ -1125,39 +1106,66 @@ def nutrition_insights():
             ratio = actual / targets[label] if targets[label] else 0
             status = "Low" if ratio < 0.8 else "High" if ratio > 1.2 else "On target"
             unit = "kcal" if label == "Calories" else "g"
-            col.metric(f"{label} ({unit})", f"{actual:.0f}", f"{ratio * 100:.0f}% · {status}")
+            col.markdown(
+                f"""
+                <div class="nutrition-metric-card"
+                     style="--nutrient-color:{nutrient_colors[label]};
+                            --status-color:{status_colors[status]}">
+                  <div class="nutrition-metric-title">{label} ({unit})</div>
+                  <div class="nutrition-metric-value">{actual:.0f}</div>
+                  <div class="nutrition-metric-status">{ratio * 100:.0f}% · {status}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-    week_start = pd.Timestamp(selected) - pd.Timedelta(days=selected.weekday())
-    week_end = week_start + pd.Timedelta(days=6)
-    selected_week = nutrition[
-        nutrition.entry_date.dt.normalize().between(week_start, week_end)
+    period_start, period_end = nutrition_period_bounds(selected, period_view)
+    selected_period = nutrition[
+        nutrition.entry_date.dt.normalize().between(period_start, period_end)
     ].copy()
-    weekly_rows = [
+    period_rows = [
         {
             "Day": row.entry_date.normalize(),
             "Nutrient": label,
             "% of target": row[field] / targets[label] * 100,
         }
-        for _, row in selected_week.iterrows()
+        for _, row in selected_period.iterrows()
         for label, field in fields.items()
         if pd.notna(row[field])
     ]
-    st.subheader("Weekly average vs target")
-    st.caption(f"{week_start:%d %b %Y}–{week_end:%d %b %Y} · Monday to Sunday")
-    if weekly_rows:
-        nutrient_colors = ["#C5A33B", _theme_values[1], "#B8755A", "#9A6C8A", "#4F8A55"]
-        weekly_frame = pd.DataFrame(weekly_rows)
-        weekly_chart = (
-            alt.Chart(weekly_frame)
+    titles = {
+        "Week": ("Weekly trend", "Weekly average", "Monday to Sunday"),
+        "Two weeks": (
+            "Two-week trend",
+            "Two-week average",
+            "Monday to the following Sunday",
+        ),
+        "Month": ("Monthly trend", "Monthly average", "Calendar month"),
+    }
+    trend_title, average_title, period_label = titles[period_view]
+    period_days = (period_end - period_start).days + 1
+    tick_step = 1 if period_days <= 14 else max(1, math.ceil(period_days / 10))
+    tick_values = list(pd.date_range(period_start, period_end, freq=f"{tick_step}D"))
+    if tick_values[-1] != period_end:
+        tick_values.append(period_end)
+
+    st.subheader(trend_title)
+    st.caption(
+        f"{period_start:%d %b %Y}–{period_end:%d %b %Y} · {period_label}"
+    )
+    if period_rows:
+        period_frame = pd.DataFrame(period_rows)
+        trend_chart = (
+            alt.Chart(period_frame)
             .mark_line(point=False, strokeWidth=3)
             .encode(
                 x=alt.X(
                     "Day:T",
                     title=None,
-                    scale=alt.Scale(domain=[week_start, week_end]),
+                    scale=alt.Scale(domain=[period_start, period_end]),
                     axis=alt.Axis(
-                        format="%a",
-                        values=list(pd.date_range(week_start, week_end, freq="D")),
+                        format="%d",
+                        values=tick_values,
                         labelAngle=0,
                         grid=False,
                     ),
@@ -1166,8 +1174,10 @@ def nutrition_insights():
                 color=alt.Color(
                     "Nutrient:N",
                     sort=list(fields),
-                    scale=alt.Scale(domain=list(fields), range=nutrient_colors),
-                    legend=alt.Legend(orient="bottom", title=None),
+                    scale=alt.Scale(
+                        domain=list(fields), range=list(nutrient_colors.values())
+                    ),
+                    legend=None,
                 ),
                 tooltip=[
                     alt.Tooltip("Day:T", title="Day", format="%A, %d %b"),
@@ -1176,21 +1186,67 @@ def nutrition_insights():
                 ],
             )
         )
-        weekly_target = (
+        trend_target = (
             alt.Chart(pd.DataFrame({"target": [100]}))
             .mark_rule(color="#D8D8D8", strokeWidth=2, opacity=0.7)
             .encode(y="target:Q")
         )
         st.altair_chart(
-            style_chart(weekly_chart + weekly_target), use_container_width=True, theme=None
+            style_chart(trend_chart + trend_target), use_container_width=True, theme=None
         )
     else:
-        st.info("No food estimates exist in the selected Monday–Sunday week.")
+        st.info("No food estimates exist in the selected period.")
 
-    st.subheader("Overall average")
-    st.altair_chart(
-        style_chart(overall_bars + overall_target), use_container_width=True, theme=None
-    )
+    st.subheader(average_title)
+    if period_rows:
+        period_average = []
+        for label, field in fields.items():
+            values = selected_period[field].dropna()
+            if values.empty:
+                continue
+            percent = values.mean() / targets[label] * 100
+            status = "Low" if percent < 80 else "High" if percent > 120 else "On target"
+            period_average.append(
+                {"Nutrient": label, "% of target": percent, "Status": status}
+            )
+        average_frame = pd.DataFrame(period_average)
+        muted_bar = derived_palette(_theme_values[0], _theme_values[1])["grid"]
+        average_bars = (
+            alt.Chart(average_frame)
+            .mark_bar(cornerRadiusEnd=8)
+            .encode(
+                x=alt.X(
+                    "% of target:Q",
+                    title="Average target achievement (%)",
+                    axis=alt.Axis(grid=False),
+                ),
+                y=alt.Y("Nutrient:N", sort=list(fields), title=None),
+                color=alt.Color(
+                    "Status:N",
+                    scale=alt.Scale(
+                        domain=["Low", "On target", "High"],
+                        range=[status_colors["Low"], muted_bar, status_colors["High"]],
+                    ),
+                    legend=None,
+                ),
+                opacity=alt.value(0.72),
+                tooltip=[
+                    "Nutrient:N",
+                    "Status:N",
+                    alt.Tooltip("% of target:Q", title="Average", format=".0f"),
+                ],
+            )
+        )
+        average_target = (
+            alt.Chart(pd.DataFrame({"target": [100]}))
+            .mark_rule(color="#D8D8D8", strokeWidth=2, opacity=0.7)
+            .encode(x="target:Q")
+        )
+        st.altair_chart(
+            style_chart(average_bars + average_target),
+            use_container_width=True,
+            theme=None,
+        )
     st.markdown(
         "<div class='neutral-note'>Indicators use AI food estimates and are informational, "
         "not medical advice.</div>",

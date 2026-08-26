@@ -190,6 +190,17 @@ def apply_theme(
             background:{surface}; border:1px solid {accent}33; border-radius:16px; padding:18px;
             box-shadow:0 5px 20px #0000000d;
         }}
+        .nutrition-metric-card {{
+            min-height:132px; box-sizing:border-box;
+            background:color-mix(in srgb, var(--nutrient-color) 18%, {surface});
+            border:1px solid var(--nutrient-color); border-radius:16px;
+            padding:16px; box-shadow:0 5px 20px #0000000d;
+        }}
+        .nutrition-metric-title {{ color:{text}; font-size:.9rem; font-weight:600; }}
+        .nutrition-metric-value {{
+            color:{text}; font-size:2rem; font-weight:700; line-height:1.25; margin:.2rem 0;
+        }}
+        .nutrition-metric-status {{ color:var(--status-color); font-size:.9rem; font-weight:650; }}
         .quote-card {{ padding:32px; margin:12px 0 16px; }}
         .motivation-card {{ padding:24px 32px; margin:0 0 28px; }}
         .sport-watermark {{
