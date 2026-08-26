@@ -45,7 +45,14 @@ def derived_palette(mode: str, accent: str) -> dict[str, str | list[str]]:
     accent = normalize_color(accent)
     return {
         "accent": accent,
+        "background": _mix(accent, "#000000", 0.84),
+        "surface": _mix(accent, "#000000", 0.72),
+        "secondary": _mix(accent, "#000000", 0.66),
         "foreground": _mix(accent, "#FFFFFF", 0.9),
+        "muted": _mix(accent, "#FFFFFF", 0.55),
+        "link": _mix(accent, "#FFFFFF", 0.42),
+        "input": "#202124",
+        "border": "#666666",
         "grid": _mix(accent, "#FFFFFF", 0.38),
         "series": [
             accent,
@@ -200,7 +207,23 @@ def apply_theme(
         .nutrition-metric-value {{
             color:{text}; font-size:2rem; font-weight:700; line-height:1.25; margin:.2rem 0;
         }}
-        .nutrition-metric-status {{ color:var(--status-color); font-size:.9rem; font-weight:650; }}
+        .nutrition-metric-status {{ color:{text}; font-size:.9rem; font-weight:650; }}
+        .palette-preview {{
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr));
+            gap:10px; margin:.5rem 0 1.25rem;
+        }}
+        .palette-swatch {{
+            min-width:0; background:{surface}; border:1px solid {neutral_border};
+            border-radius:10px; padding:8px;
+        }}
+        .palette-swatch-color {{
+            display:block; height:40px; border:1px solid {neutral_border};
+            border-radius:7px; margin-bottom:7px;
+        }}
+        .palette-swatch strong {{
+            display:block; color:{text}; font-size:.78rem; line-height:1.25;
+        }}
+        .palette-swatch small {{ color:{muted}; font-size:.72rem; }}
         .quote-card {{ padding:32px; margin:12px 0 16px; }}
         .motivation-card {{ padding:24px 32px; margin:0 0 28px; }}
         .sport-watermark {{
@@ -780,7 +803,9 @@ def apply_theme(
         [class*="st-key-weekly_barrier_"] [data-testid="stTextInputRootElement"],
         [class*="st-key-weekly_barrier_"] [data-baseweb="input"],
         [class*="st-key-weekly_if_then_"] [data-testid="stTextInputRootElement"],
-        [class*="st-key-weekly_if_then_"] [data-baseweb="input"] {{
+        [class*="st-key-weekly_if_then_"] [data-baseweb="input"],
+        [class*="st-key-appearance_color_override"] [data-testid="stTextInputRootElement"],
+        [class*="st-key-appearance_color_override"] [data-baseweb="input"] {{
             box-sizing:border-box !important;
             background:{background} !important;
             background-color:{background} !important;
@@ -797,7 +822,11 @@ def apply_theme(
         [class*="st-key-weekly_barrier_"] [data-testid="stTextInputRootElement"]:focus-within,
         [class*="st-key-weekly_barrier_"] [data-baseweb="input"]:focus-within,
         [class*="st-key-weekly_if_then_"] [data-testid="stTextInputRootElement"]:focus-within,
-        [class*="st-key-weekly_if_then_"] [data-baseweb="input"]:focus-within {{
+        [class*="st-key-weekly_if_then_"] [data-baseweb="input"]:focus-within,
+        [class*="st-key-appearance_color_override"]
+        [data-testid="stTextInputRootElement"]:focus-within,
+        [class*="st-key-appearance_color_override"]
+        [data-baseweb="input"]:focus-within {{
             border-color:{accent} !important;
         }}
         [class*="st-key-food_note_"] [data-baseweb="textarea"] > div,
@@ -811,7 +840,10 @@ def apply_theme(
         [class*="st-key-weekly_barrier_"] input,
         [class*="st-key-weekly_if_then_"] [data-baseweb="input"] > div,
         [class*="st-key-weekly_if_then_"] [data-baseweb="base-input"],
-        [class*="st-key-weekly_if_then_"] input {{
+        [class*="st-key-weekly_if_then_"] input,
+        [class*="st-key-appearance_color_override"] [data-baseweb="input"] > div,
+        [class*="st-key-appearance_color_override"] [data-baseweb="base-input"],
+        [class*="st-key-appearance_color_override"] input {{
             background:transparent !important;
             background-color:transparent !important;
             border:0 !important;
@@ -826,7 +858,8 @@ def apply_theme(
         [class*="st-key-food_note_"] textarea::placeholder,
         [class*="st-key-weekly_focus_"] input::placeholder,
         [class*="st-key-weekly_barrier_"] input::placeholder,
-        [class*="st-key-weekly_if_then_"] input::placeholder {{
+        [class*="st-key-weekly_if_then_"] input::placeholder,
+        [class*="st-key-appearance_color_override"] input::placeholder {{
             color:#D8D8D8 !important;
             -webkit-text-fill-color:#D8D8D8 !important;
             opacity:1 !important;

@@ -53,6 +53,7 @@ with Session(engine) as _theme_session:
     _success_matches_accent = bool(
         getattr(_preferences, "success_matches_accent", False)
     )
+    _show_placeholders = bool(getattr(_preferences, "show_placeholders", True))
     _profile = Profile(
         age=getattr(_preferences, "age", DEFAULT_PROFILE.age),
         sex=getattr(_preferences, "sex", DEFAULT_PROFILE.sex),
@@ -75,6 +76,10 @@ def value(item, name, default=None):
 
 def clear_text(key: str) -> None:
     st.session_state[key] = ""
+
+
+def example_placeholder(example: str) -> str | None:
+    return f"Example: {example}" if _show_placeholders else None
 
 
 def rating_input(label: str, key: str, initial: int) -> int:
@@ -905,6 +910,7 @@ def weekly_coaching():
         focus = st.text_input(
             "One behaviour to focus on",
             value=value(saved, "focus", summary["recommendation"]),
+            placeholder=example_placeholder("Take a 20-minute walk after lunch."),
             key=focus_key,
         )
         st.form_submit_button(
@@ -918,6 +924,7 @@ def weekly_coaching():
         barrier = st.text_input(
             "Anticipated barrier",
             value=value(saved, "anticipated_barrier", ""),
+            placeholder=example_placeholder("A late meeting could disrupt dinner."),
             key=barrier_key,
         )
         st.form_submit_button(
@@ -931,7 +938,9 @@ def weekly_coaching():
         if_then = st.text_input(
             "If–then response",
             value=value(saved, "if_then_plan", ""),
-            placeholder="If work runs late, then I will use the prepared dinner.",
+            placeholder=example_placeholder(
+                "If work runs late, then I will use the prepared dinner."
+            ),
             key=if_then_key,
         )
         st.form_submit_button(
@@ -984,7 +993,9 @@ def food_log():
         "Full-day food journal",
         value=existing.raw_note if existing else "",
         height=220,
-        placeholder="Breakfast was porridge with banana… Lunch… Later I had…",
+        placeholder=example_placeholder(
+            "Breakfast was porridge with banana; lunch was soup and bread."
+        ),
         key=food_note_key,
         label_visibility="collapsed",
     )
@@ -1108,8 +1119,7 @@ def nutrition_insights():
             col.markdown(
                 f"""
                 <div class="nutrition-metric-card"
-                     style="--nutrient-color:{nutrient_colors[label]};
-                            --status-color:{status_colors[status]}">
+                     style="--nutrient-color:{nutrient_colors[label]}">
                   <div class="nutrition-metric-title">{label} ({unit})</div>
                   <div class="nutrition-metric-value">{actual:.0f}</div>
                   <div class="nutrition-metric-status">{ratio * 100:.0f}% · {status}</div>
@@ -1274,10 +1284,46 @@ def appearance_page():
         prefs = session.get(AppPreferences, 1)
         st.caption("Dark mode is used throughout the tracker.")
         picked_color = st.color_picker("Base palette colour", prefs.accent)
+        hide_example_placeholders = st.toggle(
+            "Hide example placeholders",
+            value=not bool(getattr(prefs, "show_placeholders", True)),
+            help="Turn this on to remove example text from empty fields throughout the app.",
+        )
         typed_color = st.text_input(
             "RGB or HEX override (optional)",
-            placeholder="rgb(123, 132, 81) or #7B8451",
+            placeholder=(
+                None
+                if hide_example_placeholders
+                else "Example: #7B8451 or rgb(123, 132, 81)"
+            ),
             help="Leave blank to use the colour picker above.",
+            key="appearance_color_override",
+        )
+        try:
+            preview_accent = normalize_color(typed_color or picked_color)
+        except ValueError:
+            preview_accent = normalize_color(picked_color)
+        preview_palette = derived_palette("dark", preview_accent)
+        preview_hues = [
+            ("Page", preview_palette["background"]),
+            ("Cards", preview_palette["surface"]),
+            ("Hover", preview_palette["secondary"]),
+            ("Primary", preview_palette["accent"]),
+            ("Text", preview_palette["foreground"]),
+            ("Muted text", preview_palette["muted"]),
+            ("Links", preview_palette["link"]),
+            ("Text fields", preview_palette["input"]),
+            ("Borders", preview_palette["border"]),
+        ]
+        swatches = "".join(
+            '<div class="palette-swatch">'
+            f'<span class="palette-swatch-color" style="background:{color}"></span>'
+            f"<strong>{label}</strong><small>{color}</small></div>"
+            for label, color in preview_hues
+        )
+        st.caption("Generated palette · preview only")
+        st.markdown(
+            f'<div class="palette-preview">{swatches}</div>', unsafe_allow_html=True
         )
         font = st.selectbox(
             "Font",
@@ -1312,6 +1358,7 @@ def appearance_page():
                 prefs.font_family = font
                 prefs.smooth_charts = smooth_charts
                 prefs.success_matches_accent = success_matches_accent
+                prefs.show_placeholders = not hide_example_placeholders
                 session.commit()
                 st.session_state.appearance_saved = True
                 st.rerun()

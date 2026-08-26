@@ -154,7 +154,11 @@ def weekly_coaching_summary(
         for field in ("gym", "cardio", "alcohol_free")
         if field in current
     }
-    recent_weights = data.dropna(subset=["weight_kg"]).tail(28)
+    recent_weights = (
+        data.dropna(subset=["weight_kg"]).tail(28)
+        if "weight_kg" in data
+        else pd.DataFrame()
+    )
     plateau = False
     if len(recent_weights) >= 14:
         midpoint = len(recent_weights) // 2

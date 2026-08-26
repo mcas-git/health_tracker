@@ -21,7 +21,7 @@ from health_tracker.models import Base, DailyEntry
 from health_tracker.nutrition import DailyNutritionEstimate
 from health_tracker.quotes import QUOTES, daily_item, quote_count
 from health_tracker.research import RESEARCH_INSIGHTS
-from health_tracker.theme import normalize_color
+from health_tracker.theme import derived_palette, normalize_color
 from scripts.send_reminder import reminder_copy, should_send
 from scripts.send_weekly_report import build_weekly_message, should_send_weekly
 
@@ -53,6 +53,7 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
         "target_weight_kg",
         "target_date",
         "success_matches_accent",
+        "show_placeholders",
     } <= preference_columns
     with Session(test_engine) as session:
         session.add_all(
@@ -249,6 +250,22 @@ def test_palette_colour_accepts_hex_and_rgb():
     assert normalize_color("rgb(123, 132, 81)") == "#7B8451"
 
 
+def test_palette_exposes_read_only_app_hues():
+    palette = derived_palette("dark", "#7B8451")
+
+    assert {
+        "background",
+        "surface",
+        "secondary",
+        "accent",
+        "foreground",
+        "muted",
+        "link",
+        "input",
+        "border",
+    } <= palette.keys()
+
+
 def test_reminder_schedule_handles_bst_and_gmt():
     london = ZoneInfo("Europe/London")
     assert should_send(datetime(2026, 7, 1, 5, tzinfo=london), "schedule")
@@ -313,6 +330,21 @@ def test_weekly_coaching_summary_reports_completion_and_trends():
     assert summary["completion"] == 100
     assert summary["weight_change"] < 0
     assert summary["habits"]["alcohol_free"] == 7
+
+
+def test_weekly_coaching_handles_nutrition_before_weight_entries():
+    data = pd.DataFrame(
+        {
+            "entry_date": [date(2026, 8, 25)],
+            "calories": [1800],
+            "protein_g": [140],
+        }
+    )
+
+    summary = weekly_coaching_summary(data, date(2026, 8, 25))
+
+    assert summary["logged_days"] == 1
+    assert summary["weight_change"] is None
 
 
 def test_weight_milestones_follow_a_sustainable_plan_pace():
