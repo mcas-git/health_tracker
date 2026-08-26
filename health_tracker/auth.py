@@ -11,7 +11,7 @@ from pathlib import Path
 import extra_streamlit_components as stx
 import streamlit as st
 
-from health_tracker.branding import BRAND_MARK_DATA_URI
+from health_tracker.branding import BRAND_MARK_PATH
 from health_tracker.config import setting
 
 GOOGLE_LOGO = Path(__file__).resolve().parents[1] / "assets" / "logo" / "google.svg"
@@ -88,11 +88,8 @@ def oidc_configured() -> bool:
 
 
 def _login_shell_intro(message: str | None = None) -> None:
-    st.markdown(
-        f'<div class="login-brand-mark"><img src="{BRAND_MARK_DATA_URI}" '
-        'alt="Health Journey"></div>',
-        unsafe_allow_html=True,
-    )
+    with st.container(key="login_brand_mark"):
+        st.image(str(BRAND_MARK_PATH), width=54)
     st.markdown('<p class="login-wordmark">HEALTH JOURNEY</p>', unsafe_allow_html=True)
     st.title("Welcome back")
     if message:
