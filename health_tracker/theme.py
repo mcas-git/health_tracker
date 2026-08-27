@@ -203,6 +203,8 @@ def apply_theme(
         }}
         [data-testid="stHeader"] button,
         [data-testid="stToolbar"] button,
+        [data-testid="stHeader"] a,
+        [data-testid="stToolbar"] a,
         [data-testid="stHeader"] [role="button"],
         [data-testid="stToolbar"] [role="button"] {{
             background:transparent !important;
@@ -215,7 +217,9 @@ def apply_theme(
             accent-color:auto !important;
         }}
         [data-testid="stHeader"] button *,
-        [data-testid="stToolbar"] button * {{
+        [data-testid="stToolbar"] button *,
+        [data-testid="stHeader"] a *,
+        [data-testid="stToolbar"] a * {{
             color:#FFFFFF !important;
             -webkit-text-fill-color:#FFFFFF !important;
         }}
@@ -228,6 +232,10 @@ def apply_theme(
         [data-testid="stHeader"] svg path[fill="none"],
         [data-testid="stToolbar"] svg path[fill="none"] {{
             fill:none !important;
+        }}
+        [data-testid="stHeader"] a svg path:not([fill="none"]),
+        [data-testid="stToolbar"] a svg path:not([fill="none"]) {{
+            fill:#FFFFFF !important; color:#FFFFFF !important;
         }}
         hr {{ border-color:{muted}55; }}
         """
@@ -434,9 +442,9 @@ def apply_theme(
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;
-            background-size:150px auto !important; border-color:#00A6CE !important;
-            color:#111111 !important; min-height:2.5rem !important;
-            height:2.5rem !important;
+            background-size:138px auto !important; border-color:#00A6CE !important;
+            color:#111111 !important; min-height:3rem !important;
+            height:3rem !important;
         }}
         .st-key-smartwatch_intro,
         .st-key-smartwatch_load,
@@ -462,6 +470,39 @@ def apply_theme(
         }}
         [data-testid="stAlert"] svg,
         [data-testid="stCheckbox"] svg {{ fill:{accent} !important; color:{accent} !important; }}
+        .status-heading {{
+            display:flex; align-items:center; flex-wrap:wrap; gap:.55rem;
+            overflow:visible; position:relative; margin:0 0 .25rem;
+        }}
+        .status-heading h1,
+        .status-heading h2,
+        .status-heading h3 {{
+            margin:0 !important; padding:0 !important;
+        }}
+        .status-heading-1 {{ margin-bottom:.45rem; }}
+        .saved-status-badge {{
+            display:inline-flex; align-items:center; justify-content:center;
+            position:relative; flex:0 0 auto; width:1.25rem; height:1.25rem;
+            box-sizing:border-box; border:1.5px solid {success_border};
+            border-radius:50%; background:transparent; color:{success_border};
+            font-size:.76rem; font-weight:800; line-height:1; cursor:help;
+            outline:none; box-shadow:none;
+        }}
+        .saved-status-badge::after {{
+            content:attr(data-message); position:absolute; top:calc(100% + .55rem);
+            left:50%; z-index:1000; width:max-content;
+            max-width:min(22rem, calc(100vw - 3rem)); padding:.55rem .7rem;
+            box-sizing:border-box; border:1px solid {success_border}; border-radius:9px;
+            background:{success_background}; color:{success_text};
+            box-shadow:0 8px 24px #00000045; font-size:.78rem; font-weight:600;
+            line-height:1.35; white-space:normal; text-align:left;
+            opacity:0; visibility:hidden; pointer-events:none;
+            transform:translate(-50%, -.15rem); transition:opacity .14s ease, transform .14s ease;
+        }}
+        .saved-status-badge:hover::after,
+        .saved-status-badge:focus::after {{
+            opacity:1; visibility:visible; transform:translate(-50%, 0);
+        }}
         [data-testid="stProgressBarTrack"],
         [data-testid="stProgress"] [data-testid="stProgressBarTrack"],
         [data-testid="stProgressBar"] [data-testid="stProgressBarTrack"] {{
@@ -576,6 +617,20 @@ def apply_theme(
         [data-testid="stNumberInput"] button svg {{
             color:{neutral_icon} !important; fill:{neutral_icon} !important;
             stroke:{neutral_icon} !important;
+        }}
+        [data-testid="stNumberInput"] button[aria-label*="clear" i],
+        [data-testid="stNumberInput"] button[title*="clear" i] {{
+            background:transparent !important; border:0 !important;
+            border-radius:0 !important; outline:none !important; box-shadow:none !important;
+        }}
+        [data-testid="stNumberInput"] button[aria-label*="clear" i] svg,
+        [data-testid="stNumberInput"] button[title*="clear" i] svg {{
+            display:none !important;
+        }}
+        [data-testid="stNumberInput"] button[aria-label*="clear" i]::before,
+        [data-testid="stNumberInput"] button[title*="clear" i]::before {{
+            content:"×"; color:{neutral_icon}; font-size:1.15rem;
+            font-weight:400; line-height:1;
         }}
         [data-testid="stTextInput"] [data-baseweb="input"],
         [data-testid="stTextInput"] [data-baseweb="base-input"],
@@ -984,6 +1039,54 @@ def apply_theme(
         [class*="st-key-clear_"] button * {{
             color:{text} !important;
             -webkit-text-fill-color:{text} !important;
+        }}
+
+        /* Text can be cleared in place without a second full-width action button. */
+        [class*="st-key-clearable_text_"],
+        [class*="st-key-clearable_area_"] {{
+            position:relative !important; overflow:visible !important;
+        }}
+        [class*="st-key-clearable_text_"] input,
+        [class*="st-key-clearable_area_"] textarea {{
+            padding-right:2.65rem !important;
+        }}
+        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"],
+        [class*="st-key-clearable_area_"] [data-testid="stButton"] {{
+            position:static !important; z-index:5;
+            width:1.7rem !important; min-width:1.7rem !important;
+        }}
+        [class*="st-key-clearable_text_"] [class*="st-key-clear_"] {{
+            position:absolute !important; top:2.15rem; right:.45rem; z-index:5;
+            width:1.7rem !important; height:1.7rem !important;
+        }}
+        [class*="st-key-clearable_area_"] [class*="st-key-clear_"] {{
+            position:absolute !important; top:.43rem; right:.45rem; z-index:5;
+            width:1.7rem !important; height:1.7rem !important;
+        }}
+        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"] button,
+        [class*="st-key-clearable_area_"] [data-testid="stButton"] button {{
+            display:flex !important; align-items:center !important;
+            justify-content:center !important;
+            width:1.7rem !important; min-width:1.7rem !important;
+            height:1.7rem !important; min-height:1.7rem !important;
+            padding:0 !important; background:transparent !important;
+            border:0 !important; border-radius:0 !important;
+            color:{neutral_icon} !important; -webkit-text-fill-color:{neutral_icon} !important;
+            outline:none !important; box-shadow:none !important;
+        }}
+        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"] button:hover,
+        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"] button:focus,
+        [class*="st-key-clearable_area_"] [data-testid="stButton"] button:hover,
+        [class*="st-key-clearable_area_"] [data-testid="stButton"] button:focus {{
+            background:transparent !important; border:0 !important;
+            color:{text} !important; -webkit-text-fill-color:{text} !important;
+            outline:none !important; box-shadow:none !important;
+        }}
+        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"] button p,
+        [class*="st-key-clearable_area_"] [data-testid="stButton"] button p {{
+            margin:0 !important; font-size:1.35rem !important; font-weight:400 !important;
+            line-height:1 !important; color:inherit !important;
+            -webkit-text-fill-color:inherit !important;
         }}
 
         /* Journal and coaching fields use the page colour and one rounded outer frame. */

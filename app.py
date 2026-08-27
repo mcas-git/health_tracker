@@ -4,6 +4,7 @@ import io
 import json
 import math
 from datetime import datetime, timedelta
+from html import escape
 
 import altair as alt
 import pandas as pd
@@ -116,6 +117,78 @@ def value(item, name, default=None):
 
 def clear_text(key: str) -> None:
     st.session_state[key] = ""
+
+
+def status_heading(label: str, message: str | None = None, level: int = 1) -> None:
+    """Render a page or section heading with an optional accessible saved-status badge."""
+    if not message:
+        if level == 1:
+            st.title(label)
+        else:
+            st.subheader(label)
+        return
+    safe_label = escape(label)
+    safe_message = escape(message, quote=True)
+    st.markdown(
+        f'<div class="status-heading status-heading-{level}">'
+        f'<h{level}>{safe_label}</h{level}>'
+        f'<span class="saved-status-badge" tabindex="0" role="status" '
+        f'aria-label="{safe_message}" data-message="{safe_message}">✓</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def clearable_text_input(
+    label: str,
+    *,
+    value: str,
+    placeholder: str | None,
+    key: str,
+) -> str:
+    with st.container(key=f"clearable_text_{key}"):
+        response = st.text_input(
+            label,
+            value=value,
+            placeholder=placeholder,
+            key=key,
+        )
+        st.form_submit_button(
+            "×",
+            key=f"clear_{key}",
+            on_click=clear_text,
+            args=(key,),
+            help=f"Clear {label.lower()}",
+        )
+    return response
+
+
+def clearable_text_area(
+    label: str,
+    *,
+    value: str,
+    height: int,
+    placeholder: str | None,
+    key: str,
+    label_visibility: str = "visible",
+) -> str:
+    with st.container(key=f"clearable_area_{key}"):
+        response = st.text_area(
+            label,
+            value=value,
+            height=height,
+            placeholder=placeholder,
+            key=key,
+            label_visibility=label_visibility,
+        )
+        st.button(
+            "×",
+            key=f"clear_{key}",
+            on_click=clear_text,
+            args=(key,),
+            help=f"Clear {label.lower()}",
+        )
+    return response
 
 
 def example_placeholder(example: str) -> str | None:
@@ -589,9 +662,8 @@ def dashboard():
         use_container_width=True,
     )
 def daily_entry():
-    st.title("Check-in")
-    confirmation_area = st.container()
-    st.session_state.pop("daily_checkin_saved", None)
+    title_area = st.empty()
+    error_area = st.empty()
     london_now = datetime.now(LONDON)
     today = london_now.date()
     smartwatch_confirmation = None
@@ -633,18 +705,24 @@ def daily_entry():
         updated = item.updated_at
         if updated.tzinfo is not None:
             updated = updated.astimezone(LONDON)
-    with confirmation_area:
-        if item is not None:
-            st.success(
-                f"Entry saved for {selected:%d %b %Y} · "
-                f"Last updated {updated:%d %b %Y at %H:%M}"
-            )
-        if smartwatch_confirmation:
-            st.success(smartwatch_confirmation)
+    entry_confirmation = None
+    if item is not None:
+        entry_confirmation = (
+            f"Entry saved for {selected:%d %b %Y} · "
+            f"Last updated {updated:%d %b %Y at %H:%M}"
+        )
+    with title_area:
+        status_heading("Check-in", entry_confirmation)
+    with error_area:
         if smartwatch_error:
             st.error(smartwatch_error)
     sync_record = st.session_state.get("garmin_sync", {})
     synced = sync_record.get("data", {}) if sync_record.get("date") == selected else {}
+    if synced and not smartwatch_confirmation:
+        smartwatch_confirmation = (
+            f"Smartwatch data loaded for {selected:%d %b %Y} · "
+            f"{len(synced.get('activities', []))} activities."
+        )
     date_key = selected.isoformat()
     sync_revision = int(st.session_state.get(f"garmin_sync_revision_{date_key}", 0))
 
@@ -710,9 +788,6 @@ def daily_entry():
                         "diastolic": diastolic,
                     }
                 )
-            st.session_state["daily_checkin_saved"] = (
-                f"Morning check-in saved for {selected:%d %b %Y}."
-            )
             for morning_key in morning_keys.values():
                 st.session_state.pop(morning_key, None)
             st.rerun()
@@ -721,7 +796,7 @@ def daily_entry():
         evening_item = item if update_another_day else None
         evening_key_mode = "historical" if update_another_day else "today_blank_v2"
         with st.container(key="smartwatch_intro"):
-            st.subheader("Smartwatch data")
+            status_heading("Smartwatch data", smartwatch_confirmation, level=3)
             st.caption(
                 "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin "
                 "assigns to that date, normally the night ending that morning. Data comes "
@@ -900,16 +975,14 @@ def daily_entry():
                     }
                 )
             st.session_state.pop("garmin_sync", None)
-            st.session_state["daily_checkin_saved"] = (
-                f"Evening check-in saved for {selected:%d %b %Y}."
-            )
             for evening_key in evening_keys.values():
                 st.session_state.pop(evening_key, None)
             st.rerun()
 
 
 def weekly_coaching():
-    st.title("Weekly coaching")
+    weekly_saved_message = st.session_state.pop("weekly_plan_saved", None)
+    status_heading("Weekly coaching", weekly_saved_message)
     st.caption("Review the trend, choose one focus, and plan around real-life barriers")
     today = datetime.now(LONDON).date()
     week_start = today - timedelta(days=today.weekday())
@@ -956,48 +1029,27 @@ def weekly_coaching():
             "Planned cardio sessions", 0, 7, int(value(saved, "planned_cardio_sessions", 2))
         )
         focus_key = f"weekly_focus_{week_key}"
-        focus = st.text_input(
+        focus = clearable_text_input(
             "One behaviour to focus on",
             value=value(saved, "focus", summary["recommendation"]),
             placeholder=example_placeholder("Take a 20-minute walk after lunch."),
             key=focus_key,
         )
-        st.form_submit_button(
-            "Clean response",
-            key=f"clear_{focus_key}",
-            on_click=clear_text,
-            args=(focus_key,),
-            use_container_width=True,
-        )
         barrier_key = f"weekly_barrier_{week_key}"
-        barrier = st.text_input(
+        barrier = clearable_text_input(
             "Anticipated barrier",
             value=value(saved, "anticipated_barrier", ""),
             placeholder=example_placeholder("A late meeting could disrupt dinner."),
             key=barrier_key,
         )
-        st.form_submit_button(
-            "Clean response",
-            key=f"clear_{barrier_key}",
-            on_click=clear_text,
-            args=(barrier_key,),
-            use_container_width=True,
-        )
         if_then_key = f"weekly_if_then_{week_key}"
-        if_then = st.text_input(
+        if_then = clearable_text_input(
             "If–then response",
             value=value(saved, "if_then_plan", ""),
             placeholder=example_placeholder(
                 "If work runs late, then I will use the prepared dinner."
             ),
             key=if_then_key,
-        )
-        st.form_submit_button(
-            "Clean response",
-            key=f"clear_{if_then_key}",
-            on_click=clear_text,
-            args=(if_then_key,),
-            use_container_width=True,
         )
         if st.form_submit_button("Save weekly plan", type="primary", use_container_width=True):
             with st.spinner("Saving weekly plan…"):
@@ -1011,13 +1063,13 @@ def weekly_coaching():
                         "if_then_plan": if_then,
                     }
                 )
-            st.success("Weekly plan saved.")
+            st.session_state.weekly_plan_saved = "Weekly plan saved."
+            st.rerun()
 
 
 def food_log():
-    st.title("Food journal")
-    if saved_message := st.session_state.pop("food_journal_saved", None):
-        st.success(saved_message)
+    saved_message = st.session_state.pop("food_journal_saved", None)
+    status_heading("Food journal", saved_message)
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     today = datetime.now(LONDON).date()
     update_another_day = st.toggle(
@@ -1037,7 +1089,7 @@ def food_log():
         selected = today
     existing = get_nutrition(selected)
     food_note_key = f"food_note_{selected.isoformat()}"
-    note = st.text_area(
+    note = clearable_text_area(
         "Full-day food journal",
         value=existing.raw_note if existing else "",
         height=220,
@@ -1046,13 +1098,6 @@ def food_log():
         ),
         key=food_note_key,
         label_visibility="collapsed",
-    )
-    st.button(
-        "Clean response",
-        key=f"clear_{food_note_key}",
-        on_click=clear_text,
-        args=(food_note_key,),
-        use_container_width=True,
     )
     if st.button(
         "Recalculate and replace" if existing else "Analyse and save day",
@@ -1327,9 +1372,11 @@ def nutrition_insights():
 
 
 def appearance_page():
-    st.title("Appearance")
-    if st.session_state.pop("appearance_saved", False):
-        st.success("Appearance settings saved.")
+    appearance_saved = st.session_state.pop("appearance_saved", False)
+    status_heading(
+        "Appearance",
+        "Appearance settings saved." if appearance_saved else None,
+    )
     st.caption("Make the tracker feel like your own")
     with Session(engine) as session:
         prefs = session.get(AppPreferences, 1)
@@ -1412,11 +1459,11 @@ def appearance_page():
             ),
         )
         success_matches_accent = st.toggle(
-            "Match confirmation boxes to save buttons",
+            "Match confirmation bubbles to save buttons",
             value=bool(getattr(prefs, "success_matches_accent", False)),
             help=(
-                "Turn on to use the selected palette colour for saved-entry confirmations. "
-                "Turn off to use a lighter green."
+                "Turn on to use the selected palette colour for saved-entry ticks and their "
+                "hover messages. Turn off to use a lighter green."
             ),
         )
         st.markdown(
@@ -1451,7 +1498,10 @@ def appearance_page():
 
 
 def settings_page():
-    st.title("Targets, backup and privacy")
+    status_heading(
+        "Targets, backup and privacy",
+        st.session_state.pop("targets_saved", None),
+    )
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)
         preferences = session.get(AppPreferences, 1)
@@ -1511,7 +1561,7 @@ def settings_page():
                     preferences.target_date = goal_date
                     with st.spinner("Saving profile and goal…"):
                         session.commit()
-                    st.success("Profile and goal saved.")
+                    st.session_state.targets_saved = "Profile and goal saved."
                     st.rerun()
         with st.form("goals"):
             st.subheader("Daily targets")
@@ -1535,7 +1585,8 @@ def settings_page():
                 goals.sleep_target_hours = sleep
                 with st.spinner("Saving targets…"):
                     session.commit()
-                st.success("Targets saved.")
+                st.session_state.targets_saved = "Targets saved."
+                st.rerun()
     st.subheader("Export")
     data = load_data()
     export = data.copy()
