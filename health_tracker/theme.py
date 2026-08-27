@@ -112,6 +112,19 @@ def apply_theme(
         if garmin_logo.is_file()
         else ""
     )
+    brand_mark = (
+        Path(__file__).resolve().parents[1]
+        / "assets"
+        / "logo"
+        / "health-journey-mark.svg"
+    )
+    brand_mark_css = (
+        'background-image:url("data:image/svg+xml;base64,'
+        + b64encode(brand_mark.read_bytes()).decode()
+        + '") !important;'
+        if brand_mark.is_file()
+        else ""
+    )
     dark_overrides = f"""
         [data-testid="stAppViewContainer"] h1,
         [data-testid="stAppViewContainer"] h2,
@@ -376,6 +389,16 @@ def apply_theme(
         }}
         [data-testid="stSidebarUserContent"] {{
             position:relative; min-height:calc(100vh - 1rem);
+        }}
+        .st-key-sidebar_brand_mark {{
+            display:flex; align-items:center; justify-content:center;
+            min-height:4rem; margin:.15rem 0 .85rem;
+        }}
+        .st-key-sidebar_brand_mark [data-testid="stImage"] {{
+            display:flex; justify-content:center; width:100%;
+        }}
+        .st-key-sidebar_brand_mark img {{
+            display:block; width:2.35rem; height:auto;
         }}
         .st-key-appearance_action,
         .st-key-sign_out_action {{
@@ -1221,6 +1244,32 @@ def apply_theme(
             color:{sidebar_icon} !important;
             fill:{sidebar_icon} !important;
             stroke:{sidebar_icon} !important;
+        }}
+
+        /* Use the brand mark as the collapsed sidebar's reopen control. */
+        [data-testid="stExpandSidebarButton"],
+        [data-testid="stSidebarCollapsedControl"] button {{
+            display:flex !important; visibility:visible !important; opacity:1 !important;
+            position:relative !important; align-items:center !important;
+            justify-content:center !important;
+            width:2.75rem !important; min-width:2.75rem !important;
+            height:2.75rem !important; min-height:2.75rem !important;
+            background-color:transparent !important;
+            border:0 !important; box-shadow:none !important;
+        }}
+        [data-testid="stExpandSidebarButton"]::before,
+        [data-testid="stSidebarCollapsedControl"] button::before {{
+            content:""; display:block; width:1.35rem; height:2.25rem;
+            {brand_mark_css}
+            background-repeat:no-repeat !important;
+            background-position:center !important;
+            background-size:contain !important;
+        }}
+        [data-testid="stExpandSidebarButton"] span,
+        [data-testid="stExpandSidebarButton"] svg,
+        [data-testid="stSidebarCollapsedControl"] button span,
+        [data-testid="stSidebarCollapsedControl"] button svg {{
+            visibility:hidden !important; opacity:0 !important;
         }}
         </style>
         """,

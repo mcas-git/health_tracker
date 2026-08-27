@@ -589,7 +589,7 @@ def dashboard():
         use_container_width=True,
     )
 def daily_entry():
-    st.title("Daily check-in")
+    st.title("Check-in")
     confirmation_area = st.container()
     st.session_state.pop("daily_checkin_saved", None)
     london_now = datetime.now(LONDON)
@@ -1583,11 +1583,8 @@ standard_pages = [
 ]
 page = st.navigation([*standard_pages, appearance], position="hidden")
 with st.sidebar:
-    st.logo(
-        str(BRAND_MARK_PATH),
-        size="large",
-        icon_image=str(BRAND_MARK_PATH),
-    )
+    with st.container(key="sidebar_brand_mark"):
+        st.image(str(BRAND_MARK_PATH), width=38)
     for navigation_page in standard_pages:
         st.page_link(navigation_page, use_container_width=True)
     appearance_action = st.container(key="appearance_action")
