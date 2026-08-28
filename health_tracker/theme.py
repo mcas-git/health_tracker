@@ -1041,54 +1041,6 @@ def apply_theme(
             -webkit-text-fill-color:{text} !important;
         }}
 
-        /* Text can be cleared in place without a second full-width action button. */
-        [class*="st-key-clearable_text_"],
-        [class*="st-key-clearable_area_"] {{
-            position:relative !important; overflow:visible !important;
-        }}
-        [class*="st-key-clearable_text_"] input,
-        [class*="st-key-clearable_area_"] textarea {{
-            padding-right:2.65rem !important;
-        }}
-        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"],
-        [class*="st-key-clearable_area_"] [data-testid="stButton"] {{
-            position:static !important; z-index:5;
-            width:1.7rem !important; min-width:1.7rem !important;
-        }}
-        [class*="st-key-clearable_text_"] [class*="st-key-clear_"] {{
-            position:absolute !important; top:2.15rem; right:.45rem; z-index:5;
-            width:1.7rem !important; height:1.7rem !important;
-        }}
-        [class*="st-key-clearable_area_"] [class*="st-key-clear_"] {{
-            position:absolute !important; top:.43rem; right:.45rem; z-index:5;
-            width:1.7rem !important; height:1.7rem !important;
-        }}
-        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"] button,
-        [class*="st-key-clearable_area_"] [data-testid="stButton"] button {{
-            display:flex !important; align-items:center !important;
-            justify-content:center !important;
-            width:1.7rem !important; min-width:1.7rem !important;
-            height:1.7rem !important; min-height:1.7rem !important;
-            padding:0 !important; background:transparent !important;
-            border:0 !important; border-radius:0 !important;
-            color:{neutral_icon} !important; -webkit-text-fill-color:{neutral_icon} !important;
-            outline:none !important; box-shadow:none !important;
-        }}
-        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"] button:hover,
-        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"] button:focus,
-        [class*="st-key-clearable_area_"] [data-testid="stButton"] button:hover,
-        [class*="st-key-clearable_area_"] [data-testid="stButton"] button:focus {{
-            background:transparent !important; border:0 !important;
-            color:{text} !important; -webkit-text-fill-color:{text} !important;
-            outline:none !important; box-shadow:none !important;
-        }}
-        [class*="st-key-clearable_text_"] [data-testid="stFormSubmitButton"] button p,
-        [class*="st-key-clearable_area_"] [data-testid="stButton"] button p {{
-            margin:0 !important; font-size:1.35rem !important; font-weight:400 !important;
-            line-height:1 !important; color:inherit !important;
-            -webkit-text-fill-color:inherit !important;
-        }}
-
         /* Journal and coaching fields use the page colour and one rounded outer frame. */
         [class*="st-key-food_note_"] [data-testid="stTextAreaRootElement"],
         [class*="st-key-food_note_"] [data-baseweb="textarea"],

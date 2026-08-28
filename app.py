@@ -119,6 +119,10 @@ def clear_text(key: str) -> None:
     st.session_state[key] = ""
 
 
+def sync_control_value(widget_key: str, state_key: str) -> None:
+    st.session_state[state_key] = st.session_state.get(widget_key)
+
+
 def status_heading(label: str, message: str | None = None, level: int = 1) -> None:
     """Render a page or section heading with an optional accessible saved-status badge."""
     if not message:
@@ -137,58 +141,6 @@ def status_heading(label: str, message: str | None = None, level: int = 1) -> No
         f'</div>',
         unsafe_allow_html=True,
     )
-
-
-def clearable_text_input(
-    label: str,
-    *,
-    value: str,
-    placeholder: str | None,
-    key: str,
-) -> str:
-    with st.container(key=f"clearable_text_{key}"):
-        response = st.text_input(
-            label,
-            value=value,
-            placeholder=placeholder,
-            key=key,
-        )
-        st.form_submit_button(
-            "×",
-            key=f"clear_{key}",
-            on_click=clear_text,
-            args=(key,),
-            help=f"Clear {label.lower()}",
-        )
-    return response
-
-
-def clearable_text_area(
-    label: str,
-    *,
-    value: str,
-    height: int,
-    placeholder: str | None,
-    key: str,
-    label_visibility: str = "visible",
-) -> str:
-    with st.container(key=f"clearable_area_{key}"):
-        response = st.text_area(
-            label,
-            value=value,
-            height=height,
-            placeholder=placeholder,
-            key=key,
-            label_visibility=label_visibility,
-        )
-        st.button(
-            "×",
-            key=f"clear_{key}",
-            on_click=clear_text,
-            args=(key,),
-            help=f"Clear {label.lower()}",
-        )
-    return response
 
 
 def example_placeholder(example: str) -> str | None:
@@ -453,11 +405,14 @@ def dashboard():
     journey_start = pd.Timestamp(df.entry_date.min()).normalize()
     journey_end = max(pd.Timestamp(_profile.target_date), journey_start)
     date_scale = alt.Scale(domain=[journey_start, journey_end])
+    month_ticks = list(
+        pd.date_range(journey_start, journey_end, freq=pd.DateOffset(months=2))
+    )
     date_axis = alt.Axis(
         title=None,
         format="%b",
         labelAngle=0,
-        tickCount=8,
+        values=month_ticks,
         labelOverlap="greedy",
         grid=False,
     )
@@ -683,18 +638,12 @@ def daily_entry():
             )
         except Exception as exc:
             smartwatch_error = f"Smartwatch sync failed: {exc}"
-    update_another_day = st.toggle(
-        "Update a different day",
-        value=False,
-        help="Turn this on only to review or correct a previous daily check-in.",
-        key="update_another_day",
+    update_another_day = bool(
+        st.session_state.get("update_another_day_mode", False)
     )
     if update_another_day:
-        selected = st.date_input(
-            "Date to update",
-            value=today - timedelta(days=1),
-            max_value=today,
-            key="historical_entry_date",
+        selected = st.session_state.get(
+            "historical_entry_date_mode", today - timedelta(days=1)
         )
         st.caption(f"Updating the saved check-in for {selected:%A, %d %B %Y}.")
     else:
@@ -979,6 +928,27 @@ def daily_entry():
                 st.session_state.pop(evening_key, None)
             st.rerun()
 
+    st.divider()
+    update_another_day = st.toggle(
+        "Update a different day",
+        value=False,
+        help="Turn this on only to review or correct a previous daily check-in.",
+        key="update_another_day",
+        on_change=sync_control_value,
+        args=("update_another_day", "update_another_day_mode"),
+    )
+    if update_another_day:
+        st.date_input(
+            "Date to update",
+            value=st.session_state.get(
+                "historical_entry_date_mode", today - timedelta(days=1)
+            ),
+            max_value=today,
+            key="historical_entry_date",
+            on_change=sync_control_value,
+            args=("historical_entry_date", "historical_entry_date_mode"),
+        )
+
 
 def weekly_coaching():
     weekly_saved_message = st.session_state.pop("weekly_plan_saved", None)
@@ -1029,27 +999,48 @@ def weekly_coaching():
             "Planned cardio sessions", 0, 7, int(value(saved, "planned_cardio_sessions", 2))
         )
         focus_key = f"weekly_focus_{week_key}"
-        focus = clearable_text_input(
+        focus = st.text_input(
             "One behaviour to focus on",
             value=value(saved, "focus", summary["recommendation"]),
             placeholder=example_placeholder("Take a 20-minute walk after lunch."),
             key=focus_key,
         )
+        st.form_submit_button(
+            "Clean response",
+            key=f"clear_{focus_key}",
+            on_click=clear_text,
+            args=(focus_key,),
+            use_container_width=True,
+        )
         barrier_key = f"weekly_barrier_{week_key}"
-        barrier = clearable_text_input(
+        barrier = st.text_input(
             "Anticipated barrier",
             value=value(saved, "anticipated_barrier", ""),
             placeholder=example_placeholder("A late meeting could disrupt dinner."),
             key=barrier_key,
         )
+        st.form_submit_button(
+            "Clean response",
+            key=f"clear_{barrier_key}",
+            on_click=clear_text,
+            args=(barrier_key,),
+            use_container_width=True,
+        )
         if_then_key = f"weekly_if_then_{week_key}"
-        if_then = clearable_text_input(
+        if_then = st.text_input(
             "If–then response",
             value=value(saved, "if_then_plan", ""),
             placeholder=example_placeholder(
                 "If work runs late, then I will use the prepared dinner."
             ),
             key=if_then_key,
+        )
+        st.form_submit_button(
+            "Clean response",
+            key=f"clear_{if_then_key}",
+            on_click=clear_text,
+            args=(if_then_key,),
+            use_container_width=True,
         )
         if st.form_submit_button("Save weekly plan", type="primary", use_container_width=True):
             with st.spinner("Saving weekly plan…"):
@@ -1072,24 +1063,18 @@ def food_log():
     status_heading("Food journal", saved_message)
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     today = datetime.now(LONDON).date()
-    update_another_day = st.toggle(
-        "Update a different day",
-        value=False,
-        help="Turn this on only to review or replace a previous food journal.",
-        key="food_update_another_day",
+    update_another_day = bool(
+        st.session_state.get("food_update_another_day_mode", False)
     )
     if update_another_day:
-        selected = st.date_input(
-            "Date to update",
-            value=today - timedelta(days=1),
-            max_value=today,
-            key="historical_food_date",
+        selected = st.session_state.get(
+            "historical_food_date_mode", today - timedelta(days=1)
         )
     else:
         selected = today
     existing = get_nutrition(selected)
     food_note_key = f"food_note_{selected.isoformat()}"
-    note = clearable_text_area(
+    note = st.text_area(
         "Full-day food journal",
         value=existing.raw_note if existing else "",
         height=220,
@@ -1098,6 +1083,13 @@ def food_log():
         ),
         key=food_note_key,
         label_visibility="collapsed",
+    )
+    st.button(
+        "Clean response",
+        key=f"clear_{food_note_key}",
+        on_click=clear_text,
+        args=(food_note_key,),
+        use_container_width=True,
     )
     if st.button(
         "Recalculate and replace" if existing else "Analyse and save day",
@@ -1149,6 +1141,27 @@ def food_log():
             unsafe_allow_html=True,
         )
 
+    st.divider()
+    update_another_day = st.toggle(
+        "Update a different day",
+        value=False,
+        help="Turn this on only to review or replace a previous food journal.",
+        key="food_update_another_day",
+        on_change=sync_control_value,
+        args=("food_update_another_day", "food_update_another_day_mode"),
+    )
+    if update_another_day:
+        st.date_input(
+            "Date to update",
+            value=st.session_state.get(
+                "historical_food_date_mode", today - timedelta(days=1)
+            ),
+            max_value=today,
+            key="historical_food_date",
+            on_change=sync_control_value,
+            args=("historical_food_date", "historical_food_date_mode"),
+        )
+
 
 def nutrition_insights():
     st.title("Insights")
@@ -1175,19 +1188,13 @@ def nutrition_insights():
         return
     nutrition = df[["entry_date", *fields.values()]].dropna(subset=["calories"]).copy()
     nutrition["entry_date"] = pd.to_datetime(nutrition["entry_date"])
-    selector_cols = st.columns(
-        2, gap="medium", vertical_alignment="bottom", width="stretch"
+    selected = st.session_state.get(
+        "nutrition_inspect_date_mode", nutrition.entry_date.max().date()
     )
-    selected = selector_cols[0].date_input(
-        "Inspect a day", nutrition.entry_date.max().date(), width="stretch"
-    )
-    period_view = selector_cols[1].segmented_control(
-        "View",
-        ["Week", "Two weeks", "Month"],
-        default="Week",
-        key="nutrition_period_view",
-        width="stretch",
-    ) or "Week"
+    period_options = ["Week", "Two weeks", "Month"]
+    period_view = st.session_state.get("nutrition_period_view_mode", "Week")
+    if period_view not in period_options:
+        period_view = "Week"
 
     status_colors = {
         "Low": "#C5A33B",
@@ -1368,6 +1375,27 @@ def nutrition_insights():
         "<div class='neutral-note'>Indicators use AI food estimates and are informational, "
         "not medical advice.</div>",
         unsafe_allow_html=True,
+    )
+    st.divider()
+    selector_cols = st.columns(
+        2, gap="medium", vertical_alignment="bottom", width="stretch"
+    )
+    selector_cols[0].date_input(
+        "Inspect a day",
+        selected,
+        key="nutrition_inspect_date",
+        on_change=sync_control_value,
+        args=("nutrition_inspect_date", "nutrition_inspect_date_mode"),
+        width="stretch",
+    )
+    selector_cols[1].segmented_control(
+        "View",
+        period_options,
+        default=period_view,
+        key="nutrition_period_view",
+        on_change=sync_control_value,
+        args=("nutrition_period_view", "nutrition_period_view_mode"),
+        width="stretch",
     )
 
 
