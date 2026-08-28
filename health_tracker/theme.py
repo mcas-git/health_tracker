@@ -1265,6 +1265,55 @@ def apply_theme(
             border:1px solid {accent} !important;
         }}
 
+        /* Targets numeric fields and dropdowns share one fill and border system. */
+        [class*="st-key-target_"] [data-testid="stNumberInputContainer"],
+        [class*="st-key-target_"] [data-testid="stNumberInput"] [data-baseweb="input"],
+        [class*="st-key-target_"] [data-testid="stSelectbox"] [data-baseweb="select"],
+        [class*="st-key-target_"] [data-testid="stSelectbox"]
+        .react-aria-ComboBox > div {{
+            box-sizing:border-box !important;
+            background:{surface} !important;
+            background-color:{surface} !important;
+            border:1px solid {muted} !important;
+            border-radius:8px !important;
+            box-shadow:none !important;
+            outline:none !important;
+            overflow:hidden !important;
+        }}
+        [class*="st-key-target_"] [data-testid="stNumberInputContainer"]:focus-within,
+        [class*="st-key-target_"] [data-testid="stNumberInput"]
+        [data-baseweb="input"]:focus-within,
+        [class*="st-key-target_"] [data-testid="stSelectbox"]
+        [data-baseweb="select"]:focus-within,
+        [class*="st-key-target_"] [data-testid="stSelectbox"]
+        .react-aria-ComboBox > div:focus-within {{
+            border-color:{accent} !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        [class*="st-key-target_"] [data-testid="stSelectbox"]
+        [data-baseweb="select"] > div,
+        [class*="st-key-target_"] [data-testid="stSelectbox"]
+        .react-aria-ComboBox input,
+        [class*="st-key-target_"] [data-testid="stSelectbox"]
+        .react-aria-ComboBox button {{
+            background:transparent !important;
+            background-color:transparent !important;
+            border:0 !important;
+            box-shadow:none !important;
+            outline:none !important;
+        }}
+        body:has(.st-key-target_gender [aria-expanded="true"])
+        [data-testid="stSelectboxVirtualDropdown"],
+        body:has(.st-key-target_gender [aria-expanded="true"])
+        [data-baseweb="popover"] > div {{
+            background:{surface} !important;
+            background-color:{surface} !important;
+            border:1px solid {muted} !important;
+            border-radius:8px !important;
+            box-shadow:0 8px 24px #00000035 !important;
+        }}
+
         /* Success confirmations can use light green or match primary Save buttons. */
         [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"])
         [data-testid="stAlertContainer"],
@@ -1346,6 +1395,12 @@ def apply_theme(
         [data-testid="stSidebarCollapsedControl"] button span,
         [data-testid="stSidebarCollapsedControl"] button svg {{
             visibility:hidden !important; opacity:0 !important;
+        }}
+        /* Completed morning/evening check-ins keep a clear green tick in expander labels. */
+        [data-testid="stExpander"] summary .stMarkdownColoredText {{
+            color:#4F8A55 !important;
+            -webkit-text-fill-color:#4F8A55 !important;
+            font-weight:800 !important;
         }}
         </style>
         """,

@@ -114,6 +114,36 @@ def evening_measurement_status(item) -> dict[str, str]:
     return status
 
 
+def morning_checkin_complete(item) -> bool:
+    """Return whether every required morning measurement has been recorded."""
+    if item is None:
+        return False
+    return all(
+        (measurement := _finite_number(getattr(item, field, None))) is not None
+        and measurement > 0
+        for field in ("weight_kg", "waist_cm", "systolic", "diastolic")
+    )
+
+
+def evening_checkin_complete(item) -> bool:
+    """Return whether every required smartwatch and evening rating is recorded."""
+    if item is None:
+        return False
+    positive_fields = ("resting_heart_rate", "sleep_hours", "steps", "calories_burned")
+    ratings = ("mood", "energy", "cravings", "diet_satisfaction")
+    measurements_complete = all(
+        (measurement := _finite_number(getattr(item, field, None))) is not None
+        and measurement >= 0
+        for field in positive_fields
+    )
+    ratings_complete = all(
+        (rating := _finite_number(getattr(item, field, None))) is not None
+        and 1 <= rating <= 10
+        for field in ratings
+    )
+    return measurements_complete and ratings_complete
+
+
 def excel_safe_data(df: pd.DataFrame) -> pd.DataFrame:
     """Return an Excel-compatible copy with timezone information removed."""
     result = df.copy()
@@ -180,6 +210,187 @@ def daily_health_score(item, profile: Profile = PROFILE) -> tuple[int, str, list
     score = round(sum(value for _, value in components) / len(components))
     label = "Strong" if score >= 75 else "Watch" if score >= 45 else "Needs attention"
     return score, label, [name for name, _ in components]
+
+
+HEALTH_SCORE_HALF_LIFE_DAYS = 28
+HEALTH_DOMAIN_WEIGHTS = {
+    "Body": 0.25,
+    "Cardiovascular": 0.25,
+    "Recovery": 0.15,
+    "Activity": 0.15,
+    "Nutrition": 0.10,
+    "Wellbeing": 0.10,
+}
+
+
+def _bounded_score(
+    value: float,
+    ideal_low: float,
+    ideal_high: float,
+    hard_low: float,
+    hard_high: float,
+) -> float:
+    """Score a value against an ideal band with linear shoulders."""
+    if ideal_low <= value <= ideal_high:
+        return 100.0
+    if value < ideal_low:
+        return max(0.0, 100 * (value - hard_low) / (ideal_low - hard_low))
+    return max(0.0, 100 * (hard_high - value) / (hard_high - ideal_high))
+
+
+def _rating_score(value, *, inverse: bool = False) -> float | None:
+    rating = _finite_number(value)
+    if rating is None or not 1 <= rating <= 10:
+        return None
+    score = (rating - 1) / 9 * 100
+    return 100 - score if inverse else score
+
+
+def _recency_weighted_metric(
+    data: pd.DataFrame,
+    reference_date: pd.Timestamp,
+    scorer,
+) -> float | None:
+    observations: list[tuple[float, float]] = []
+    for _, row in data.iterrows():
+        score = scorer(row)
+        if score is None or not math.isfinite(score):
+            continue
+        recorded = pd.Timestamp(row["entry_date"]).normalize()
+        days_old = max(0, int((reference_date - recorded).days))
+        weight = 0.5 ** (days_old / HEALTH_SCORE_HALF_LIFE_DAYS)
+        observations.append((max(0.0, min(100.0, score)), weight))
+    if not observations:
+        return None
+    return sum(score * weight for score, weight in observations) / sum(
+        weight for _, weight in observations
+    )
+
+
+def health_journey_score(
+    data: pd.DataFrame,
+    profile: Profile = PROFILE,
+    targets: dict[str, float] | None = None,
+) -> tuple[int, str, dict[str, int], date, date] | None:
+    """Create a deterministic, recency-weighted indicator from all recorded history.
+
+    Every observation remains in the calculation. Recent observations receive more weight
+    through a fixed 28-day half-life. Metrics are averaged within domains first so frequently
+    logged fields cannot overwhelm less-frequent measurements. Missing domains are omitted and
+    the remaining fixed domain weights are renormalised.
+    """
+    if data.empty or "entry_date" not in data:
+        return None
+    history = data.copy()
+    history["entry_date"] = pd.to_datetime(history["entry_date"], errors="coerce")
+    history = history.dropna(subset=["entry_date"]).sort_values("entry_date")
+    if history.empty:
+        return None
+    reference_date = history["entry_date"].max().normalize()
+
+    def number(row, field: str) -> float | None:
+        return _finite_number(row.get(field))
+
+    def bmi_score(row) -> float | None:
+        bmi = number(row, "bmi")
+        weight = number(row, "weight_kg")
+        if bmi is None and weight is not None and profile.height_cm > 0:
+            bmi = weight / ((profile.height_cm / 100) ** 2)
+        return _bounded_score(bmi, 18.5, 25.0, 14.0, 40.0) if bmi and bmi > 0 else None
+
+    def waist_score(row) -> float | None:
+        waist = number(row, "waist_cm")
+        if waist is None or waist <= 0 or profile.height_cm <= 0:
+            return None
+        ratio = waist / profile.height_cm
+        return 100.0 if ratio <= 0.5 else max(0.0, 100 - (ratio - 0.5) * 500)
+
+    def blood_pressure_score(row) -> float | None:
+        systolic = number(row, "systolic")
+        diastolic = number(row, "diastolic")
+        if systolic is None or diastolic is None:
+            return None
+        return min(
+            _bounded_score(systolic, 90, 120, 70, 180),
+            _bounded_score(diastolic, 60, 80, 40, 120),
+        )
+
+    def resting_heart_rate_score(row) -> float | None:
+        heart_rate = number(row, "resting_heart_rate")
+        if heart_rate is None:
+            return None
+        return _bounded_score(heart_rate, 50, 80, 35, 130)
+
+    def sleep_score(row) -> float | None:
+        sleep = number(row, "sleep_hours")
+        return _bounded_score(sleep, 7, 9, 3, 12) if sleep is not None else None
+
+    def steps_score(row) -> float | None:
+        steps = number(row, "steps")
+        return min(100.0, max(0.0, steps / 8000 * 100)) if steps is not None else None
+
+    def target_score(row, field: str, target_key: str, mode: str) -> float | None:
+        if not targets or not (target := _finite_number(targets.get(target_key))) or target <= 0:
+            return None
+        amount = number(row, field)
+        if amount is None or amount < 0:
+            return None
+        ratio = amount / target
+        if mode == "band":
+            return _bounded_score(ratio, 0.85, 1.15, 0.4, 1.8)
+        return min(100.0, max(0.0, ratio * 100))
+
+    metric_scorers = {
+        "Body": [bmi_score, waist_score],
+        "Cardiovascular": [blood_pressure_score, resting_heart_rate_score],
+        "Recovery": [sleep_score],
+        "Activity": [steps_score],
+        "Nutrition": [
+            lambda row: target_score(row, "calories", "calories", "band"),
+            lambda row: target_score(row, "protein_g", "protein_g", "minimum"),
+            lambda row: target_score(row, "fibre_g", "fibre_g", "minimum"),
+        ],
+        "Wellbeing": [
+            lambda row: _rating_score(row.get("mood")),
+            lambda row: _rating_score(row.get("energy")),
+            lambda row: _rating_score(row.get("cravings"), inverse=True),
+            lambda row: _rating_score(row.get("diet_satisfaction")),
+        ],
+    }
+    domains: dict[str, float] = {}
+    for domain, scorers in metric_scorers.items():
+        metrics = [
+            result
+            for scorer in scorers
+            if (result := _recency_weighted_metric(history, reference_date, scorer)) is not None
+        ]
+        if metrics:
+            domains[domain] = sum(metrics) / len(metrics)
+    if not domains:
+        return None
+    available_weight = sum(HEALTH_DOMAIN_WEIGHTS[domain] for domain in domains)
+    score = round(
+        sum(domains[domain] * HEALTH_DOMAIN_WEIGHTS[domain] for domain in domains)
+        / available_weight
+    )
+    critical_scores = [
+        domains[domain] for domain in ("Body", "Cardiovascular") if domain in domains
+    ]
+    if any(domain_score < 25 for domain_score in critical_scores):
+        score = min(score, 49)
+    elif any(domain_score < 50 for domain_score in critical_scores):
+        score = min(score, 74)
+    if len(domains) < 3:
+        label = "Limited data"
+    else:
+        label = "Strong" if score >= 75 else "Watch" if score >= 50 else "Needs attention"
+    return (
+        score,
+        label,
+        {domain: round(value) for domain, value in domains.items()},
+        history["entry_date"].min().date(),
+        reference_date.date(),
+    )
 
 
 def bmi_status(bmi: float | None) -> tuple[str, str, str] | None:

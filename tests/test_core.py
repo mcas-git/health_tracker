@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -10,8 +11,11 @@ from health_tracker.analytics import (
     bmi_status,
     current_streak,
     daily_health_score,
+    evening_checkin_complete,
     evening_measurement_status,
     excel_safe_data,
+    health_journey_score,
+    morning_checkin_complete,
     morning_measurement_status,
     recent_kpi_table,
     weekly_coaching_summary,
@@ -74,6 +78,31 @@ def test_evening_measurement_status_marks_unrecorded_values_as_missing():
         "Cravings": "Missing",
         "Diet satisfaction": "8/10",
     }
+
+
+def test_checkin_completion_requires_every_measurement():
+    values = {
+        "weight_kg": 101.2,
+        "waist_cm": 108.0,
+        "systolic": 118,
+        "diastolic": 78,
+        "resting_heart_rate": 54,
+        "sleep_hours": 7.5,
+        "steps": 8000,
+        "calories_burned": 2400,
+        "mood": 7,
+        "energy": 8,
+        "cravings": 3,
+        "diet_satisfaction": 8,
+    }
+    complete = SimpleNamespace(**values)
+    missing_pressure = SimpleNamespace(**{**values, "systolic": None})
+    missing_energy = SimpleNamespace(**{**values, "energy": None})
+
+    assert morning_checkin_complete(complete)
+    assert evening_checkin_complete(complete)
+    assert not morning_checkin_complete(missing_pressure)
+    assert not evening_checkin_complete(missing_energy)
 
 
 def test_profile_target_date_is_uk_interpretation():
@@ -352,6 +381,84 @@ def test_daily_health_score_returns_none_when_every_measurement_is_nan():
     )
 
     assert daily_health_score(item) is None
+
+
+def test_health_journey_score_uses_all_history_and_is_deterministic():
+    good = {
+        "bmi": 24.0,
+        "waist_cm": 82.0,
+        "systolic": 118,
+        "diastolic": 78,
+        "resting_heart_rate": 58,
+        "sleep_hours": 8.0,
+        "steps": 9000,
+        "calories": 2000,
+        "protein_g": 140,
+        "fibre_g": 30,
+        "mood": 9,
+        "energy": 9,
+        "cravings": 2,
+        "diet_satisfaction": 9,
+    }
+    poor = {
+        "bmi": 38.0,
+        "waist_cm": 130.0,
+        "systolic": 170,
+        "diastolic": 110,
+        "resting_heart_rate": 120,
+        "sleep_hours": 4.0,
+        "steps": 1000,
+        "calories": 3500,
+        "protein_g": 30,
+        "fibre_g": 5,
+        "mood": 2,
+        "energy": 2,
+        "cravings": 9,
+        "diet_satisfaction": 2,
+    }
+    targets = {"calories": 2000, "protein_g": 140, "fibre_g": 30}
+    good_recent = pd.DataFrame(
+        [
+            {"entry_date": date(2026, 1, 1), **poor},
+            {"entry_date": date(2026, 3, 1), **good},
+        ]
+    )
+    poor_recent = pd.DataFrame(
+        [
+            {"entry_date": date(2026, 1, 1), **good},
+            {"entry_date": date(2026, 3, 1), **poor},
+        ]
+    )
+
+    first = health_journey_score(good_recent, targets=targets)
+    second = health_journey_score(good_recent, targets=targets)
+    reversed_result = health_journey_score(poor_recent, targets=targets)
+
+    assert first == second
+    assert first is not None and reversed_result is not None
+    assert first[0] > reversed_result[0]
+    assert first[2].keys() == {
+        "Body",
+        "Cardiovascular",
+        "Recovery",
+        "Activity",
+        "Nutrition",
+        "Wellbeing",
+    }
+    assert first[3:] == (date(2026, 1, 1), date(2026, 3, 1))
+
+
+def test_health_journey_score_ignores_missing_domains_instead_of_scoring_zero():
+    history = pd.DataFrame(
+        [{"entry_date": date(2026, 8, 28), "sleep_hours": 8.0}]
+    )
+
+    score = health_journey_score(history)
+
+    assert score is not None
+    assert score[0] == 100
+    assert score[1] == "Limited data"
+    assert score[2] == {"Recovery": 100}
 
 
 def test_bmi_status_uses_standard_adult_bands():

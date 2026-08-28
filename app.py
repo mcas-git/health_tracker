@@ -13,9 +13,11 @@ from sqlalchemy.orm import Session
 
 from health_tracker.analytics import (
     bmi_status,
-    daily_health_score,
+    evening_checkin_complete,
     excel_safe_data,
+    health_journey_score,
     load_data,
+    morning_checkin_complete,
     projected_target_date,
     recent_kpi_table,
     weekly_coaching_summary,
@@ -319,15 +321,25 @@ def style_chart(chart):
     )
 
 
-def health_status_cards(item) -> None:
-    indicator = daily_health_score(item, _profile) if item is not None else None
+def health_status_cards(data: pd.DataFrame, item, targets: dict[str, float]) -> None:
+    indicator = health_journey_score(data, _profile, targets)
     if indicator:
-        score, score_label, included = indicator
-        score_color = "#4F8A55" if score >= 75 else "#C5A33B" if score >= 45 else "#B64B4B"
+        score, score_label, domains, first_date, latest_date = indicator
+        score_color = {
+            "Strong": "#4F8A55",
+            "Watch": "#C5A33B",
+            "Limited data": "#C5A33B",
+            "Needs attention": "#B64B4B",
+        }[score_label]
+        domain_summary = " · ".join(
+            f"{domain} {domain_score}" for domain, domain_score in domains.items()
+        )
         st.markdown(
             f"<div class='health-score' style='--score-color:{score_color}'>"
-            f"<span>Daily health indicator</span><strong>{score}/100 · {score_label}</strong>"
-            f"<small>Based on {', '.join(included)}. "
+            f"<span>Health journey indicator</span><strong>{score}/100 · {score_label}</strong>"
+            f"<small>All available records from {first_date:%d %b %Y} to "
+            f"{latest_date:%d %b %Y}, with recent entries weighted more. "
+            f"{domain_summary}. "
             f"<em>This is not a diagnosis.</em></small></div>",
             unsafe_allow_html=True,
         )
@@ -407,7 +419,14 @@ def dashboard():
         if "bmi" in df and df["bmi"].notna().any()
         else None
     )
-    health_status_cards(latest_measurements)
+    with Session(engine) as session:
+        dashboard_goals = session.get(GoalSettings, 1)
+        health_targets = {
+            "calories": dashboard_goals.calorie_target,
+            "protein_g": dashboard_goals.protein_target_g,
+            "fibre_g": dashboard_goals.fibre_target_g,
+        }
+    health_status_cards(df, latest_measurements, health_targets)
 
     if df.empty:
         st.info("Add your first daily entry to begin the dashboard.")
@@ -701,7 +720,12 @@ def daily_entry():
     date_key = selected.isoformat()
     sync_revision = int(st.session_state.get(f"garmin_sync_revision_{date_key}", 0))
 
-    with st.expander("Morning check-in", expanded=True):
+    morning_label = (
+        "Morning check-in :green[✓]"
+        if morning_checkin_complete(item)
+        else "Morning check-in"
+    )
+    with st.expander(morning_label, expanded=True):
         st.caption("Record weight, waist and blood pressure.")
         with st.form(f"morning_form_{date_key}"):
             morning_item = item if update_another_day else None
@@ -767,7 +791,12 @@ def daily_entry():
                 st.session_state.pop(morning_key, None)
             st.rerun()
 
-    with st.expander("Evening check-in", expanded=False):
+    evening_label = (
+        "Evening check-in :green[✓]"
+        if evening_checkin_complete(item)
+        else "Evening check-in"
+    )
+    with st.expander(evening_label, expanded=False):
         evening_item = item if update_another_day else None
         evening_key_mode = "historical" if update_another_day else "today_blank_v2"
         with st.container(key="smartwatch_intro"):
@@ -1551,7 +1580,11 @@ def settings_page():
             st.subheader("Profile and weight goal")
             profile_cols = st.columns(3)
             age = profile_cols[0].number_input(
-                "Age", 18, 100, getattr(preferences, "age", DEFAULT_PROFILE.age)
+                "Age",
+                18,
+                100,
+                getattr(preferences, "age", DEFAULT_PROFILE.age),
+                key="target_age",
             )
             sex_options = ["male", "female", "other"]
             sex = profile_cols[1].selectbox(
@@ -1563,6 +1596,7 @@ def settings_page():
                     else 2
                 ),
                 format_func=str.title,
+                key="target_gender",
             )
             height = profile_cols[2].number_input(
                 "Height (cm)",
@@ -1570,6 +1604,7 @@ def settings_page():
                 230.0,
                 getattr(preferences, "height_cm", DEFAULT_PROFILE.height_cm),
                 0.5,
+                key="target_height",
             )
             goal_cols = st.columns(3)
             starting_weight = goal_cols[0].number_input(
@@ -1578,6 +1613,7 @@ def settings_page():
                 300.0,
                 getattr(preferences, "start_weight_kg", DEFAULT_PROFILE.start_weight_kg),
                 0.1,
+                key="target_starting_weight",
             )
             goal_weight = goal_cols[1].number_input(
                 "Final goal (kg)",
@@ -1585,6 +1621,7 @@ def settings_page():
                 300.0,
                 getattr(preferences, "target_weight_kg", DEFAULT_PROFILE.target_weight_kg),
                 0.1,
+                key="target_goal_weight",
             )
             goal_date = goal_cols[2].date_input(
                 "Goal date", getattr(preferences, "target_date", DEFAULT_PROFILE.target_date)
@@ -1608,17 +1645,37 @@ def settings_page():
         with st.form("goals"):
             st.subheader("Daily targets")
             cols = st.columns(4)
-            calories = cols[0].number_input("Calories", 1000, 5000, goals.calorie_target, 50)
-            protein = cols[1].number_input("Protein (g)", 20, 400, goals.protein_target_g)
-            carbs = cols[2].number_input("Carbs (g)", 20, 600, goals.carbs_target_g)
-            fat = cols[3].number_input("Fat (g)", 20, 300, goals.fat_target_g)
+            calories = cols[0].number_input(
+                "Calories", 1000, 5000, goals.calorie_target, 50, key="target_calories"
+            )
+            protein = cols[1].number_input(
+                "Protein (g)", 20, 400, goals.protein_target_g, key="target_protein"
+            )
+            carbs = cols[2].number_input(
+                "Carbs (g)", 20, 600, goals.carbs_target_g, key="target_carbs"
+            )
+            fat = cols[3].number_input(
+                "Fat (g)", 20, 300, goals.fat_target_g, key="target_fat"
+            )
             cols = st.columns(3)
-            fibre = cols[0].number_input("Fibre (g)", 0, 100, goals.fibre_target_g)
+            fibre = cols[0].number_input(
+                "Fibre (g)", 0, 100, goals.fibre_target_g, key="target_fibre"
+            )
             fasting = cols[1].number_input(
-                "Fasting target (hours)", 0.0, 36.0, goals.fasting_target_hours, 0.5
+                "Fasting target (hours)",
+                0.0,
+                36.0,
+                goals.fasting_target_hours,
+                0.5,
+                key="target_fasting",
             )
             sleep = cols[2].number_input(
-                "Sleep target (hours)", 0.0, 16.0, goals.sleep_target_hours, 0.25
+                "Sleep target (hours)",
+                0.0,
+                16.0,
+                goals.sleep_target_hours,
+                0.25,
+                key="target_sleep",
             )
             if st.form_submit_button("Save targets", type="primary", use_container_width=True):
                 goals.calorie_target, goals.protein_target_g = calories, protein
