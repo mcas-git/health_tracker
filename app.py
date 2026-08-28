@@ -78,6 +78,7 @@ with Session(engine) as _theme_session:
         getattr(_preferences, "success_matches_accent", False)
     )
     _show_placeholders = bool(getattr(_preferences, "show_placeholders", True))
+    _show_page_toggles = bool(getattr(_preferences, "show_page_toggles", True))
     _profile = Profile(
         age=getattr(_preferences, "age", DEFAULT_PROFILE.age),
         sex=getattr(_preferences, "sex", DEFAULT_PROFILE.sex),
@@ -117,10 +118,6 @@ def value(item, name, default=None):
 
 def clear_text(key: str) -> None:
     st.session_state[key] = ""
-
-
-def sync_control_value(widget_key: str, state_key: str) -> None:
-    st.session_state[state_key] = st.session_state.get(widget_key)
 
 
 def status_heading(label: str, message: str | None = None, level: int = 1) -> None:
@@ -313,7 +310,8 @@ def health_status_cards(item) -> None:
         st.markdown(
             f"<div class='health-score' style='--score-color:{score_color}'>"
             f"<span>Daily health indicator</span><strong>{score}/100 · {score_label}</strong>"
-            f"<small>Based on {', '.join(included)}. This is not a diagnosis.</small></div>",
+            f"<small>Based on {', '.join(included)}. "
+            f"<em>This is not a diagnosis.</em></small></div>",
             unsafe_allow_html=True,
         )
     weight_status = bmi_status(value(item, "bmi")) if item is not None else None
@@ -327,7 +325,7 @@ def health_status_cards(item) -> None:
         st.markdown(
             f"<div class='health-score' style='--score-color:{status_color}'>"
             f"<span>BMI weight status</span><strong>BMI {item.bmi:.1f} · {status_label}</strong>"
-            f"<small>{status_context}. This is not a diagnosis.</small></div>",
+            f"<small>{status_context}. <em>This is not a diagnosis.</em></small></div>",
             unsafe_allow_html=True,
         )
 
@@ -419,15 +417,17 @@ def dashboard():
 
     st.subheader("Weight trend")
     milestones, weekly_pace = weight_milestones(journey_start.date(), _profile)
-    show_milestones = st.toggle(
-        "Show weight milestones",
-        value=False,
-        help=(
-            f"Milestones use the {weekly_pace:.2f} kg/week pace required by your plan, "
-            "within [NHS guidance of 0.5–1 kg/week](https://www.nhs.uk/live-well/"
-            "healthy-weight/managing-your-weight/tips-to-help-you-lose-weight/)."
-        ),
-    )
+    show_milestones = False
+    if _show_page_toggles:
+        show_milestones = st.toggle(
+            "Show weight milestones",
+            value=False,
+            help=(
+                f"Milestones use the {weekly_pace:.2f} kg/week pace required by your plan, "
+                "within [NHS guidance of 0.5–1 kg/week](https://www.nhs.uk/live-well/"
+                "healthy-weight/managing-your-weight/tips-to-help-you-lose-weight/)."
+            ),
+        )
     weight = df[["entry_date", "weight_kg"]].dropna().copy()
     if not weight.empty:
         weight_scale = alt.Scale(
@@ -621,6 +621,26 @@ def daily_entry():
     error_area = st.empty()
     london_now = datetime.now(LONDON)
     today = london_now.date()
+    update_another_day = False
+    if _show_page_toggles:
+        update_another_day = st.toggle(
+            "Update a different day",
+            value=False,
+            help="Turn this on only to review or correct a previous daily check-in.",
+            key="update_another_day",
+        )
+        if update_another_day:
+            selected = st.date_input(
+                "Date to update",
+                value=today - timedelta(days=1),
+                max_value=today,
+                key="historical_entry_date",
+            )
+    if update_another_day:
+        st.caption(f"Updating the saved check-in for {selected:%A, %d %B %Y}.")
+    else:
+        selected = today
+        st.caption(f"Recording today · {today:%A, %d %B %Y}")
     smartwatch_confirmation = None
     smartwatch_error = None
     if requested_date := st.session_state.pop("smartwatch_sync_requested", None):
@@ -638,17 +658,6 @@ def daily_entry():
             )
         except Exception as exc:
             smartwatch_error = f"Smartwatch sync failed: {exc}"
-    update_another_day = bool(
-        st.session_state.get("update_another_day_mode", False)
-    )
-    if update_another_day:
-        selected = st.session_state.get(
-            "historical_entry_date_mode", today - timedelta(days=1)
-        )
-        st.caption(f"Updating the saved check-in for {selected:%A, %d %B %Y}.")
-    else:
-        selected = today
-        st.caption(f"Recording today · {today:%A, %d %B %Y}")
     item = get_daily(selected)
     if item is not None:
         updated = item.updated_at
@@ -928,28 +937,6 @@ def daily_entry():
                 st.session_state.pop(evening_key, None)
             st.rerun()
 
-    st.divider()
-    update_another_day = st.toggle(
-        "Update a different day",
-        value=False,
-        help="Turn this on only to review or correct a previous daily check-in.",
-        key="update_another_day",
-        on_change=sync_control_value,
-        args=("update_another_day", "update_another_day_mode"),
-    )
-    if update_another_day:
-        st.date_input(
-            "Date to update",
-            value=st.session_state.get(
-                "historical_entry_date_mode", today - timedelta(days=1)
-            ),
-            max_value=today,
-            key="historical_entry_date",
-            on_change=sync_control_value,
-            args=("historical_entry_date", "historical_entry_date_mode"),
-        )
-
-
 def weekly_coaching():
     weekly_saved_message = st.session_state.pop("weekly_plan_saved", None)
     status_heading("Weekly coaching", weekly_saved_message)
@@ -1063,14 +1050,22 @@ def food_log():
     status_heading("Food journal", saved_message)
     st.caption("Paste your full day of notes. Meals and nutrition will be inferred automatically.")
     today = datetime.now(LONDON).date()
-    update_another_day = bool(
-        st.session_state.get("food_update_another_day_mode", False)
-    )
-    if update_another_day:
-        selected = st.session_state.get(
-            "historical_food_date_mode", today - timedelta(days=1)
+    update_another_day = False
+    if _show_page_toggles:
+        update_another_day = st.toggle(
+            "Update a different day",
+            value=False,
+            help="Turn this on only to review or replace a previous food journal.",
+            key="food_update_another_day",
         )
-    else:
+        if update_another_day:
+            selected = st.date_input(
+                "Date to update",
+                value=today - timedelta(days=1),
+                max_value=today,
+                key="historical_food_date",
+            )
+    if not update_another_day:
         selected = today
     existing = get_nutrition(selected)
     food_note_key = f"food_note_{selected.isoformat()}"
@@ -1141,31 +1136,9 @@ def food_log():
             unsafe_allow_html=True,
         )
 
-    st.divider()
-    update_another_day = st.toggle(
-        "Update a different day",
-        value=False,
-        help="Turn this on only to review or replace a previous food journal.",
-        key="food_update_another_day",
-        on_change=sync_control_value,
-        args=("food_update_another_day", "food_update_another_day_mode"),
-    )
-    if update_another_day:
-        st.date_input(
-            "Date to update",
-            value=st.session_state.get(
-                "historical_food_date_mode", today - timedelta(days=1)
-            ),
-            max_value=today,
-            key="historical_food_date",
-            on_change=sync_control_value,
-            args=("historical_food_date", "historical_food_date_mode"),
-        )
-
-
 def nutrition_insights():
     st.title("Insights")
-    st.caption("Daily estimates compared with your adjustable targets")
+    st.caption("Daily estimates compared with targets")
     df = load_data()
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)
@@ -1188,11 +1161,27 @@ def nutrition_insights():
         return
     nutrition = df[["entry_date", *fields.values()]].dropna(subset=["calories"]).copy()
     nutrition["entry_date"] = pd.to_datetime(nutrition["entry_date"])
-    selected = st.session_state.get(
-        "nutrition_inspect_date_mode", nutrition.entry_date.max().date()
-    )
+    yesterday = datetime.now(LONDON).date() - timedelta(days=1)
+    inspect_another_day = False
+    if _show_page_toggles:
+        inspect_another_day = st.toggle(
+            "Inspect another day",
+            value=False,
+            help="Turn this on to inspect nutrition estimates for another date.",
+            key="nutrition_inspect_another_day",
+        )
+        if inspect_another_day:
+            selected = st.date_input(
+                "Date to inspect",
+                value=yesterday,
+                max_value=datetime.now(LONDON).date(),
+                key="nutrition_inspect_date",
+                width="stretch",
+            )
+    if not inspect_another_day:
+        selected = yesterday
     period_options = ["Week", "Two weeks", "Month"]
-    period_view = st.session_state.get("nutrition_period_view_mode", "Week")
+    period_view = st.session_state.get("nutrition_period_view", "Week")
     if period_view not in period_options:
         period_view = "Week"
 
@@ -1209,7 +1198,7 @@ def nutrition_insights():
         "Fibre": "#4F8A55",
     }
     day = nutrition[nutrition.entry_date.dt.date == selected]
-    st.subheader("Selected day")
+    st.subheader("Yesterday" if selected == yesterday else "Selected day")
     if day.empty:
         st.info("No food estimate exists for this day.")
     else:
@@ -1230,6 +1219,18 @@ def nutrition_insights():
                 """,
                 unsafe_allow_html=True,
             )
+
+    st.subheader("Trends and averages")
+    period_view = (
+        st.segmented_control(
+            "View",
+            period_options,
+            default=period_view,
+            key="nutrition_period_view",
+            width="stretch",
+        )
+        or "Week"
+    )
 
     selected_timestamp = pd.Timestamp(selected).normalize()
     if period_view == "Month":
@@ -1255,25 +1256,10 @@ def nutrition_insights():
         for label, field in fields.items()
         if pd.notna(row[field])
     ]
-    titles = {
-        "Week": ("Weekly trend and average", "Monday to Sunday"),
-        "Two weeks": (
-            "Two-week trend and average",
-            "Monday to the following Sunday",
-        ),
-        "Month": ("Monthly trend and average", "Calendar month"),
-    }
-    section_title, period_label = titles[period_view]
-    period_days = (period_end - period_start).days + 1
-    tick_step = 1 if period_days <= 14 else max(1, math.ceil(period_days / 10))
+    tick_step = {"Week": 1, "Two weeks": 2, "Month": 5}[period_view]
     tick_values = list(pd.date_range(period_start, period_end, freq=f"{tick_step}D"))
-    if tick_values[-1] != period_end:
-        tick_values.append(period_end)
 
-    st.subheader(section_title)
-    st.caption(
-        f"{period_start:%d %b %Y}–{period_end:%d %b %Y} · {period_label}"
-    )
+    st.caption(f"{period_start:%d %b %Y}–{period_end:%d %b %Y}")
     if period_rows:
         period_frame = pd.DataFrame(period_rows)
         trend_chart = (
@@ -1306,19 +1292,13 @@ def nutrition_insights():
                     alt.Tooltip("% of target:Q", title="Target", format=".0f"),
                 ],
             )
+            .properties(height=280)
         )
         trend_target = (
             alt.Chart(pd.DataFrame({"target": [100]}))
             .mark_rule(color="#D8D8D8", strokeWidth=2, opacity=0.7)
             .encode(y="target:Q")
         )
-        st.altair_chart(
-            style_chart(trend_chart + trend_target), use_container_width=True, theme=None
-        )
-    else:
-        st.info("No food estimates exist in the selected period.")
-
-    if period_rows:
         period_average = []
         for label, field in fields.items():
             values = selected_period[field].dropna()
@@ -1344,7 +1324,7 @@ def nutrition_insights():
                         values=list(range(25, 201, 25)),
                     ),
                 ),
-                y=alt.Y("Nutrient:N", sort=list(fields), title=None),
+                y=alt.Y("Nutrient:N", sort=list(fields), title=None, axis=None),
                 color=alt.Color(
                     "Status:N",
                     scale=alt.Scale(
@@ -1360,45 +1340,49 @@ def nutrition_insights():
                     alt.Tooltip("% of target:Q", title="Average", format=".0f"),
                 ],
             )
+            .properties(height=180)
         )
         average_target = (
             alt.Chart(pd.DataFrame({"target": [100]}))
             .mark_rule(color="#D8D8D8", strokeWidth=2, opacity=0.7)
             .encode(x="target:Q")
         )
+        average_labels = (
+            alt.Chart(average_frame)
+            .mark_text(
+                align="left",
+                baseline="middle",
+                dx=8,
+                color=str(app_palette()["foreground"]),
+                fontWeight=600,
+            )
+            .encode(
+                x=alt.value(0),
+                y=alt.Y("Nutrient:N", sort=list(fields), axis=None),
+                text=alt.Text("Nutrient:N"),
+            )
+        )
+        combined_chart = (
+            alt.vconcat(
+                trend_chart + trend_target,
+                average_bars + average_target + average_labels,
+                spacing=24,
+                bounds="flush",
+            )
+            .resolve_scale(color="independent")
+        )
         st.altair_chart(
-            style_chart(average_bars + average_target),
+            style_chart(combined_chart),
             use_container_width=True,
             theme=None,
         )
+    else:
+        st.info("No food estimates exist in the selected period.")
     st.markdown(
         "<div class='neutral-note'>Indicators use AI food estimates and are informational, "
         "not medical advice.</div>",
         unsafe_allow_html=True,
     )
-    st.divider()
-    selector_cols = st.columns(
-        2, gap="medium", vertical_alignment="bottom", width="stretch"
-    )
-    selector_cols[0].date_input(
-        "Inspect a day",
-        selected,
-        key="nutrition_inspect_date",
-        on_change=sync_control_value,
-        args=("nutrition_inspect_date", "nutrition_inspect_date_mode"),
-        width="stretch",
-    )
-    selector_cols[1].segmented_control(
-        "View",
-        period_options,
-        default=period_view,
-        key="nutrition_period_view",
-        on_change=sync_control_value,
-        args=("nutrition_period_view", "nutrition_period_view_mode"),
-        width="stretch",
-    )
-
-
 def appearance_page():
     appearance_saved = st.session_state.pop("appearance_saved", False)
     status_heading(
@@ -1423,6 +1407,14 @@ def appearance_page():
             "Hide palette colour controls",
             value=not bool(getattr(prefs, "show_palette_preview", True)),
             help="Turn this on to hide the additional editable colours.",
+        )
+        hide_page_toggles = st.toggle(
+            "Hide optional page toggles",
+            value=not bool(getattr(prefs, "show_page_toggles", True)),
+            help=(
+                "Turn this on to use the default view on each page without showing its "
+                "optional toggle controls. Appearance controls remain available."
+            ),
         )
         preview_accent = normalize_color(picked_color)
         base_color_changed = preview_accent != normalize_color(prefs.accent)
@@ -1508,6 +1500,7 @@ def appearance_page():
                 prefs.success_matches_accent = success_matches_accent
                 prefs.show_placeholders = not hide_example_placeholders
                 prefs.show_palette_preview = not hide_palette_preview
+                prefs.show_page_toggles = not hide_page_toggles
                 palette_colors_to_save = selected_palette_colors
                 if palette_colors_to_save is None and base_color_changed:
                     generated_palette = derived_palette("dark", preview_accent)

@@ -99,6 +99,7 @@ class AppPreferences(Base):
     success_matches_accent: Mapped[bool] = mapped_column(Boolean, default=False)
     show_placeholders: Mapped[bool] = mapped_column(Boolean, default=True)
     show_palette_preview: Mapped[bool] = mapped_column(Boolean, default=True)
+    show_page_toggles: Mapped[bool] = mapped_column(Boolean, default=True)
     background_color: Mapped[str | None] = mapped_column(String(20))
     surface_color: Mapped[str | None] = mapped_column(String(20))
     text_color: Mapped[str | None] = mapped_column(String(20))

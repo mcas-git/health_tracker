@@ -105,6 +105,7 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
         "success_matches_accent",
         "show_placeholders",
         "show_palette_preview",
+        "show_page_toggles",
         "background_color",
         "surface_color",
         "text_color",

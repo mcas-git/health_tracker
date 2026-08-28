@@ -58,6 +58,7 @@ def init_db() -> None:
         "success_matches_accent": "BOOLEAN NOT NULL DEFAULT FALSE",
         "show_placeholders": "BOOLEAN NOT NULL DEFAULT TRUE",
         "show_palette_preview": "BOOLEAN NOT NULL DEFAULT TRUE",
+        "show_page_toggles": "BOOLEAN NOT NULL DEFAULT TRUE",
         "background_color": "VARCHAR(20)",
         "surface_color": "VARCHAR(20)",
         "text_color": "VARCHAR(20)",
