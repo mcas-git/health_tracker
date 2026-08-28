@@ -120,21 +120,38 @@ def clear_text(key: str) -> None:
     st.session_state[key] = ""
 
 
-def status_heading(label: str, message: str | None = None, level: int = 1) -> None:
-    """Render a page or section heading with an optional accessible saved-status badge."""
-    if not message:
+def status_heading(
+    label: str,
+    message: str | None = None,
+    level: int = 1,
+    help_text: str | None = None,
+) -> None:
+    """Render a heading with optional accessible saved-status and help badges."""
+    if not message and not help_text:
         if level == 1:
             st.title(label)
         else:
             st.subheader(label)
         return
     safe_label = escape(label)
-    safe_message = escape(message, quote=True)
+    help_badge = ""
+    if help_text:
+        safe_help = escape(help_text, quote=True)
+        help_badge = (
+            f'<span class="heading-help-badge" tabindex="0" role="note" '
+            f'aria-label="{safe_help}" data-message="{safe_help}">?</span>'
+        )
+    saved_badge = ""
+    if message:
+        safe_message = escape(message, quote=True)
+        saved_badge = (
+            f'<span class="saved-status-badge" tabindex="0" role="status" '
+            f'aria-label="{safe_message}" data-message="{safe_message}">✓</span>'
+        )
     st.markdown(
         f'<div class="status-heading status-heading-{level}">'
         f'<h{level}>{safe_label}</h{level}>'
-        f'<span class="saved-status-badge" tabindex="0" role="status" '
-        f'aria-label="{safe_message}" data-message="{safe_message}">✓</span>'
+        f"{help_badge}{saved_badge}"
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -754,11 +771,15 @@ def daily_entry():
         evening_item = item if update_another_day else None
         evening_key_mode = "historical" if update_another_day else "today_blank_v2"
         with st.container(key="smartwatch_intro"):
-            status_heading("Smartwatch data", smartwatch_confirmation, level=3)
-            st.caption(
-                "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin "
-                "assigns to that date, normally the night ending that morning. Data comes "
-                "from Garmin Connect after the watch has finished syncing."
+            status_heading(
+                "Smartwatch data",
+                smartwatch_confirmation,
+                level=3,
+                help_text=(
+                    "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin "
+                    "assigns to that date, normally the night ending that morning. Data comes "
+                    "from Garmin Connect after the watch has finished syncing."
+                ),
             )
         with st.container(key="smartwatch_load"):
             if st.button(

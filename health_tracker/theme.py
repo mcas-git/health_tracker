@@ -442,7 +442,7 @@ def apply_theme(
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;
-            background-size:138px auto !important; border-color:#00A6CE !important;
+            background-size:112px auto !important; border-color:#00A6CE !important;
             color:#111111 !important; min-height:3rem !important;
             height:3rem !important;
         }}
@@ -501,6 +501,27 @@ def apply_theme(
         }}
         .saved-status-badge:hover::after,
         .saved-status-badge:focus::after {{
+            opacity:1; visibility:visible; transform:translate(-50%, 0);
+        }}
+        .heading-help-badge {{
+            display:inline-flex; align-items:center; justify-content:center;
+            position:relative; flex:0 0 auto; width:1.15rem; height:1.15rem;
+            box-sizing:border-box; border:1.5px solid {muted}; border-radius:50%;
+            background:transparent; color:{muted}; font-size:.72rem; font-weight:800;
+            line-height:1; cursor:help; outline:none; box-shadow:none;
+        }}
+        .heading-help-badge::after {{
+            content:attr(data-message); position:absolute; top:calc(100% + .55rem);
+            left:50%; z-index:1000; width:max-content;
+            max-width:min(22rem, calc(100vw - 3rem)); padding:.55rem .7rem;
+            box-sizing:border-box; border:1px solid {neutral_border}; border-radius:9px;
+            background:{surface}; color:{text}; box-shadow:0 8px 24px #00000045;
+            font-size:.78rem; font-weight:600; line-height:1.35; white-space:normal;
+            text-align:left; opacity:0; visibility:hidden; pointer-events:none;
+            transform:translate(-50%, -.15rem); transition:opacity .14s ease, transform .14s ease;
+        }}
+        .heading-help-badge:hover::after,
+        .heading-help-badge:focus::after {{
             opacity:1; visibility:visible; transform:translate(-50%, 0);
         }}
         [data-testid="stProgressBarTrack"],
