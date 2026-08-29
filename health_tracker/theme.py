@@ -448,7 +448,8 @@ def apply_theme(
             display:block !important; position:relative; z-index:1;
             flex:0 0 14rem !important; width:4.5rem; height:14rem;
             min-height:14rem !important; max-height:14rem !important; overflow:hidden;
-            margin:1.1rem 1rem 0 auto; opacity:.2; pointer-events:none;
+            align-self:flex-start; margin:1.1rem 0 0 -1.5rem;
+            opacity:.2; pointer-events:none;
         }}
         .st-key-sidebar_brand_watermark [data-testid="stImage"] {{
             display:block !important; width:9rem !important;
