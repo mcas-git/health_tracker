@@ -471,19 +471,20 @@ def apply_theme(
         [data-testid="stSidebar"] {{ overflow:hidden !important; }}
         .st-key-sidebar_brand_watermark {{
             display:block !important; position:absolute !important;
-            top:21rem; left:-4.5rem; z-index:1;
-            width:9rem; height:14rem; min-height:14rem !important;
-            max-height:14rem !important; overflow:visible; margin:0;
+            top:20rem; left:-1.5rem; z-index:1;
+            width:12rem; height:18.8rem; min-height:18.8rem !important;
+            max-height:18.8rem !important; overflow:visible; margin:0;
+            transform:translateX(-50%);
             opacity:.2; pointer-events:none;
         }}
         .st-key-sidebar_brand_watermark [data-testid="stImage"] {{
-            display:block !important; width:9rem !important;
-            min-width:9rem !important; height:14rem !important;
+            display:block !important; width:12rem !important;
+            min-width:12rem !important; height:18.8rem !important;
             transform:none !important;
         }}
         .st-key-sidebar_brand_watermark img {{
-            display:block !important; width:9rem !important;
-            min-width:9rem !important; height:14rem !important;
+            display:block !important; width:12rem !important;
+            min-width:12rem !important; height:18.8rem !important;
             object-fit:fill !important;
         }}
         .st-key-appearance_action,
