@@ -448,9 +448,9 @@ def apply_theme(
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; {garmin_logo_css}
             background-repeat:no-repeat !important; background-position:center !important;
-            background-size:112px auto !important; border-color:#00A6CE !important;
-            color:#111111 !important; min-height:3rem !important;
-            height:3rem !important;
+            background-size:92px auto !important; border-color:#00A6CE !important;
+            color:#111111 !important; min-height:2.5rem !important;
+            height:2.5rem !important;
         }}
         .st-key-smartwatch_intro,
         .st-key-smartwatch_load,
@@ -645,23 +645,12 @@ def apply_theme(
             color:{neutral_icon} !important; fill:{neutral_icon} !important;
             stroke:{neutral_icon} !important;
         }}
-        .rating-label {{
-            margin:.5rem 0 .25rem !important; color:{muted} !important;
-            -webkit-text-fill-color:{muted} !important; font-size:.875rem; font-weight:600;
+        [data-testid="stExpander"] h3 {{
+            font-size:1.15rem !important; line-height:1.3 !important;
+            margin-top:.65rem !important; margin-bottom:.35rem !important;
         }}
         [class*="st-key-rating_control_"] [data-testid="stNumberInput"] button {{
             display:none !important;
-        }}
-        [class*="st-key-rating_control_"] .stFormSubmitButton > button {{
-            min-height:2.5rem !important; height:2.5rem !important;
-            padding:0 !important; background:{surface} !important;
-            border:1px solid {neutral_border} !important; color:{text} !important;
-            box-shadow:none !important; font-size:1.15rem !important;
-        }}
-        [class*="st-key-rating_control_"] .stFormSubmitButton > button:hover,
-        [class*="st-key-rating_control_"] .stFormSubmitButton > button:focus {{
-            background:{neutral_surface} !important; border-color:{text} !important;
-            color:{text} !important; box-shadow:none !important;
         }}
         [data-testid="stNumberInput"] button[aria-label*="clear" i],
         [data-testid="stNumberInput"] button[title*="clear" i] {{

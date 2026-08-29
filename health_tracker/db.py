@@ -35,6 +35,7 @@ def init_db() -> None:
     with engine.begin() as connection:
         column_types = {
             "morning_submitted": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "evening_submitted": "BOOLEAN NOT NULL DEFAULT FALSE",
             "physio": "BOOLEAN NOT NULL DEFAULT FALSE",
             "drugs": "BOOLEAN NOT NULL DEFAULT FALSE",
             "protein_powder": "BOOLEAN NOT NULL DEFAULT FALSE",
@@ -45,6 +46,7 @@ def init_db() -> None:
             "injury": "BOOLEAN NOT NULL DEFAULT FALSE",
             "travel": "BOOLEAN NOT NULL DEFAULT FALSE",
             "unusual_day": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "holiday": "BOOLEAN NOT NULL DEFAULT FALSE",
         }
         for column, sql_type in column_types.items():
             if column not in existing_columns:

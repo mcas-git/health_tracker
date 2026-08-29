@@ -163,49 +163,22 @@ def example_placeholder(example: str) -> str | None:
     return f"Example: {example}" if _show_placeholders else None
 
 
-def adjust_rating(key: str, delta: int) -> None:
-    """Move a nullable 1–10 rating without introducing a default value."""
-    current = st.session_state.get(key)
-    if current is None:
-        st.session_state[key] = 1 if delta > 0 else 10
-        return
-    st.session_state[key] = max(1, min(10, int(current) + delta))
-
-
 def rating_input(
     label: str,
     key: str,
     initial: int | None,
     control_key: str,
 ) -> int | None:
-    """Render a nullable rating with explicit, functional minus and plus controls."""
-    st.markdown(f"<p class='rating-label'>{escape(label)}</p>", unsafe_allow_html=True)
+    """Render a nullable, directly editable rating bounded from 0 to 10."""
     with st.container(key=f"rating_control_{control_key}"):
-        decrement, field, increment = st.columns([1, 4, 1], vertical_alignment="bottom")
-        decrement.form_submit_button(
-            "−",
-            key=f"{key}_decrement",
-            on_click=adjust_rating,
-            args=(key, -1),
-            use_container_width=True,
-        )
-        result = field.number_input(
+        return st.number_input(
             label,
-            min_value=1,
+            min_value=0,
             max_value=10,
-            value=max(1, min(10, int(initial))) if initial is not None else None,
+            value=max(0, min(10, int(initial))) if initial is not None else None,
             step=1,
             key=key,
-            label_visibility="collapsed",
         )
-        increment.form_submit_button(
-            "+",
-            key=f"{key}_increment",
-            on_click=adjust_rating,
-            args=(key, 1),
-            use_container_width=True,
-        )
-    return result
 
 
 def kpi_goal(field: str) -> dict:
@@ -833,11 +806,8 @@ def daily_entry():
                 st.session_state.pop(morning_key, None)
             st.rerun()
 
-    evening_label = (
-        "Evening check-in :green[✓]"
-        if evening_checkin_complete(item)
-        else "Evening check-in"
-    )
+    evening_complete = evening_checkin_complete(item)
+    evening_label = "Evening check-in ✓" if evening_complete else "Evening check-in"
     with st.expander(evening_label, expanded=False):
         evening_item = item if update_another_day else None
         evening_key_mode = "historical" if update_another_day else "today_blank_v2"
@@ -993,7 +963,7 @@ def daily_entry():
                 )
 
             st.subheader("Extenuating circumstances")
-            circumstance_cols = st.columns(4)
+            circumstance_cols = st.columns(3)
             circumstances = {}
             for idx, (key, label) in enumerate(
                 [
@@ -1001,9 +971,10 @@ def daily_entry():
                     ("injury", "Injury"),
                     ("travel", "Travel"),
                     ("unusual_day", "Unusual day"),
+                    ("holiday", "Holiday"),
                 ]
             ):
-                circumstances[key] = circumstance_cols[idx].checkbox(
+                circumstances[key] = circumstance_cols[idx % 3].checkbox(
                     label, value=bool(value(item, key, False)), key=f"{key}_{date_key}"
                 )
 
@@ -1023,6 +994,7 @@ def daily_entry():
                         "energy": energy,
                         "cravings": cravings,
                         "diet_satisfaction": satisfaction,
+                        "evening_submitted": True,
                         **habits,
                         **circumstances,
                     }

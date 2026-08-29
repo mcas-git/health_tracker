@@ -105,11 +105,17 @@ def test_checkin_completion_requires_every_measurement():
         diastolic=None,
     )
     missing_energy = SimpleNamespace(**{**values, "energy": None})
+    zero_ratings = SimpleNamespace(
+        **{**values, "mood": 0, "energy": 0, "cravings": 0, "diet_satisfaction": 0}
+    )
+    submitted_evening_missing = SimpleNamespace(evening_submitted=True)
 
     assert morning_checkin_complete(complete)
     assert morning_checkin_complete(no_waist)
     assert morning_checkin_complete(submitted_missing)
     assert evening_checkin_complete(complete)
+    assert evening_checkin_complete(zero_ratings)
+    assert evening_checkin_complete(submitted_evening_missing)
     assert not morning_checkin_complete(missing_pressure)
     assert not evening_checkin_complete(missing_energy)
 
@@ -131,6 +137,8 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
     daily_columns = {column["name"] for column in inspect(test_engine).get_columns("daily_entries")}
     assert "travel" in daily_columns
     assert "morning_submitted" in daily_columns
+    assert "evening_submitted" in daily_columns
+    assert "holiday" in daily_columns
     preference_columns = {
         column["name"] for column in inspect(test_engine).get_columns("app_preferences")
     }
@@ -328,6 +336,7 @@ def test_recent_kpi_table_excludes_fasting_and_marks_circumstances():
             "injury": [False, False],
             "travel": [False, False],
             "unusual_day": [False, False],
+            "holiday": [False, True],
         }
     )
 

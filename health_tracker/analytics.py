@@ -51,7 +51,7 @@ def load_data() -> pd.DataFrame:
 def recent_kpi_table(df: pd.DataFrame, limit: int = 14) -> pd.DataFrame:
     """Build the compact dashboard export, including recorded circumstances."""
     data = df.copy()
-    circumstance_fields = ["illness", "injury", "travel", "unusual_day"]
+    circumstance_fields = ["illness", "injury", "travel", "unusual_day", "holiday"]
     recorded_circumstances = [field for field in circumstance_fields if field in data]
     if recorded_circumstances:
         data["extenuating_circumstance"] = (
@@ -132,9 +132,11 @@ def morning_checkin_complete(item) -> bool:
 
 
 def evening_checkin_complete(item) -> bool:
-    """Return whether every required smartwatch and evening rating is recorded."""
+    """Return whether the evening section was submitted or all legacy fields exist."""
     if item is None:
         return False
+    if bool(getattr(item, "evening_submitted", False)):
+        return True
     positive_fields = ("resting_heart_rate", "sleep_hours", "steps", "calories_burned")
     ratings = ("mood", "energy", "cravings", "diet_satisfaction")
     measurements_complete = all(
@@ -144,7 +146,7 @@ def evening_checkin_complete(item) -> bool:
     )
     ratings_complete = all(
         (rating := _finite_number(getattr(item, field, None))) is not None
-        and 1 <= rating <= 10
+        and 0 <= rating <= 10
         for field in ratings
     )
     return measurements_complete and ratings_complete
@@ -209,7 +211,7 @@ def daily_health_score(item, profile: Profile = PROFILE) -> tuple[int, str, list
         components.append(("Activity", 100 if steps >= 8000 else 70 if steps >= 5000 else 40))
     for field, label in (("mood", "Mood"), ("energy", "Energy")):
         rating = _finite_number(getattr(item, field, None))
-        if rating is not None and 1 <= rating <= 10:
+        if rating is not None and 0 <= rating <= 10:
             components.append((label, rating * 10))
     if not components:
         return None
@@ -246,9 +248,9 @@ def _bounded_score(
 
 def _rating_score(value, *, inverse: bool = False) -> float | None:
     rating = _finite_number(value)
-    if rating is None or not 1 <= rating <= 10:
+    if rating is None or not 0 <= rating <= 10:
         return None
-    score = (rating - 1) / 9 * 100
+    score = rating * 10
     return 100 - score if inverse else score
 
 
