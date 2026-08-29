@@ -115,13 +115,16 @@ def evening_measurement_status(item) -> dict[str, str]:
 
 
 def morning_checkin_complete(item) -> bool:
-    """Return whether every required morning measurement has been recorded."""
+    """Return whether the core morning weight and blood-pressure fields are recorded.
+
+    Waist is useful but is not expected every morning, so it does not block completion.
+    """
     if item is None:
         return False
     return all(
         (measurement := _finite_number(getattr(item, field, None))) is not None
         and measurement > 0
-        for field in ("weight_kg", "waist_cm", "systolic", "diastolic")
+        for field in ("weight_kg", "systolic", "diastolic")
     )
 
 

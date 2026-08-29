@@ -163,15 +163,49 @@ def example_placeholder(example: str) -> str | None:
     return f"Example: {example}" if _show_placeholders else None
 
 
-def rating_input(label: str, key: str, initial: int | None) -> int | None:
-    return st.number_input(
-        label,
-        min_value=1,
-        max_value=10,
-        value=max(1, min(10, int(initial))) if initial is not None else None,
-        step=1,
-        key=key,
-    )
+def adjust_rating(key: str, delta: int) -> None:
+    """Move a nullable 1–10 rating without introducing a default value."""
+    current = st.session_state.get(key)
+    if current is None:
+        st.session_state[key] = 1 if delta > 0 else 10
+        return
+    st.session_state[key] = max(1, min(10, int(current) + delta))
+
+
+def rating_input(
+    label: str,
+    key: str,
+    initial: int | None,
+    control_key: str,
+) -> int | None:
+    """Render a nullable rating with explicit, functional minus and plus controls."""
+    st.markdown(f"<p class='rating-label'>{escape(label)}</p>", unsafe_allow_html=True)
+    with st.container(key=f"rating_control_{control_key}"):
+        decrement, field, increment = st.columns([1, 4, 1], vertical_alignment="bottom")
+        decrement.form_submit_button(
+            "−",
+            key=f"{key}_decrement",
+            on_click=adjust_rating,
+            args=(key, -1),
+            use_container_width=True,
+        )
+        result = field.number_input(
+            label,
+            min_value=1,
+            max_value=10,
+            value=max(1, min(10, int(initial))) if initial is not None else None,
+            step=1,
+            key=key,
+            label_visibility="collapsed",
+        )
+        increment.form_submit_button(
+            "+",
+            key=f"{key}_increment",
+            on_click=adjust_rating,
+            args=(key, 1),
+            use_container_width=True,
+        )
+    return result
 
 
 def kpi_goal(field: str) -> dict:
@@ -324,7 +358,7 @@ def style_chart(chart):
 def health_status_cards(data: pd.DataFrame, item, targets: dict[str, float]) -> None:
     indicator = health_journey_score(data, _profile, targets)
     if indicator:
-        score, score_label, domains, first_date, latest_date = indicator
+        score, score_label, domains, _, _ = indicator
         score_color = {
             "Strong": "#4F8A55",
             "Watch": "#C5A33B",
@@ -337,9 +371,7 @@ def health_status_cards(data: pd.DataFrame, item, targets: dict[str, float]) -> 
         st.markdown(
             f"<div class='health-score' style='--score-color:{score_color}'>"
             f"<span>Health journey indicator</span><strong>{score}/100 · {score_label}</strong>"
-            f"<small>All available records from {first_date:%d %b %Y} to "
-            f"{latest_date:%d %b %Y}, with recent entries weighted more. "
-            f"{domain_summary}. "
+            f"<small>{domain_summary}. "
             f"<em>This is not a diagnosis.</em></small></div>",
             unsafe_allow_html=True,
         )
@@ -450,6 +482,17 @@ def dashboard():
         labelOverlap="greedy",
         grid=False,
     )
+    # Keep the plotting areas aligned when dashboard charts are stacked. Without a
+    # fixed axis extent, Vega-Lite reserves different widths for values such as
+    # weight (three digits) and steps (five digits).
+    dashboard_y_axis = alt.Axis(
+        labels=True,
+        ticks=True,
+        domain=True,
+        minExtent=64,
+        maxExtent=64,
+        labelLimit=56,
+    )
 
     st.subheader("Weight trend")
     milestones, weekly_pace = weight_milestones(journey_start.date(), _profile)
@@ -494,7 +537,7 @@ def dashboard():
                 y=alt.Y(
                     "display_value:Q",
                     title=None,
-                    axis=alt.Axis(labels=True, ticks=True, domain=True),
+                    axis=dashboard_y_axis,
                     scale=weight_scale,
                 ),
                 tooltip=[
@@ -603,7 +646,7 @@ def dashboard():
                 y=alt.Y(
                     "display_value:Q",
                     title=None,
-                    axis=alt.Axis(labels=True, ticks=True, domain=True),
+                    axis=dashboard_y_axis,
                     scale=kpi_scale,
                 ),
                 tooltip=[
@@ -695,18 +738,8 @@ def daily_entry():
         except Exception as exc:
             smartwatch_error = f"Smartwatch sync failed: {exc}"
     item = get_daily(selected)
-    if item is not None:
-        updated = item.updated_at
-        if updated.tzinfo is not None:
-            updated = updated.astimezone(LONDON)
-    entry_confirmation = None
-    if item is not None:
-        entry_confirmation = (
-            f"Entry saved for {selected:%d %b %Y} · "
-            f"Last updated {updated:%d %b %Y at %H:%M}"
-        )
     with title_area:
-        status_heading("Check-in", entry_confirmation)
+        status_heading("Check-in")
     with error_area:
         if smartwatch_error:
             st.error(smartwatch_error)
@@ -909,22 +942,25 @@ def daily_entry():
 
             st.subheader("Evening measurements")
             mood = rating_input(
-                "Mood", evening_keys["mood"], value(evening_item, "mood")
+                "Mood", evening_keys["mood"], value(evening_item, "mood"), "mood"
             )
             energy = rating_input(
                 "Energy level",
                 evening_keys["energy"],
                 value(evening_item, "energy"),
+                "energy",
             )
             cravings = rating_input(
                 "Cravings",
                 evening_keys["cravings"],
                 value(evening_item, "cravings"),
+                "cravings",
             )
             satisfaction = rating_input(
                 "Diet satisfaction",
                 evening_keys["satisfaction"],
                 value(evening_item, "diet_satisfaction"),
+                "satisfaction",
             )
             st.caption("Any evening measurement left blank will be saved as missing.")
 

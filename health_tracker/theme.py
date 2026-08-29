@@ -198,7 +198,11 @@ def apply_theme(
             background-color:{surface}; color:{text}; border-color:{muted};
         }}
         button[kind="primary"] {{ color:#ffffff !important; }}
-        [data-testid="stHeader"], [data-testid="stToolbar"] {{
+        [data-testid="stHeader"] {{
+            background-color:{background} !important;
+            border-bottom:1px solid {neutral_border}33 !important;
+        }}
+        [data-testid="stToolbar"] {{
             background-color:transparent !important;
         }}
         [data-testid="stHeader"] button,
@@ -400,7 +404,9 @@ def apply_theme(
         }}
         .st-key-sidebar_brand_mark {{
             display:flex; align-items:center; justify-content:center;
-            min-height:4rem; margin:.15rem 0 .85rem;
+            position:relative; z-index:2; min-height:4rem;
+            margin:.15rem 0 .85rem; padding-bottom:.55rem;
+            background:{accent}; border-bottom:1px solid {accent_text}33;
         }}
         .st-key-sidebar_brand_mark [data-testid="stImage"] {{
             display:flex; justify-content:center; width:100%;
@@ -638,6 +644,24 @@ def apply_theme(
         [data-testid="stNumberInput"] button svg {{
             color:{neutral_icon} !important; fill:{neutral_icon} !important;
             stroke:{neutral_icon} !important;
+        }}
+        .rating-label {{
+            margin:.5rem 0 .25rem !important; color:{muted} !important;
+            -webkit-text-fill-color:{muted} !important; font-size:.875rem; font-weight:600;
+        }}
+        [class*="st-key-rating_control_"] [data-testid="stNumberInput"] button {{
+            display:none !important;
+        }}
+        [class*="st-key-rating_control_"] .stFormSubmitButton > button {{
+            min-height:2.5rem !important; height:2.5rem !important;
+            padding:0 !important; background:{surface} !important;
+            border:1px solid {neutral_border} !important; color:{text} !important;
+            box-shadow:none !important; font-size:1.15rem !important;
+        }}
+        [class*="st-key-rating_control_"] .stFormSubmitButton > button:hover,
+        [class*="st-key-rating_control_"] .stFormSubmitButton > button:focus {{
+            background:{neutral_surface} !important; border-color:{text} !important;
+            color:{text} !important; box-shadow:none !important;
         }}
         [data-testid="stNumberInput"] button[aria-label*="clear" i],
         [data-testid="stNumberInput"] button[title*="clear" i] {{
@@ -1379,8 +1403,9 @@ def apply_theme(
             justify-content:center !important;
             width:2.75rem !important; min-width:2.75rem !important;
             height:2.75rem !important; min-height:2.75rem !important;
-            background-color:transparent !important;
-            border:0 !important; box-shadow:none !important;
+            background-color:{background} !important;
+            border:1px solid {neutral_border} !important;
+            border-radius:10px !important; box-shadow:none !important;
         }}
         [data-testid="stExpandSidebarButton"]::before,
         [data-testid="stSidebarCollapsedControl"] button::before {{
@@ -1395,6 +1420,13 @@ def apply_theme(
         [data-testid="stSidebarCollapsedControl"] button span,
         [data-testid="stSidebarCollapsedControl"] button svg {{
             visibility:hidden !important; opacity:0 !important;
+        }}
+        /* The page itself dismisses the overlay menu; the duplicate << control is unnecessary. */
+        [data-testid="stSidebarCollapseButton"] {{
+            display:none !important; visibility:hidden !important;
+        }}
+        [data-testid="stSidebarHeader"] button[data-testid="stBaseButton-headerNoPadding"] {{
+            display:none !important; visibility:hidden !important;
         }}
         /* Completed morning/evening check-ins keep a clear green tick in expander labels. */
         [data-testid="stExpander"] summary .stMarkdownColoredText {{

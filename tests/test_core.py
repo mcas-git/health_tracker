@@ -96,10 +96,12 @@ def test_checkin_completion_requires_every_measurement():
         "diet_satisfaction": 8,
     }
     complete = SimpleNamespace(**values)
+    no_waist = SimpleNamespace(**{**values, "waist_cm": None})
     missing_pressure = SimpleNamespace(**{**values, "systolic": None})
     missing_energy = SimpleNamespace(**{**values, "energy": None})
 
     assert morning_checkin_complete(complete)
+    assert morning_checkin_complete(no_waist)
     assert evening_checkin_complete(complete)
     assert not morning_checkin_complete(missing_pressure)
     assert not evening_checkin_complete(missing_energy)
