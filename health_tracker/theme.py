@@ -27,6 +27,30 @@ def _force_dark_mobile_browser_chrome() -> None:
         """
         <script>
         const documentRoot = document;
+        const viewport = documentRoot.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            viewport.content = [
+                'width=device-width', 'initial-scale=1',
+                'shrink-to-fit=no', 'viewport-fit=cover'
+            ].join(', ');
+        }
+
+        const mobileMeta = {
+            'mobile-web-app-capable': 'yes',
+            'apple-mobile-web-app-capable': 'yes',
+            'apple-mobile-web-app-status-bar-style': 'black',
+            'msapplication-navbutton-color': '#000000'
+        };
+        for (const [name, content] of Object.entries(mobileMeta)) {
+            let meta = documentRoot.querySelector(`meta[name="${name}"]`);
+            if (!meta) {
+                meta = documentRoot.createElement('meta');
+                meta.name = name;
+                documentRoot.head.appendChild(meta);
+            }
+            meta.content = content;
+        }
+
         let themes = [...documentRoot.querySelectorAll('meta[name="theme-color"]')];
         if (!themes.length) {
             const theme = documentRoot.createElement('meta');
@@ -444,17 +468,18 @@ def apply_theme(
         [data-testid="stSidebarUserContent"] {{
             position:relative; min-height:calc(100vh - 1rem);
         }}
+        [data-testid="stSidebar"] {{ overflow:hidden !important; }}
         .st-key-sidebar_brand_watermark {{
-            display:block !important; position:relative; z-index:1;
-            flex:0 0 14rem !important; width:4.5rem; height:14rem;
-            min-height:14rem !important; max-height:14rem !important; overflow:hidden;
-            align-self:flex-start; margin:1.1rem 0 0 -1.5rem;
+            display:block !important; position:absolute !important;
+            top:21rem; left:-4.5rem; z-index:1;
+            width:9rem; height:14rem; min-height:14rem !important;
+            max-height:14rem !important; overflow:visible; margin:0;
             opacity:.2; pointer-events:none;
         }}
         .st-key-sidebar_brand_watermark [data-testid="stImage"] {{
             display:block !important; width:9rem !important;
             min-width:9rem !important; height:14rem !important;
-            transform:translateX(-4.5rem);
+            transform:none !important;
         }}
         .st-key-sidebar_brand_watermark img {{
             display:block !important; width:9rem !important;
