@@ -40,6 +40,14 @@ def _force_dark_mobile_browser_chrome() -> None:
             theme.removeAttribute('media');
         }
 
+        let manifest = documentRoot.querySelector('link[rel="manifest"]');
+        if (!manifest) {
+            manifest = documentRoot.createElement('link');
+            manifest.rel = 'manifest';
+            documentRoot.head.appendChild(manifest);
+        }
+        manifest.href = '/app/static/manifest.webmanifest';
+
         let scheme = documentRoot.querySelector('meta[data-health-journey-scheme]');
         if (!scheme) {
             scheme = documentRoot.createElement('meta');
