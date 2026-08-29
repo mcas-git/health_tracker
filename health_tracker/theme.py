@@ -1428,6 +1428,9 @@ def apply_theme(
         [data-testid="stSidebarHeader"] button[data-testid="stBaseButton-headerNoPadding"] {{
             display:none !important; visibility:hidden !important;
         }}
+        [data-testid="stSidebarHeader"] button {{
+            display:none !important; visibility:hidden !important;
+        }}
         /* Completed morning/evening check-ins keep a clear green tick in expander labels. */
         [data-testid="stExpander"] summary .stMarkdownColoredText {{
             color:#4F8A55 !important;

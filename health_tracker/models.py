@@ -19,6 +19,7 @@ class DailyEntry(Base):
     weight_kg: Mapped[float | None] = mapped_column(Float)
     waist_cm: Mapped[float | None] = mapped_column(Float)
     bmi: Mapped[float | None] = mapped_column(Float)
+    morning_submitted: Mapped[bool] = mapped_column(Boolean, default=False)
     resting_heart_rate: Mapped[int | None] = mapped_column(Integer)
     systolic: Mapped[int | None] = mapped_column(Integer)
     diastolic: Mapped[int | None] = mapped_column(Integer)

@@ -385,7 +385,7 @@ def health_status_cards(data: pd.DataFrame, item, targets: dict[str, float]) -> 
         }[status_tone]
         st.markdown(
             f"<div class='health-score' style='--score-color:{status_color}'>"
-            f"<span>BMI weight status</span><strong>BMI {item.bmi:.1f} · {status_label}</strong>"
+            f"<span>BMI weight status</span><strong>{item.bmi:.1f} · {status_label}</strong>"
             f"<small>{status_context}. <em>This is not a diagnosis.</em></small></div>",
             unsafe_allow_html=True,
         )
@@ -766,12 +766,12 @@ def daily_entry():
     sync_revision = int(st.session_state.get(f"garmin_sync_revision_{date_key}", 0))
 
     morning_label = (
-        "Morning check-in :green[✓]"
+        "Morning check-in ✓"
         if morning_checkin_complete(item)
         else "Morning check-in"
     )
     with st.expander(morning_label, expanded=True):
-        st.caption("Record weight, waist and blood pressure.")
+        st.caption("Record weight, waist and blood pressure. Blank fields are saved as missing.")
         with st.form(f"morning_form_{date_key}"):
             morning_item = item if update_another_day else None
             morning_key_mode = "historical" if update_another_day else "today_blank_v2"
@@ -816,7 +816,6 @@ def daily_entry():
                 value=int(diastolic_value) if diastolic_value is not None else None,
                 key=morning_keys["diastolic"],
             )
-            st.caption("Any field left blank will be saved as missing.")
             morning_submitted = st.form_submit_button(
                 "Save morning check-in", use_container_width=True, type="primary"
             )
@@ -828,6 +827,7 @@ def daily_entry():
                         "weight_kg": weight,
                         "waist_cm": waist,
                         "bmi": bmi,
+                        "morning_submitted": True,
                         "systolic": systolic,
                         "diastolic": diastolic,
                     }

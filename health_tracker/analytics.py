@@ -115,12 +115,15 @@ def evening_measurement_status(item) -> dict[str, str]:
 
 
 def morning_checkin_complete(item) -> bool:
-    """Return whether the core morning weight and blood-pressure fields are recorded.
+    """Return whether the morning section was submitted or its core fields exist.
 
-    Waist is useful but is not expected every morning, so it does not block completion.
+    The explicit flag keeps intentionally missing measurements valid. The field fallback
+    preserves completion for entries saved before the submission flag was introduced.
     """
     if item is None:
         return False
+    if bool(getattr(item, "morning_submitted", False)):
+        return True
     return all(
         (measurement := _finite_number(getattr(item, field, None))) is not None
         and measurement > 0

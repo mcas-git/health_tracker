@@ -98,10 +98,17 @@ def test_checkin_completion_requires_every_measurement():
     complete = SimpleNamespace(**values)
     no_waist = SimpleNamespace(**{**values, "waist_cm": None})
     missing_pressure = SimpleNamespace(**{**values, "systolic": None})
+    submitted_missing = SimpleNamespace(
+        morning_submitted=True,
+        weight_kg=None,
+        systolic=None,
+        diastolic=None,
+    )
     missing_energy = SimpleNamespace(**{**values, "energy": None})
 
     assert morning_checkin_complete(complete)
     assert morning_checkin_complete(no_waist)
+    assert morning_checkin_complete(submitted_missing)
     assert evening_checkin_complete(complete)
     assert not morning_checkin_complete(missing_pressure)
     assert not evening_checkin_complete(missing_energy)
@@ -123,6 +130,7 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
     Base.metadata.create_all(test_engine)
     daily_columns = {column["name"] for column in inspect(test_engine).get_columns("daily_entries")}
     assert "travel" in daily_columns
+    assert "morning_submitted" in daily_columns
     preference_columns = {
         column["name"] for column in inspect(test_engine).get_columns("app_preferences")
     }

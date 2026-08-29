@@ -34,6 +34,7 @@ def init_db() -> None:
     existing_columns = {column["name"] for column in inspect(engine).get_columns("daily_entries")}
     with engine.begin() as connection:
         column_types = {
+            "morning_submitted": "BOOLEAN NOT NULL DEFAULT FALSE",
             "physio": "BOOLEAN NOT NULL DEFAULT FALSE",
             "drugs": "BOOLEAN NOT NULL DEFAULT FALSE",
             "protein_powder": "BOOLEAN NOT NULL DEFAULT FALSE",
