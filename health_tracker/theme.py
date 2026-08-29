@@ -21,6 +21,36 @@ FONTS = {
 OLIVE_ACCENT = "#7B8451"
 
 
+def _force_dark_mobile_browser_chrome() -> None:
+    """Keep supported mobile browser/status bars black in system dark mode."""
+    st.html(
+        """
+        <script>
+        const documentRoot = document;
+        let theme = documentRoot.querySelector('meta[data-health-journey-theme]');
+        if (!theme) {
+            theme = documentRoot.createElement('meta');
+            theme.name = 'theme-color';
+            theme.media = '(prefers-color-scheme: dark)';
+            theme.dataset.healthJourneyTheme = 'true';
+            documentRoot.head.appendChild(theme);
+        }
+        theme.content = '#000000';
+
+        let scheme = documentRoot.querySelector('meta[data-health-journey-scheme]');
+        if (!scheme) {
+            scheme = documentRoot.createElement('meta');
+            scheme.name = 'color-scheme';
+            scheme.dataset.healthJourneyScheme = 'true';
+            documentRoot.head.appendChild(scheme);
+        }
+        scheme.content = 'dark';
+        </script>
+        """,
+        unsafe_allow_javascript=True,
+    )
+
+
 def normalize_color(value: str) -> str:
     value = value.strip()
     if re.fullmatch(r"#[0-9a-fA-F]{6}", value):
@@ -82,6 +112,7 @@ def apply_theme(
     success_matches_accent: bool = False,
     palette_overrides: dict[str, str] | None = None,
 ) -> None:
+    _force_dark_mobile_browser_chrome()
     palette = derived_palette(mode, accent, palette_overrides)
     accent = str(palette["accent"])
     background = str(palette["background"])
@@ -305,6 +336,12 @@ def apply_theme(
         }}
         .sport-watermark svg {{ display:block; width:100%; height:auto; }}
         @media (max-width:768px) {{
+            html, body,
+            [data-testid="stHeader"],
+            [data-testid="stToolbar"] {{
+                background:#000000 !important;
+                background-color:#000000 !important;
+            }}
             .sport-watermark {{ left:1rem; bottom:1rem; width:210px; opacity:.055; }}
             .nutrition-metric-card {{
                 width:100%; min-height:0; margin:0 0 10px; padding:11px 14px;
@@ -402,21 +439,25 @@ def apply_theme(
         [data-testid="stSidebarUserContent"] {{
             position:relative; min-height:calc(100vh - 1rem);
         }}
-        .st-key-sidebar_brand_mark {{
-            display:flex; align-items:center; justify-content:center;
-            position:relative; z-index:2; min-height:4rem;
-            margin:.15rem 0 .85rem; padding-bottom:.55rem;
-            background:{accent}; border-bottom:1px solid {accent_text}33;
+        .st-key-sidebar_brand_watermark {{
+            position:absolute; right:.25rem; bottom:-.4rem; z-index:0;
+            width:3.85rem; height:12rem; overflow:hidden;
+            opacity:.16; pointer-events:none;
         }}
-        .st-key-sidebar_brand_mark [data-testid="stImage"] {{
-            display:flex; justify-content:center; width:100%;
+        .st-key-sidebar_brand_watermark::before {{
+            content:""; display:block; position:absolute; top:0; right:0;
+            width:7.7rem; height:12rem;
+            {brand_mark_css}
+            background-repeat:no-repeat !important;
+            background-position:right center !important;
+            background-size:auto 100% !important;
         }}
-        .st-key-sidebar_brand_mark img {{
-            display:block; width:2.35rem; height:auto;
+        .st-key-sidebar_brand_watermark [data-testid="stMarkdownContainer"] {{
+            display:none !important;
         }}
         .st-key-appearance_action,
         .st-key-sign_out_action {{
-            position:absolute; right:0; left:0;
+            position:absolute; right:0; left:0; z-index:2;
         }}
         .st-key-appearance_action {{
             bottom:7rem;

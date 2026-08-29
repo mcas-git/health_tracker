@@ -24,7 +24,6 @@ from health_tracker.analytics import (
     weight_milestones,
 )
 from health_tracker.auth import require_login, sign_out_button
-from health_tracker.branding import BRAND_MARK_PATH
 from health_tracker.config import LONDON, Profile, setting
 from health_tracker.config import PROFILE as DEFAULT_PROFILE
 from health_tracker.db import (
@@ -1750,8 +1749,6 @@ standard_pages = [
 ]
 page = st.navigation([*standard_pages, appearance], position="hidden")
 with st.sidebar:
-    with st.container(key="sidebar_brand_mark"):
-        st.image(str(BRAND_MARK_PATH), width=38)
     for navigation_page in standard_pages:
         st.page_link(navigation_page, use_container_width=True)
     appearance_action = st.container(key="appearance_action")
@@ -1763,4 +1760,6 @@ with st.sidebar:
     sign_out_action = st.container(key="sign_out_action")
     with sign_out_action:
         sign_out_button(auth_context)
+    with st.container(key="sidebar_brand_watermark"):
+        st.markdown('<span aria-hidden="true"></span>', unsafe_allow_html=True)
 page.run()
