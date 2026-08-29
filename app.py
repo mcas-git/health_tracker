@@ -487,11 +487,12 @@ def dashboard():
     # weight (three digits) and steps (five digits).
     dashboard_y_axis = alt.Axis(
         labels=True,
-        ticks=True,
-        domain=True,
-        minExtent=64,
-        maxExtent=64,
-        labelLimit=56,
+        ticks=False,
+        domain=False,
+        grid=True,
+        minExtent=52,
+        maxExtent=52,
+        labelLimit=46,
     )
 
     st.subheader("Weight trend")
@@ -604,88 +605,98 @@ def dashboard():
     else:
         st.caption("No weight entries yet.")
 
-    st.subheader("Additional KPI")
-    labels = {
-        "bmi": "BMI",
-        "waist_cm": "Waist",
-        "steps": "Steps",
-        "sleep_hours": "Sleep",
-        "calories_burned": "Calories burned",
-        "mood": "Mood",
-        "energy": "Energy",
-        "resting_heart_rate": "Resting heart rate",
-        "systolic": "Blood pressure (systolic)",
-        "diastolic": "Blood pressure (diastolic)",
-    }
-    available = {
-        label: field for field, label in labels.items() if field in df and df[field].notna().any()
-    }
-    if available:
-        selected_label = st.selectbox(
-            "Additional KPI", available, label_visibility="collapsed", key="additional_kpi"
+    show_additional_kpi = False
+    if _show_page_toggles:
+        show_additional_kpi = st.toggle(
+            "Show additional KPI",
+            value=False,
+            key="show_additional_kpi",
         )
-        selected_kpi = available[selected_label]
-        recent = df[["entry_date", selected_kpi]].dropna().copy()
-        recent["display_value"] = (
-            recent[selected_kpi].rolling(7, min_periods=1).mean()
-            if _smooth_charts
-            else recent[selected_kpi]
-        )
-        kpi_scale = alt.Scale(
-            domain=kpi_axis_domain(selected_kpi, recent[selected_kpi]), nice=False
-        )
-        kpi_chart = (
-            alt.Chart(recent)
-            .mark_line(
-                point=False,
-                color=accent,
-                strokeWidth=4,
+    if show_additional_kpi:
+        st.subheader("Additional KPI")
+        labels = {
+            "bmi": "BMI",
+            "waist_cm": "Waist",
+            "steps": "Steps",
+            "sleep_hours": "Sleep",
+            "calories_burned": "Calories burned",
+            "mood": "Mood",
+            "energy": "Energy",
+            "resting_heart_rate": "Resting heart rate",
+            "systolic": "Blood pressure (systolic)",
+            "diastolic": "Blood pressure (diastolic)",
+        }
+        available = {
+            label: field
+            for field, label in labels.items()
+            if field in df and df[field].notna().any()
+        }
+        if available:
+            selected_label = st.selectbox(
+                "Additional KPI", available, label_visibility="collapsed", key="additional_kpi"
             )
-            .encode(
-                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
-                y=alt.Y(
-                    "display_value:Q",
-                    title=None,
-                    axis=dashboard_y_axis,
-                    scale=kpi_scale,
-                ),
-                tooltip=[
-                    alt.Tooltip("entry_date:T", title="Date"),
-                    alt.Tooltip("display_value:Q", title=selected_label, format=".1f"),
-                ],
+            selected_kpi = available[selected_label]
+            recent = df[["entry_date", selected_kpi]].dropna().copy()
+            recent["display_value"] = (
+                recent[selected_kpi].rolling(7, min_periods=1).mean()
+                if _smooth_charts
+                else recent[selected_kpi]
             )
-            .properties(height=chart_height)
-        )
-        kpi_hover_targets = (
-            alt.Chart(recent)
-            .mark_point(opacity=0, size=180)
-            .encode(
-                x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
-                y=alt.Y("display_value:Q", title=None, scale=kpi_scale),
-                tooltip=[
-                    alt.Tooltip("entry_date:T", title="Date"),
-                    alt.Tooltip("display_value:Q", title=selected_label, format=".1f"),
-                ],
+            kpi_scale = alt.Scale(
+                domain=kpi_axis_domain(selected_kpi, recent[selected_kpi]), nice=False
             )
-        )
-        goal = kpi_goal(selected_kpi)
-        goal_value = float(goal["value"])
-        kpi_layers = kpi_chart + kpi_hover_targets
-        if goal_value > kpi_scale.domain[0]:
-            ideal_line = (
-                alt.Chart(pd.DataFrame({"ideal": [goal_value]}))
-                .mark_rule(color=series_colors[1], strokeDash=[6, 5], strokeWidth=2)
+            kpi_chart = (
+                alt.Chart(recent)
+                .mark_line(
+                    point=False,
+                    color=accent,
+                    strokeWidth=4,
+                )
                 .encode(
-                    y=alt.Y("ideal:Q", scale=kpi_scale),
-                    tooltip=[alt.Tooltip("ideal:Q", title="Ideal value", format=".1f")],
+                    x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                    y=alt.Y(
+                        "display_value:Q",
+                        title=None,
+                        axis=dashboard_y_axis,
+                        scale=kpi_scale,
+                    ),
+                    tooltip=[
+                        alt.Tooltip("entry_date:T", title="Date"),
+                        alt.Tooltip("display_value:Q", title=selected_label, format=".1f"),
+                    ],
+                )
+                .properties(height=chart_height)
+            )
+            kpi_hover_targets = (
+                alt.Chart(recent)
+                .mark_point(opacity=0, size=180)
+                .encode(
+                    x=alt.X("entry_date:T", axis=date_axis, scale=date_scale),
+                    y=alt.Y("display_value:Q", title=None, scale=kpi_scale),
+                    tooltip=[
+                        alt.Tooltip("entry_date:T", title="Date"),
+                        alt.Tooltip("display_value:Q", title=selected_label, format=".1f"),
+                    ],
                 )
             )
-            kpi_layers = kpi_layers + ideal_line
-        st.altair_chart(style_chart(kpi_layers), use_container_width=True, theme=None)
-        reference = f" [Reference]({goal['url']})" if goal["url"] else ""
-        st.caption(f"Goal anchor: **{goal['label']}** — {goal['note']}{reference}")
-    else:
-        st.caption("Add another measurement to display a recent KPI trend.")
+            goal = kpi_goal(selected_kpi)
+            goal_value = float(goal["value"])
+            kpi_layers = kpi_chart + kpi_hover_targets
+            if goal_value > kpi_scale.domain[0]:
+                ideal_line = (
+                    alt.Chart(pd.DataFrame({"ideal": [goal_value]}))
+                    .mark_rule(color=series_colors[1], strokeDash=[6, 5], strokeWidth=2)
+                    .encode(
+                        y=alt.Y("ideal:Q", scale=kpi_scale),
+                        tooltip=[alt.Tooltip("ideal:Q", title="Ideal value", format=".1f")],
+                    )
+                )
+                kpi_layers = kpi_layers + ideal_line
+            st.altair_chart(style_chart(kpi_layers), use_container_width=True, theme=None)
+            reference = f" [Reference]({goal['url']})" if goal["url"] else ""
+            st.caption(f"Goal anchor: **{goal['label']}** — {goal['note']}{reference}")
+        else:
+            st.caption("Add another measurement to display a recent KPI trend.")
 
     recent_table = recent_kpi_table(df)
     st.download_button(
