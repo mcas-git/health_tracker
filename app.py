@@ -765,12 +765,9 @@ def daily_entry():
     date_key = selected.isoformat()
     sync_revision = int(st.session_state.get(f"garmin_sync_revision_{date_key}", 0))
 
-    morning_label = (
-        "Morning check-in ✓"
-        if morning_checkin_complete(item)
-        else "Morning check-in"
-    )
-    with st.expander(morning_label, expanded=True):
+    morning_complete = morning_checkin_complete(item)
+    morning_label = "Morning check-in ✓" if morning_complete else "Morning check-in"
+    with st.expander(morning_label, expanded=not morning_complete):
         st.caption("Record weight, waist and blood pressure. Blank fields are saved as missing.")
         with st.form(f"morning_form_{date_key}"):
             morning_item = item if update_another_day else None
