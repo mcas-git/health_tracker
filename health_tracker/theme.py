@@ -27,15 +27,18 @@ def _force_dark_mobile_browser_chrome() -> None:
         """
         <script>
         const documentRoot = document;
-        let theme = documentRoot.querySelector('meta[data-health-journey-theme]');
-        if (!theme) {
-            theme = documentRoot.createElement('meta');
+        let themes = [...documentRoot.querySelectorAll('meta[name="theme-color"]')];
+        if (!themes.length) {
+            const theme = documentRoot.createElement('meta');
             theme.name = 'theme-color';
-            theme.media = '(prefers-color-scheme: dark)';
             theme.dataset.healthJourneyTheme = 'true';
             documentRoot.head.appendChild(theme);
+            themes = [theme];
         }
-        theme.content = '#000000';
+        for (const theme of themes) {
+            theme.content = '#000000';
+            theme.removeAttribute('media');
+        }
 
         let scheme = documentRoot.querySelector('meta[data-health-journey-scheme]');
         if (!scheme) {
@@ -336,12 +339,6 @@ def apply_theme(
         }}
         .sport-watermark svg {{ display:block; width:100%; height:auto; }}
         @media (max-width:768px) {{
-            html, body,
-            [data-testid="stHeader"],
-            [data-testid="stToolbar"] {{
-                background:#000000 !important;
-                background-color:#000000 !important;
-            }}
             .sport-watermark {{ left:1rem; bottom:1rem; width:210px; opacity:.055; }}
             .nutrition-metric-card {{
                 width:100%; min-height:0; margin:0 0 10px; padding:11px 14px;
@@ -440,20 +437,20 @@ def apply_theme(
             position:relative; min-height:calc(100vh - 1rem);
         }}
         .st-key-sidebar_brand_watermark {{
-            position:absolute; right:.25rem; bottom:-.4rem; z-index:0;
-            width:3.85rem; height:12rem; overflow:hidden;
-            opacity:.16; pointer-events:none;
+            display:block !important; position:relative; z-index:1;
+            flex:0 0 14rem !important; width:4.5rem; height:14rem;
+            min-height:14rem !important; max-height:14rem !important; overflow:hidden;
+            margin:1.1rem 1rem 0 auto; opacity:.2; pointer-events:none;
         }}
-        .st-key-sidebar_brand_watermark::before {{
-            content:""; display:block; position:absolute; top:0; right:0;
-            width:7.7rem; height:12rem;
-            {brand_mark_css}
-            background-repeat:no-repeat !important;
-            background-position:right center !important;
-            background-size:auto 100% !important;
+        .st-key-sidebar_brand_watermark [data-testid="stImage"] {{
+            display:block !important; width:9rem !important;
+            min-width:9rem !important; height:14rem !important;
+            transform:translateX(-4.5rem);
         }}
-        .st-key-sidebar_brand_watermark [data-testid="stMarkdownContainer"] {{
-            display:none !important;
+        .st-key-sidebar_brand_watermark img {{
+            display:block !important; width:9rem !important;
+            min-width:9rem !important; height:14rem !important;
+            object-fit:fill !important;
         }}
         .st-key-appearance_action,
         .st-key-sign_out_action {{
@@ -1460,6 +1457,16 @@ def apply_theme(
         }}
         [data-testid="stSidebarHeader"] button {{
             display:none !important; visibility:hidden !important;
+        }}
+        /* Final mobile override: Streamlit emits another header rule earlier in this sheet. */
+        @media (max-width:768px) {{
+            html, body,
+            [data-testid="stApp"],
+            [data-testid="stHeader"],
+            [data-testid="stToolbar"] {{
+                background:#000000 !important;
+                background-color:#000000 !important;
+            }}
         }}
         /* Completed morning/evening check-ins keep a clear green tick in expander labels. */
         [data-testid="stExpander"] summary .stMarkdownColoredText {{
