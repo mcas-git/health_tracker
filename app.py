@@ -370,7 +370,7 @@ def health_status_cards(data: pd.DataFrame, item, targets: dict[str, float]) -> 
         )
         st.markdown(
             f"<div class='health-score' style='--score-color:{score_color}'>"
-            f"<span>Health journey indicator</span><strong>{score}/100 · {score_label}</strong>"
+            f"<span>Health indicator</span><strong>{score}/100 · {score_label}</strong>"
             f"<small>{domain_summary}. "
             f"<em>This is not a diagnosis.</em></small></div>",
             unsafe_allow_html=True,
@@ -490,9 +490,10 @@ def dashboard():
         ticks=False,
         domain=False,
         grid=True,
-        minExtent=52,
-        maxExtent=52,
-        labelLimit=46,
+        minExtent=20,
+        maxExtent=20,
+        labelLimit=48,
+        labelExpr="abs(datum.value) >= 10000 ? format(datum.value, '~s') : datum.label",
     )
 
     st.subheader("Weight trend")
