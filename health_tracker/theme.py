@@ -491,58 +491,32 @@ def apply_theme(
             position:relative; min-height:calc(100vh - 1rem);
         }}
         [data-testid="stSidebar"] {{ overflow:hidden !important; }}
-        .st-key-sidebar_brand_watermark {{
-            display:block !important; position:absolute !important;
-            top:20rem; left:50%; z-index:1;
-            width:9.5rem; height:14.9rem; min-height:14.9rem !important;
-            max-height:14.9rem !important; overflow:visible; margin:0;
-            transform:translateX(-50%);
-            opacity:.2; pointer-events:none;
+        .st-key-sidebar_bottom_actions {{
+            position:absolute; right:0; bottom:4.7rem; left:0; z-index:2;
         }}
-        .st-key-sidebar_brand_watermark [data-testid="stImage"] {{
-            display:block !important; width:9.5rem !important;
-            min-width:9.5rem !important; height:14.9rem !important;
-            transform:none !important;
+        .st-key-sidebar_bottom_actions [data-testid="stVerticalBlock"] {{
+            gap:.15rem !important;
         }}
-        .st-key-sidebar_brand_watermark img {{
-            display:block !important; width:9.5rem !important;
-            min-width:9.5rem !important; height:14.9rem !important;
-            object-fit:fill !important;
-        }}
-        .st-key-targets_action,
-        .st-key-appearance_action,
-        .st-key-sign_out_action {{
-            position:absolute; right:0; left:0; z-index:2;
-        }}
-        .st-key-targets_action {{ bottom:9.3rem; }}
-        .st-key-appearance_action {{
-            bottom:7rem;
-        }}
-        .st-key-sign_out_action {{ bottom:4.7rem; }}
-        .st-key-targets_action a,
-        .st-key-appearance_action a,
-        .st-key-sign_out_action button {{
+        .st-key-sidebar_bottom_actions a,
+        .st-key-sidebar_bottom_actions button {{
             width:100% !important; min-height:2.25rem; box-sizing:border-box;
             justify-content:flex-start !important; padding:.375rem .5rem !important;
             background:transparent !important; color:{accent_text} !important;
             border:0 !important; border-radius:.5rem !important;
             text-align:left !important; box-shadow:none !important;
         }}
-        .st-key-targets_action a:hover,
-        .st-key-targets_action a:focus,
-        .st-key-appearance_action a:hover,
-        .st-key-appearance_action a:focus,
-        .st-key-sign_out_action button:hover,
-        .st-key-sign_out_action button:focus {{
+        .st-key-sidebar_bottom_actions a:hover,
+        .st-key-sidebar_bottom_actions a:focus,
+        .st-key-sidebar_bottom_actions button:hover,
+        .st-key-sidebar_bottom_actions button:focus {{
             background:{accent_text}14 !important; color:{accent_text} !important;
             border:0 !important; box-shadow:none !important;
         }}
-        .st-key-targets_action a p,
-        .st-key-appearance_action a p,
-        .st-key-sign_out_action button p {{
+        .st-key-sidebar_bottom_actions a p,
+        .st-key-sidebar_bottom_actions button p {{
             width:100%; margin:0; color:{accent_text} !important; text-align:left !important;
         }}
-        .st-key-sign_out_action button > div {{
+        .st-key-sidebar_bottom_actions button > div {{
             width:100% !important; justify-content:flex-start !important;
             text-align:left !important;
         }}
@@ -968,6 +942,7 @@ def apply_theme(
             color:#FFFFFF !important;
             -webkit-text-fill-color:#FFFFFF !important;
             caret-color:#FFFFFF !important;
+            font-family:{font} !important;
             font-weight:500 !important;
             opacity:1 !important;
         }}

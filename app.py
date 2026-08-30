@@ -24,7 +24,6 @@ from health_tracker.analytics import (
     weight_milestones,
 )
 from health_tracker.auth import require_login, sign_out_button
-from health_tracker.branding import BRAND_MARK_PATH
 from health_tracker.config import LONDON, Profile, setting
 from health_tracker.config import PROFILE as DEFAULT_PROFILE
 from health_tracker.db import (
@@ -1182,9 +1181,10 @@ def food_log():
         "Recalculate and replace" if existing else "Analyse and save day",
         type="primary",
         use_container_width=True,
-        disabled=not note.strip(),
     ):
-        if not setting("OPENAI_API_KEY"):
+        if not note.strip():
+            st.warning("Add your food notes before analysing the day.")
+        elif not setting("OPENAI_API_KEY"):
             st.error("OPENAI_API_KEY is not configured.")
         else:
             try:
@@ -1761,21 +1761,16 @@ page = st.navigation([*standard_pages, targets_page, appearance], position="hidd
 with st.sidebar:
     for navigation_page in standard_pages:
         st.page_link(navigation_page, use_container_width=True)
-    with st.container(key="sidebar_brand_watermark"):
-        st.image(str(BRAND_MARK_PATH), width=144)
-    targets_action = st.container(key="targets_action")
-    targets_action.page_link(
-        targets_page,
-        icon=":material/track_changes:",
-        use_container_width=True,
-    )
-    appearance_action = st.container(key="appearance_action")
-    appearance_action.page_link(
-        appearance,
-        icon=":material/palette:",
-        use_container_width=True,
-    )
-    sign_out_action = st.container(key="sign_out_action")
-    with sign_out_action:
+    with st.container(key="sidebar_bottom_actions"):
+        st.page_link(
+            targets_page,
+            icon=":material/track_changes:",
+            use_container_width=True,
+        )
+        st.page_link(
+            appearance,
+            icon=":material/palette:",
+            use_container_width=True,
+        )
         sign_out_button(auth_context)
 page.run()
