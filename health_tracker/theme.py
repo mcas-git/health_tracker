@@ -324,7 +324,15 @@ def apply_theme(
         [data-testid="stMetric"],
         [data-testid="stCaptionContainer"],
         [data-testid="stCaptionContainer"] *,
-        [data-baseweb="select"], input, textarea {{ font-family:{font}; }}
+        [data-baseweb="select"],
+        [data-baseweb="select"] *,
+        [data-baseweb="input"],
+        [data-baseweb="input"] *,
+        [data-baseweb="textarea"],
+        [data-baseweb="textarea"] *,
+        [role="listbox"],
+        [role="option"],
+        input, textarea {{ font-family:{font} !important; }}
         [data-testid="stAppViewContainer"] h1,
         [data-testid="stAppViewContainer"] h2,
         [data-testid="stAppViewContainer"] h3,
@@ -347,6 +355,7 @@ def apply_theme(
             color:{text}; font-size:2rem; font-weight:700; line-height:1.25; margin:.2rem 0;
         }}
         .nutrition-metric-status {{ color:{text}; font-size:.9rem; font-weight:650; }}
+        .st-key-nutrition_charts {{ margin:1rem 0 1.75rem; }}
         .palette-preview {{
             display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr));
             gap:10px; margin:.5rem 0 1.25rem;
@@ -425,6 +434,19 @@ def apply_theme(
         .st-key-login_shell h1 {{
             margin:.25rem 0 .35rem; font-size:clamp(2rem,4vw,2.8rem); line-height:1.05;
         }}
+        .st-key-login_shell,
+        .st-key-login_shell h1,
+        .st-key-login_shell p,
+        .st-key-login_shell label,
+        .st-key-login_shell [data-testid="stCaptionContainer"],
+        .st-key-login_shell [data-testid="stMarkdownContainer"],
+        .st-key-login_shell [data-testid="stWidgetLabel"] {{
+            text-align:center !important;
+        }}
+        .st-key-login_shell input {{ text-align:center !important; }}
+        .st-key-login_shell [data-testid="stCheckbox"] {{
+            display:flex !important; justify-content:center !important;
+        }}
         .st-key-login_brand_mark {{
             display:flex; align-items:center; justify-content:center;
             min-height:5.5rem; margin:0 0 .65rem;
@@ -471,30 +493,33 @@ def apply_theme(
         [data-testid="stSidebar"] {{ overflow:hidden !important; }}
         .st-key-sidebar_brand_watermark {{
             display:block !important; position:absolute !important;
-            top:20rem; left:-1.5rem; z-index:1;
-            width:12rem; height:18.8rem; min-height:18.8rem !important;
-            max-height:18.8rem !important; overflow:visible; margin:0;
+            top:20rem; left:50%; z-index:1;
+            width:9.5rem; height:14.9rem; min-height:14.9rem !important;
+            max-height:14.9rem !important; overflow:visible; margin:0;
             transform:translateX(-50%);
             opacity:.2; pointer-events:none;
         }}
         .st-key-sidebar_brand_watermark [data-testid="stImage"] {{
-            display:block !important; width:12rem !important;
-            min-width:12rem !important; height:18.8rem !important;
+            display:block !important; width:9.5rem !important;
+            min-width:9.5rem !important; height:14.9rem !important;
             transform:none !important;
         }}
         .st-key-sidebar_brand_watermark img {{
-            display:block !important; width:12rem !important;
-            min-width:12rem !important; height:18.8rem !important;
+            display:block !important; width:9.5rem !important;
+            min-width:9.5rem !important; height:14.9rem !important;
             object-fit:fill !important;
         }}
+        .st-key-targets_action,
         .st-key-appearance_action,
         .st-key-sign_out_action {{
             position:absolute; right:0; left:0; z-index:2;
         }}
+        .st-key-targets_action {{ bottom:9.3rem; }}
         .st-key-appearance_action {{
             bottom:7rem;
         }}
         .st-key-sign_out_action {{ bottom:4.7rem; }}
+        .st-key-targets_action a,
         .st-key-appearance_action a,
         .st-key-sign_out_action button {{
             width:100% !important; min-height:2.25rem; box-sizing:border-box;
@@ -503,6 +528,8 @@ def apply_theme(
             border:0 !important; border-radius:.5rem !important;
             text-align:left !important; box-shadow:none !important;
         }}
+        .st-key-targets_action a:hover,
+        .st-key-targets_action a:focus,
         .st-key-appearance_action a:hover,
         .st-key-appearance_action a:focus,
         .st-key-sign_out_action button:hover,
@@ -510,6 +537,7 @@ def apply_theme(
             background:{accent_text}14 !important; color:{accent_text} !important;
             border:0 !important; box-shadow:none !important;
         }}
+        .st-key-targets_action a p,
         .st-key-appearance_action a p,
         .st-key-sign_out_action button p {{
             width:100%; margin:0; color:{accent_text} !important; text-align:left !important;

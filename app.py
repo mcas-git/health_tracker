@@ -301,15 +301,20 @@ def style_chart(chart):
     grid = palette["grid"]
     accent = palette["accent"]
     secondary = palette["series"][1]
+    chart_font = FONTS.get(_theme_values[2], FONTS["Modern sans"]).split(",", 1)[0]
+    chart_font = chart_font.strip(" '\"")
     return (
-        chart.configure(background="transparent")
+        chart.configure(background="transparent", font=chart_font)
         .configure_view(strokeOpacity=0)
         .configure_line(color=accent)
         .configure_point(filled=True, fill=accent, stroke=accent, strokeWidth=2, size=72)
         .configure_rule(color=secondary)
+        .configure_text(font=chart_font)
         .configure_axis(
             labelColor=foreground,
             titleColor=foreground,
+            labelFont=chart_font,
+            titleFont=chart_font,
             domainColor=grid,
             tickColor=grid,
             gridColor=grid,
@@ -321,10 +326,18 @@ def style_chart(chart):
             direction="horizontal",
             labelColor=foreground,
             titleColor=foreground,
+            labelFont=chart_font,
+            titleFont=chart_font,
             symbolStrokeColor=foreground,
             padding=12,
         )
-        .configure_title(color=foreground)
+        .configure_title(color=foreground, font=chart_font)
+        .configure_header(
+            labelColor=foreground,
+            titleColor=foreground,
+            labelFont=chart_font,
+            titleFont=chart_font,
+        )
     )
 
 
@@ -370,14 +383,14 @@ def home():
     quote = weekly_item(QUOTES, london_day)
     st.markdown(
         f"""
+        <div class="motivation-card">
+          <div class="research-motivation-label">THIS WEEK'S QUOTE</div>
+          <div class="research-motivation">“{quote}”</div>
+        </div>
         <div class="quote-card">
           <div class="quote-label">RESEARCH NOTE</div>
           <div class="quote-text">{research["insight"]}</div>
           <p><a href="{research["url"]}" target="_blank">{research["source"]}</a></p>
-        </div>
-        <div class="motivation-card">
-          <div class="research-motivation-label">THIS WEEK'S QUOTE</div>
-          <div class="research-motivation">“{quote}”</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -879,104 +892,112 @@ def daily_entry():
                 "cravings": f"cravings_{evening_key_mode}_{date_key}",
                 "satisfaction": f"diet_satisfaction_{evening_key_mode}_{date_key}",
             }
-            c1, c2, c3, c4 = st.columns(4)
-            resting_value = smartwatch_value("resting_heart_rate")
-            resting_hr = c1.number_input(
-                "Resting heart rate",
-                30,
-                220,
-                value=int(resting_value) if resting_value is not None else None,
-                disabled=True,
-                key=evening_keys["resting_hr"],
-            )
-            sleep_value = smartwatch_value("sleep_hours")
-            sleep = c2.number_input(
-                "Sleep (hours)",
-                0.0,
-                24.0,
-                value=float(sleep_value) if sleep_value is not None else None,
-                step=0.01,
-                disabled=True,
-                key=evening_keys["sleep"],
-            )
-            steps_value = smartwatch_value("steps")
-            steps = c3.number_input(
-                "Steps",
-                0,
-                100000,
-                value=int(steps_value) if steps_value is not None else None,
-                disabled=True,
-                key=evening_keys["steps"],
-            )
-            burned_value = smartwatch_value("calories_burned")
-            burned = c4.number_input(
-                "Total calories burned",
-                0,
-                10000,
-                value=int(burned_value) if burned_value is not None else None,
-                disabled=True,
-                help="Garmin total calories combine active and resting (BMR) calories.",
-                key=evening_keys["burned"],
-            )
-
-            st.subheader("Evening measurements")
-            mood = rating_input(
-                "Mood", evening_keys["mood"], value(evening_item, "mood"), "mood"
-            )
-            energy = rating_input(
-                "Energy level",
-                evening_keys["energy"],
-                value(evening_item, "energy"),
-                "energy",
-            )
-            cravings = rating_input(
-                "Cravings",
-                evening_keys["cravings"],
-                value(evening_item, "cravings"),
-                "cravings",
-            )
-            satisfaction = rating_input(
-                "Diet satisfaction",
-                evening_keys["satisfaction"],
-                value(evening_item, "diet_satisfaction"),
-                "satisfaction",
-            )
-            st.caption("Any evening measurement left blank will be saved as missing.")
-
-            st.subheader("Habits")
-            cols = st.columns(4)
-            habits = {}
-            for idx, (key, label) in enumerate(
-                [
-                    ("gym", "Gym"),
-                    ("cardio", "Cardio"),
-                    ("supplements", "Supplements"),
-                    ("protein_powder", "Protein powder"),
-                    ("alcohol_free", "Alcohol-free"),
-                    ("physio", "Physio"),
-                    ("drugs", "Drugs"),
-                    ("fasted", "Fasting"),
-                ]
-            ):
-                habits[key] = cols[idx % 4].checkbox(
-                    label, value=bool(value(item, key, False)), key=f"{key}_{date_key}"
+            with st.container(border=True):
+                st.subheader("Smartwatch data")
+                c1, c2, c3, c4 = st.columns(4)
+                resting_value = smartwatch_value("resting_heart_rate")
+                resting_hr = c1.number_input(
+                    "Resting heart rate",
+                    30,
+                    220,
+                    value=int(resting_value) if resting_value is not None else None,
+                    disabled=True,
+                    key=evening_keys["resting_hr"],
+                )
+                sleep_value = smartwatch_value("sleep_hours")
+                sleep = c2.number_input(
+                    "Sleep (hours)",
+                    0.0,
+                    24.0,
+                    value=float(sleep_value) if sleep_value is not None else None,
+                    step=0.01,
+                    disabled=True,
+                    key=evening_keys["sleep"],
+                )
+                steps_value = smartwatch_value("steps")
+                steps = c3.number_input(
+                    "Steps",
+                    0,
+                    100000,
+                    value=int(steps_value) if steps_value is not None else None,
+                    disabled=True,
+                    key=evening_keys["steps"],
+                )
+                burned_value = smartwatch_value("calories_burned")
+                burned = c4.number_input(
+                    "Total calories burned",
+                    0,
+                    10000,
+                    value=int(burned_value) if burned_value is not None else None,
+                    disabled=True,
+                    help="Garmin total calories combine active and resting (BMR) calories.",
+                    key=evening_keys["burned"],
                 )
 
-            st.subheader("Extenuating circumstances")
-            circumstance_cols = st.columns(3)
-            circumstances = {}
-            for idx, (key, label) in enumerate(
-                [
-                    ("illness", "Illness"),
-                    ("injury", "Injury"),
-                    ("travel", "Travel"),
-                    ("unusual_day", "Unusual day"),
-                    ("holiday", "Holiday"),
-                ]
-            ):
-                circumstances[key] = circumstance_cols[idx % 3].checkbox(
-                    label, value=bool(value(item, key, False)), key=f"{key}_{date_key}"
+            with st.container(border=True):
+                st.subheader("Evening measurements")
+                mood = rating_input(
+                    "Mood", evening_keys["mood"], value(evening_item, "mood"), "mood"
                 )
+                energy = rating_input(
+                    "Energy level",
+                    evening_keys["energy"],
+                    value(evening_item, "energy"),
+                    "energy",
+                )
+                cravings = rating_input(
+                    "Cravings",
+                    evening_keys["cravings"],
+                    value(evening_item, "cravings"),
+                    "cravings",
+                )
+                satisfaction = rating_input(
+                    "Diet satisfaction",
+                    evening_keys["satisfaction"],
+                    value(evening_item, "diet_satisfaction"),
+                    "satisfaction",
+                )
+
+            with st.container(border=True):
+                st.subheader("Habits")
+                cols = st.columns(4)
+                habits = {}
+                for idx, (key, label) in enumerate(
+                    [
+                        ("gym", "Gym"),
+                        ("cardio", "Cardio"),
+                        ("supplements", "Supplements"),
+                        ("protein_powder", "Protein powder"),
+                        ("alcohol_free", "Alcohol-free"),
+                        ("physio", "Physio"),
+                        ("drugs", "Drugs"),
+                        ("fasted", "Fasting"),
+                    ]
+                ):
+                    habits[key] = cols[idx % 4].checkbox(
+                        label,
+                        value=bool(value(item, key, False)),
+                        key=f"{key}_{date_key}",
+                    )
+
+            with st.container(border=True):
+                st.subheader("Extenuating circumstances")
+                circumstance_cols = st.columns(3)
+                circumstances = {}
+                for idx, (key, label) in enumerate(
+                    [
+                        ("illness", "Illness"),
+                        ("injury", "Injury"),
+                        ("travel", "Travel"),
+                        ("unusual_day", "Unusual day"),
+                        ("holiday", "Holiday"),
+                    ]
+                ):
+                    circumstances[key] = circumstance_cols[idx % 3].checkbox(
+                        label,
+                        value=bool(value(item, key, False)),
+                        key=f"{key}_{date_key}",
+                    )
 
             evening_submitted = st.form_submit_button(
                 "Save evening check-in", use_container_width=True, type="primary"
@@ -1013,33 +1034,37 @@ def weekly_coaching():
     df = load_data()
     summary = weekly_coaching_summary(df, today, _profile)
 
-    cols = st.columns(4)
-    cols[0].metric("Days logged", f"{summary['logged_days']}/7")
-    cols[1].metric("Completion", f"{summary['completion']}%")
-    change = summary.get("weight_change")
-    cols[2].metric("Weekly weight trend", f"{change:+.1f} kg" if change is not None else "—")
-    cols[3].metric("Weight lost", f"{summary.get('loss_percent', 0):.1f}%")
-    if summary.get("milestone"):
-        st.success(f"Milestone reached: {summary['milestone']}% of starting weight lost.")
-    if summary.get("plateau"):
+    with st.container(border=True):
+        st.subheader("This week's evidence")
+        cols = st.columns(4)
+        cols[0].metric("Days logged", f"{summary['logged_days']}/7")
+        cols[1].metric("Completion", f"{summary['completion']}%")
+        change = summary.get("weight_change")
+        cols[2].metric(
+            "Weekly weight trend", f"{change:+.1f} kg" if change is not None else "—"
+        )
+        cols[3].metric("Weight lost", f"{summary.get('loss_percent', 0):.1f}%")
+        if summary.get("milestone"):
+            st.success(f"Milestone reached: {summary['milestone']}% of starting weight lost.")
+        if summary.get("plateau"):
+            st.markdown(
+                "<div class='neutral-note'>The four-week weight trend is broadly flat. Review "
+                "logging completeness, portions, weekends and activity before lowering "
+                "calories.</div>",
+                unsafe_allow_html=True,
+            )
+        averages = summary.get("averages", {})
+        habits = summary.get("habits", {})
+        evidence = st.columns(4)
+        evidence[0].metric("Average steps", f"{averages.get('steps', 0):,.0f}")
+        evidence[1].metric("Average sleep", f"{averages.get('sleep_hours', 0):.1f} h")
+        evidence[2].metric("Gym sessions", habits.get("gym", 0))
+        evidence[3].metric("Alcohol-free days", habits.get("alcohol_free", 0))
         st.markdown(
-            "<div class='neutral-note'>The four-week weight trend is broadly flat. Review "
-            "logging completeness, portions, weekends and activity before lowering calories.</div>",
+            f"<div class='neutral-note'><strong>Suggested next action:</strong> "
+            f"{summary['recommendation']}</div>",
             unsafe_allow_html=True,
         )
-    st.subheader("This week's evidence")
-    averages = summary.get("averages", {})
-    habits = summary.get("habits", {})
-    evidence = st.columns(4)
-    evidence[0].metric("Average steps", f"{averages.get('steps', 0):,.0f}")
-    evidence[1].metric("Average sleep", f"{averages.get('sleep_hours', 0):.1f} h")
-    evidence[2].metric("Gym sessions", habits.get("gym", 0))
-    evidence[3].metric("Alcohol-free days", habits.get("alcohol_free", 0))
-    st.markdown(
-        f"<div class='neutral-note'><strong>Suggested next action:</strong> "
-        f"{summary['recommendation']}</div>",
-        unsafe_allow_html=True,
-    )
 
     saved = get_weekly_plan(week_start)
     with st.form("weekly_plan"):
@@ -1055,7 +1080,7 @@ def weekly_coaching():
         focus_key = f"weekly_focus_{week_key}"
         focus = st.text_input(
             "One behaviour to focus on",
-            value=value(saved, "focus", summary["recommendation"]),
+            value=value(saved, "focus", ""),
             placeholder=example_placeholder("Take a 20-minute walk after lunch."),
             key=focus_key,
         )
@@ -1204,7 +1229,7 @@ def food_log():
         )
 
 def nutrition_insights():
-    st.title("Insights")
+    st.title("Trends")
     st.caption("Daily estimates compared with targets")
     df = load_data()
     with Session(engine) as session:
@@ -1294,6 +1319,7 @@ def nutrition_insights():
             period_options,
             default=period_view,
             key="nutrition_period_view",
+            label_visibility="collapsed",
             width="stretch",
         )
         or "Week"
@@ -1433,16 +1459,17 @@ def nutrition_insights():
             alt.vconcat(
                 trend_chart + trend_target,
                 average_bars + average_target + average_labels,
-                spacing=24,
+                spacing=48,
                 bounds="flush",
             )
             .resolve_scale(color="independent")
         )
-        st.altair_chart(
-            style_chart(combined_chart),
-            use_container_width=True,
-            theme=None,
-        )
+        with st.container(key="nutrition_charts"):
+            st.altair_chart(
+                style_chart(combined_chart),
+                use_container_width=True,
+                theme=None,
+            )
     else:
         st.info("No food estimates exist in the selected period.")
     st.markdown(
@@ -1674,31 +1701,13 @@ def settings_page():
             fat = cols[3].number_input(
                 "Fat (g)", 20, 300, goals.fat_target_g, key="target_fat"
             )
-            cols = st.columns(3)
-            fibre = cols[0].number_input(
+            fibre = st.number_input(
                 "Fibre (g)", 0, 100, goals.fibre_target_g, key="target_fibre"
-            )
-            fasting = cols[1].number_input(
-                "Fasting target (hours)",
-                0.0,
-                36.0,
-                goals.fasting_target_hours,
-                0.5,
-                key="target_fasting",
-            )
-            sleep = cols[2].number_input(
-                "Sleep target (hours)",
-                0.0,
-                16.0,
-                goals.sleep_target_hours,
-                0.25,
-                key="target_sleep",
             )
             if st.form_submit_button("Save targets", type="primary", use_container_width=True):
                 goals.calorie_target, goals.protein_target_g = calories, protein
                 goals.carbs_target_g, goals.fat_target_g = carbs, fat
-                goals.fibre_target_g, goals.fasting_target_hours = fibre, fasting
-                goals.sleep_target_hours = sleep
+                goals.fibre_target_g = fibre
                 with st.spinner("Saving targets…"):
                     session.commit()
                 st.session_state.targets_saved = "Targets saved."
@@ -1725,9 +1734,10 @@ def settings_page():
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
-    st.info(
-        "BMI, calorie targets, and AI nutrition estimates are informational only—"
-        "not medical advice."
+    st.markdown(
+        "<div class='neutral-note'>BMI, calorie targets, and AI nutrition estimates are "
+        "informational only—not medical advice.</div>",
+        unsafe_allow_html=True,
     )
 
 
@@ -1735,7 +1745,7 @@ home_page = st.Page(home, title="Home", default=True)
 dashboard_page = st.Page(dashboard, title="Dashboard")
 check_in_page = st.Page(daily_entry, title="Check-in")
 journal_page = st.Page(food_log, title="Journal")
-nutrition_page = st.Page(nutrition_insights, title="Insights")
+nutrition_page = st.Page(nutrition_insights, title="Trends")
 coaching_page = st.Page(weekly_coaching, title="Coaching")
 targets_page = st.Page(settings_page, title="Targets")
 appearance = st.Page(appearance_page, title="Appearance")
@@ -1746,14 +1756,19 @@ standard_pages = [
     journal_page,
     nutrition_page,
     coaching_page,
-    targets_page,
 ]
-page = st.navigation([*standard_pages, appearance], position="hidden")
+page = st.navigation([*standard_pages, targets_page, appearance], position="hidden")
 with st.sidebar:
     for navigation_page in standard_pages:
         st.page_link(navigation_page, use_container_width=True)
     with st.container(key="sidebar_brand_watermark"):
         st.image(str(BRAND_MARK_PATH), width=144)
+    targets_action = st.container(key="targets_action")
+    targets_action.page_link(
+        targets_page,
+        icon=":material/track_changes:",
+        use_container_width=True,
+    )
     appearance_action = st.container(key="appearance_action")
     appearance_action.page_link(
         appearance,

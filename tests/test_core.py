@@ -30,7 +30,7 @@ from health_tracker.auth import (
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
 from health_tracker.models import Base, DailyEntry
-from health_tracker.nutrition import DailyNutritionEstimate
+from health_tracker.nutrition import DailyNutritionEstimate, quality_assure_estimate
 from health_tracker.quotes import QUOTES, daily_item, quote_count, weekly_item
 from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import derived_palette, normalize_color
@@ -309,6 +309,121 @@ def test_nutrition_schema_parses():
         }
     )
     assert estimate.calories == 200
+
+
+def test_nutrition_qa_reconciles_day_totals_from_meals():
+    estimate = DailyNutritionEstimate.model_validate(
+        {
+            "meals": [
+                {
+                    "label": "Breakfast",
+                    "foods": ["porridge"],
+                    "calories": 320,
+                    "protein_g": 14.24,
+                    "carbs_g": 49.26,
+                    "fat_g": 7.11,
+                    "fibre_g": 6.04,
+                },
+                {
+                    "label": "Lunch",
+                    "foods": ["sandwich"],
+                    "calories": 485,
+                    "protein_g": 28.31,
+                    "carbs_g": 55.18,
+                    "fat_g": 16.07,
+                    "fibre_g": 7.02,
+                },
+            ],
+            "summary": "Typical UK portions assumed.",
+            "calories": 999,
+            "protein_g": 999,
+            "carbs_g": 999,
+            "fat_g": 999,
+            "fibre_g": 999,
+            "confidence": "medium",
+        }
+    )
+
+    checked = quality_assure_estimate(estimate)
+
+    assert checked.calories == 805
+    assert checked.protein_g == 42.5
+    assert checked.carbs_g == 104.4
+    assert checked.fat_g == 23.2
+    assert checked.fibre_g == 13.1
+
+
+def test_uk_per_slice_label_reference_case():
+    reference = DailyNutritionEstimate.model_validate(
+        {
+            "meals": [
+                {
+                    "label": "Lunch",
+                    "foods": ["2 × 44 g slices of bread"],
+                    "calories": 2 * 105,
+                    "protein_g": 2 * 3.4,
+                    "carbs_g": 2 * 20.0,
+                    "fat_g": 2 * 0.7,
+                    "fibre_g": 2 * 1.2,
+                }
+            ],
+            "summary": "Used the stated UK per-slice label.",
+            "calories": 210,
+            "protein_g": 6.8,
+            "carbs_g": 40.0,
+            "fat_g": 1.4,
+            "fibre_g": 2.4,
+            "confidence": "high",
+        }
+    )
+
+    checked = quality_assure_estimate(reference)
+
+    nutrients = checked.model_dump(
+        include={"calories", "protein_g", "carbs_g", "fat_g", "fibre_g"}
+    )
+    assert nutrients == {
+        "calories": 210,
+        "protein_g": 6.8,
+        "carbs_g": 40.0,
+        "fat_g": 1.4,
+        "fibre_g": 2.4,
+    }
+
+
+def test_uk_per_100g_label_reference_case():
+    portion_grams = 400
+    multiplier = portion_grams / 100
+    reference = DailyNutritionEstimate.model_validate(
+        {
+            "meals": [
+                {
+                    "label": "Dinner",
+                    "foods": ["400 g labelled ready meal"],
+                    "calories": round(125 * multiplier),
+                    "protein_g": 6 * multiplier,
+                    "carbs_g": 15 * multiplier,
+                    "fat_g": 4 * multiplier,
+                    "fibre_g": 2 * multiplier,
+                }
+            ],
+            "summary": "Scaled the stated values from 100 g to the 400 g portion.",
+            "calories": 500,
+            "protein_g": 24,
+            "carbs_g": 60,
+            "fat_g": 16,
+            "fibre_g": 8,
+            "confidence": "high",
+        }
+    )
+
+    checked = quality_assure_estimate(reference)
+
+    assert checked.calories == 500
+    assert checked.protein_g == 24
+    assert checked.carbs_g == 60
+    assert checked.fat_g == 16
+    assert checked.fibre_g == 8
 
 
 def test_streak_uses_yesterday_if_today_missing():
