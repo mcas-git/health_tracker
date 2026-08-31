@@ -514,7 +514,7 @@ def apply_theme(
         .st-key-smartwatch_intro,
         .st-key-smartwatch_load,
         .st-key-smartwatch_result {{
-            box-sizing:border-box; padding-inline:1rem;
+            box-sizing:border-box; padding-inline:0;
         }}
         .st-key-smartwatch_load button:hover,
         .st-key-smartwatch_load button:focus {{
@@ -1103,8 +1103,11 @@ def apply_theme(
         }}
 
         .st-key-smartwatch_load button {{
-            background-color:#FFFFFF !important; border-color:#00A6CE !important;
-            color:#111111 !important;
+            background-color:#FFFFFF !important; {garmin_logo_css}
+            background-repeat:no-repeat !important; background-position:center !important;
+            background-size:86px auto !important; border-color:#00A6CE !important;
+            color:#111111 !important; min-height:2.8rem !important;
+            height:2.8rem !important;
         }}
         .st-key-smartwatch_load button:hover,
         .st-key-smartwatch_load button:focus {{

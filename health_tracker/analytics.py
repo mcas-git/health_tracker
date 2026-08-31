@@ -51,6 +51,23 @@ def load_data() -> pd.DataFrame:
     return left.merge(right, on="entry_date", how="outer").sort_values("entry_date")
 
 
+def nutrition_period_bounds(
+    entry_dates: pd.Series,
+    selected_date: date | datetime | pd.Timestamp,
+    window_days: int,
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Return a rolling nutrition window ending on the latest available record."""
+    selected = pd.Timestamp(selected_date).normalize()
+    dates = pd.to_datetime(entry_dates, errors="coerce").dropna().dt.normalize()
+    eligible = dates[dates <= selected]
+    if eligible.empty:
+        return selected - pd.Timedelta(window_days - 1, unit="D"), selected
+    period_end = eligible.max()
+    requested_start = period_end - pd.Timedelta(window_days - 1, unit="D")
+    period_start = max(requested_start, dates.min())
+    return period_start, period_end
+
+
 def recent_kpi_table(df: pd.DataFrame, limit: int = 14) -> pd.DataFrame:
     """Build the compact dashboard export, including recorded circumstances."""
     data = df.copy()

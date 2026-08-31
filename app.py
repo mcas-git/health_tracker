@@ -18,6 +18,7 @@ from health_tracker.analytics import (
     health_journey_score,
     load_data,
     morning_checkin_complete,
+    nutrition_period_bounds,
     projected_target_date,
     recent_kpi_table,
     weekly_coaching_summary,
@@ -581,12 +582,13 @@ def dashboard():
             theme=None,
         )
         latest_weight_row = weight.iloc[-1]
+        weight_change = latest_weight_row["weight_kg"] - _profile.start_weight_kg
         st.caption(
             f"Latest recorded weight: {latest_weight_row['weight_kg']:.1f} kg on "
-            f"{latest_weight_row['entry_date']:%d %b %Y}."
+            f"{latest_weight_row['entry_date']:%d %b %Y}.<br>"
+            f"This is {weight_change:+.1f} kg from the beginning.",
+            unsafe_allow_html=True,
         )
-        weight_change = latest_weight_row["weight_kg"] - _profile.start_weight_kg
-        st.caption(f"This is {weight_change:+.1f} kg from the beginning.")
     else:
         st.caption("No weight entries yet.")
 
@@ -1326,17 +1328,10 @@ def nutrition_insights():
         or "Week"
     )
 
-    selected_timestamp = pd.Timestamp(selected).normalize()
-    if period_view == "Month":
-        period_start = selected_timestamp.replace(day=1)
-        period_end = period_start + pd.offsets.MonthEnd(1)
-    else:
-        period_start = selected_timestamp - pd.Timedelta(
-            days=selected_timestamp.weekday()
-        )
-        period_end = period_start + pd.Timedelta(
-            days=13 if period_view == "Two weeks" else 6
-        )
+    window_days = {"Week": 7, "Two weeks": 14, "Month": 30}[period_view]
+    period_start, period_end = nutrition_period_bounds(
+        nutrition["entry_date"], selected, window_days
+    )
     selected_period = nutrition[
         nutrition.entry_date.dt.normalize().between(period_start, period_end)
     ].copy()
@@ -1371,7 +1366,11 @@ def nutrition_insights():
                         grid=False,
                     ),
                 ),
-                y=alt.Y("% of target:Q", title=None),
+                y=alt.Y(
+                    "% of target:Q",
+                    title=None,
+                    axis=alt.Axis(minExtent=42, maxExtent=42),
+                ),
                 color=alt.Color(
                     "Nutrient:N",
                     sort=list(fields),
@@ -1390,7 +1389,12 @@ def nutrition_insights():
         )
         trend_target = (
             alt.Chart(pd.DataFrame({"target": [100]}))
-            .mark_rule(color="#D8D8D8", strokeWidth=2, opacity=0.7)
+            .mark_rule(
+                color="#D8D8D8",
+                strokeWidth=2,
+                strokeDash=[6, 5],
+                opacity=0.7,
+            )
             .encode(y="target:Q")
         )
         period_average = []
@@ -1418,7 +1422,18 @@ def nutrition_insights():
                         values=list(range(25, 201, 25)),
                     ),
                 ),
-                y=alt.Y("Nutrient:N", sort=list(fields), title=None, axis=None),
+                y=alt.Y(
+                    "Nutrient:N",
+                    sort=list(fields),
+                    title=None,
+                    axis=alt.Axis(
+                        labels=False,
+                        ticks=False,
+                        domain=False,
+                        minExtent=42,
+                        maxExtent=42,
+                    ),
+                ),
                 color=alt.Color(
                     "Status:N",
                     scale=alt.Scale(
@@ -1452,7 +1467,17 @@ def nutrition_insights():
             )
             .encode(
                 x=alt.value(0),
-                y=alt.Y("Nutrient:N", sort=list(fields), axis=None),
+                y=alt.Y(
+                    "Nutrient:N",
+                    sort=list(fields),
+                    axis=alt.Axis(
+                        labels=False,
+                        ticks=False,
+                        domain=False,
+                        minExtent=42,
+                        maxExtent=42,
+                    ),
+                ),
                 text=alt.Text("Nutrient:N"),
             )
         )
@@ -1564,6 +1589,19 @@ def appearance_page():
             "Font",
             list(FONTS),
             index=(list(FONTS).index(prefs.font_family) if prefs.font_family in FONTS else 0),
+            key="font_picker",
+        )
+        st.html(
+            f"""
+            <style>
+            .st-key-font_picker input,
+            .st-key-font_picker [role="combobox"],
+            .st-key-font_picker [role="combobox"] *,
+            .st-key-font_picker [data-baseweb="select"] * {{
+                font-family:{FONTS[font]} !important;
+            }}
+            </style>
+            """
         )
         smooth_charts = st.toggle(
             "Smooth line graphs",
@@ -1580,11 +1618,6 @@ def appearance_page():
                 "Turn on to use the selected palette colour for saved-entry ticks and their "
                 "hover messages. Turn off to use a lighter green."
             ),
-        )
-        st.markdown(
-            f'<div style="font-family:{FONTS[font]};font-size:1.15rem;padding:.5rem 0">'
-            f"Selected: {font} — The quick brown fox — 0123456789</div>",
-            unsafe_allow_html=True,
         )
         if st.button("Save appearance", type="primary", use_container_width=True):
             try:

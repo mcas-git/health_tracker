@@ -17,6 +17,7 @@ from health_tracker.analytics import (
     health_journey_score,
     morning_checkin_complete,
     morning_measurement_status,
+    nutrition_period_bounds,
     recent_kpi_table,
     weekly_coaching_summary,
     weight_milestones,
@@ -204,6 +205,27 @@ def test_load_data_keeps_daily_schema_when_only_nutrition_is_recorded(monkeypatc
     assert "weight_kg" in data.columns
     assert data["weight_kg"].isna().all()
     assert data.loc[0, "calories"] == 450
+
+
+def test_nutrition_period_bounds_use_latest_available_record_and_clip_short_history():
+    dates = pd.Series(pd.to_datetime(["2026-08-25", "2026-08-27", "2026-08-29"]))
+
+    week_start, week_end = nutrition_period_bounds(dates, date(2026, 8, 31), 7)
+    month_start, month_end = nutrition_period_bounds(dates, date(2026, 8, 31), 30)
+
+    assert week_start == pd.Timestamp("2026-08-25")
+    assert week_end == pd.Timestamp("2026-08-29")
+    assert month_start == pd.Timestamp("2026-08-25")
+    assert month_end == pd.Timestamp("2026-08-29")
+
+
+def test_nutrition_period_bounds_keep_full_rolling_window_when_history_exists():
+    dates = pd.Series(pd.date_range("2026-07-01", "2026-08-29", freq="D"))
+
+    period_start, period_end = nutrition_period_bounds(dates, date(2026, 8, 31), 30)
+
+    assert period_start == pd.Timestamp("2026-07-31")
+    assert period_end == pd.Timestamp("2026-08-29")
 
 
 def test_garmin_sync_uses_selected_date_for_stats_and_overnight_sleep(monkeypatch):
