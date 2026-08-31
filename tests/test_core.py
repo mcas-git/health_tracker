@@ -6,7 +6,7 @@ import pandas as pd
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
 
-from health_tracker import db, garmin
+from health_tracker import analytics, db, garmin
 from health_tracker.analytics import (
     bmi_status,
     current_streak,
@@ -29,7 +29,7 @@ from health_tracker.auth import (
 )
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
-from health_tracker.models import Base, DailyEntry
+from health_tracker.models import Base, DailyEntry, NutritionLog
 from health_tracker.nutrition import DailyNutritionEstimate, quality_assure_estimate
 from health_tracker.quotes import QUOTES, daily_item, quote_count, weekly_item
 from health_tracker.research import RESEARCH_INSIGHTS
@@ -176,6 +176,34 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
     assert latest is not None
     assert latest.entry_date == date(2026, 8, 22)
     assert latest.weight_kg == 100.8
+
+
+def test_load_data_keeps_daily_schema_when_only_nutrition_is_recorded(monkeypatch):
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        session.add(
+            NutritionLog(
+                entry_date=date(2026, 8, 25),
+                raw_note="Porridge with berries",
+                meals_json="[]",
+                calories=450,
+                protein_g=18,
+                carbs_g=70,
+                fat_g=10,
+                fibre_g=9,
+                confidence="medium",
+                model="test",
+            )
+        )
+        session.commit()
+    monkeypatch.setattr(analytics, "engine", test_engine)
+
+    data = analytics.load_data()
+
+    assert "weight_kg" in data.columns
+    assert data["weight_kg"].isna().all()
+    assert data.loc[0, "calories"] == 450
 
 
 def test_garmin_sync_uses_selected_date_for_stats_and_overnight_sleep(monkeypatch):

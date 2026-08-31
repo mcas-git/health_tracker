@@ -96,20 +96,24 @@ def _login_shell_intro(message: str | None = None) -> None:
         st.caption(message)
 
 
+def sign_out(auth_context: AuthContext | stx.CookieManager) -> None:
+    if isinstance(auth_context, AuthContext) and auth_context.mode == "oidc":
+        st.logout()
+        return
+    cookie_manager = (
+        auth_context.cookie_manager
+        if isinstance(auth_context, AuthContext)
+        else auth_context
+    )
+    if cookie_manager is not None:
+        cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
+    st.session_state.authenticated = False
+    st.rerun()
+
+
 def sign_out_button(auth_context: AuthContext | stx.CookieManager) -> None:
     if st.button("Log out", icon=":material/logout:", use_container_width=True):
-        if isinstance(auth_context, AuthContext) and auth_context.mode == "oidc":
-            st.logout()
-            return
-        cookie_manager = (
-            auth_context.cookie_manager
-            if isinstance(auth_context, AuthContext)
-            else auth_context
-        )
-        if cookie_manager is not None:
-            cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
-        st.session_state.authenticated = False
-        st.rerun()
+        sign_out(auth_context)
 
 
 def _require_google_login() -> AuthContext:

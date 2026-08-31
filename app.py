@@ -23,7 +23,7 @@ from health_tracker.analytics import (
     weekly_coaching_summary,
     weight_milestones,
 )
-from health_tracker.auth import require_login, sign_out_button
+from health_tracker.auth import require_login, sign_out
 from health_tracker.config import LONDON, Profile, setting
 from health_tracker.config import PROFILE as DEFAULT_PROFILE
 from health_tracker.db import (
@@ -300,8 +300,7 @@ def style_chart(chart):
     grid = palette["grid"]
     accent = palette["accent"]
     secondary = palette["series"][1]
-    chart_font = FONTS.get(_theme_values[2], FONTS["Modern sans"]).split(",", 1)[0]
-    chart_font = chart_font.strip(" '\"")
+    chart_font = FONTS.get(_theme_values[2], FONTS["Modern sans"])
     return (
         chart.configure(background="transparent", font=chart_font)
         .configure_view(strokeOpacity=0)
@@ -578,7 +577,7 @@ def dashboard():
             weight_chart = weight_chart + milestone_points + milestone_labels
         st.altair_chart(
             style_chart(weight_chart.properties(height=chart_height)),
-            use_container_width=True,
+            width="stretch",
             theme=None,
         )
         latest_weight_row = weight.iloc[-1]
@@ -678,7 +677,7 @@ def dashboard():
                     )
                 )
                 kpi_layers = kpi_layers + ideal_line
-            st.altair_chart(style_chart(kpi_layers), use_container_width=True, theme=None)
+            st.altair_chart(style_chart(kpi_layers), width="stretch", theme=None)
             reference = f" [Reference]({goal['url']})" if goal["url"] else ""
             st.caption(f"Goal anchor: **{goal['label']}** — {goal['note']}{reference}")
         else:
@@ -823,30 +822,12 @@ def daily_entry():
     with st.expander(evening_label, expanded=False):
         evening_item = item if update_another_day else None
         evening_key_mode = "historical" if update_another_day else "today_blank_v2"
-        with st.container(key="smartwatch_intro"):
-            status_heading(
-                "Smartwatch data",
-                smartwatch_confirmation,
-                level=3,
-                help_text=(
-                    "Loads the selected date from Garmin. Sleep is the overnight sleep Garmin "
-                    "assigns to that date, normally the night ending that morning. Data comes "
-                    "from Garmin Connect after the watch has finished syncing."
-                ),
-            )
-        with st.container(key="smartwatch_load"):
-            if st.button(
-                "Load smartwatch data from Garmin",
-                use_container_width=True,
-                key=f"load_garmin_{date_key}",
-            ):
-                st.session_state.smartwatch_sync_requested = selected
-                st.rerun()
 
         def smartwatch_value(field):
             imported = synced.get(field)
             return imported if imported is not None else value(evening_item, field)
 
+        smartwatch_result_caption = None
         if synced:
             active_calories = synced.get("active_calories")
             resting_calories = synced.get("resting_calories")
@@ -872,15 +853,13 @@ def daily_entry():
                     f" · {active_calories or 0:,.0f} active + "
                     f"{resting_calories or 0:,.0f} resting kcal"
                 )
-            with st.container(key="smartwatch_result"):
-                st.caption(
-                    f"Garmin Connect returned {steps_label} steps · "
-                    f"{sleep_label} h sleep · {heart_label} bpm resting · "
-                    f"{total_calorie_label} total kcal"
-                    f"{calorie_detail}."
-                )
+            smartwatch_result_caption = (
+                f"Garmin Connect returned {steps_label} steps · "
+                f"{sleep_label} h sleep · {heart_label} bpm resting · "
+                f"{total_calorie_label} total kcal{calorie_detail}."
+            )
 
-        with st.form(f"evening_form_{date_key}"):
+        with st.form(f"evening_form_{date_key}", border=False):
             evening_keys = {
                 "resting_hr": f"resting_hr_{evening_key_mode}_{date_key}_{sync_revision}",
                 "sleep": f"sleep_{evening_key_mode}_{date_key}_{sync_revision}",
@@ -892,7 +871,21 @@ def daily_entry():
                 "satisfaction": f"diet_satisfaction_{evening_key_mode}_{date_key}",
             }
             with st.container(border=True):
-                st.subheader("Smartwatch data")
+                with st.container(key="smartwatch_intro"):
+                    status_heading(
+                        "Smartwatch data",
+                        smartwatch_confirmation,
+                        level=3,
+                    )
+                with st.container(key="smartwatch_load"):
+                    garmin_submitted = st.form_submit_button(
+                        "Load smartwatch data from Garmin",
+                        use_container_width=True,
+                        key=f"load_garmin_{date_key}",
+                    )
+                if smartwatch_result_caption:
+                    with st.container(key="smartwatch_result"):
+                        st.caption(smartwatch_result_caption)
                 c1, c2, c3, c4 = st.columns(4)
                 resting_value = smartwatch_value("resting_heart_rate")
                 resting_hr = c1.number_input(
@@ -929,7 +922,6 @@ def daily_entry():
                     10000,
                     value=int(burned_value) if burned_value is not None else None,
                     disabled=True,
-                    help="Garmin total calories combine active and resting (BMR) calories.",
                     key=evening_keys["burned"],
                 )
 
@@ -1001,7 +993,10 @@ def daily_entry():
             evening_submitted = st.form_submit_button(
                 "Save evening check-in", use_container_width=True, type="primary"
             )
-        if evening_submitted:
+        if garmin_submitted:
+            st.session_state.smartwatch_sync_requested = selected
+            st.rerun()
+        elif evening_submitted:
             with st.spinner("Saving evening check-in…"):
                 upsert_daily(
                     {
@@ -1063,6 +1058,12 @@ def weekly_coaching():
             f"<div class='neutral-note'><strong>Suggested next action:</strong> "
             f"{summary['recommendation']}</div>",
             unsafe_allow_html=True,
+        )
+        st.caption(
+            "How it is chosen: the first area needing attention is selected in this order—"
+            "at least five logged days, protein averaging 1.5 g per kg of goal weight, "
+            "7,000 daily steps, then seven hours of sleep. A sustained four-week weight "
+            "plateau takes priority and prompts a review before calorie targets are changed."
         )
 
     saved = get_weekly_plan(week_start)
@@ -1467,7 +1468,7 @@ def nutrition_insights():
         with st.container(key="nutrition_charts"):
             st.altair_chart(
                 style_chart(combined_chart),
-                use_container_width=True,
+                width="stretch",
                 theme=None,
             )
     else:
@@ -1741,6 +1742,10 @@ def settings_page():
     )
 
 
+def log_out_page():
+    sign_out(auth_context)
+
+
 home_page = st.Page(home, title="Home", default=True)
 dashboard_page = st.Page(dashboard, title="Dashboard")
 check_in_page = st.Page(daily_entry, title="Check-in")
@@ -1749,6 +1754,7 @@ nutrition_page = st.Page(nutrition_insights, title="Trends")
 coaching_page = st.Page(weekly_coaching, title="Coaching")
 targets_page = st.Page(settings_page, title="Targets")
 appearance = st.Page(appearance_page, title="Appearance")
+log_out = st.Page(log_out_page, title="Log out")
 standard_pages = [
     home_page,
     dashboard_page,
@@ -1757,7 +1763,7 @@ standard_pages = [
     nutrition_page,
     coaching_page,
 ]
-page = st.navigation([*standard_pages, targets_page, appearance], position="hidden")
+page = st.navigation([*standard_pages, targets_page, appearance, log_out], position="hidden")
 with st.sidebar:
     for navigation_page in standard_pages:
         st.page_link(navigation_page, use_container_width=True)
@@ -1772,5 +1778,9 @@ with st.sidebar:
             icon=":material/palette:",
             use_container_width=True,
         )
-        sign_out_button(auth_context)
+        st.page_link(
+            log_out,
+            icon=":material/logout:",
+            use_container_width=True,
+        )
 page.run()

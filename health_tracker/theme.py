@@ -356,6 +356,16 @@ def apply_theme(
         }}
         .nutrition-metric-status {{ color:{text}; font-size:.9rem; font-weight:650; }}
         .st-key-nutrition_charts {{ margin:1rem 0 1.75rem; }}
+        [data-testid="stVegaLiteChart"],
+        [data-testid="stVegaLiteChart"] > div,
+        [data-testid="stVegaLiteChart"] .vega-embed {{
+            width:100% !important; max-width:100% !important; min-width:0 !important;
+            box-sizing:border-box !important; overflow-x:clip !important;
+        }}
+        [data-testid="stVegaLiteChart"] svg,
+        [data-testid="stVegaLiteChart"] canvas {{
+            max-width:100% !important; height:auto !important;
+        }}
         .palette-preview {{
             display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr));
             gap:10px; margin:.5rem 0 1.25rem;
@@ -493,32 +503,6 @@ def apply_theme(
         [data-testid="stSidebar"] {{ overflow:hidden !important; }}
         .st-key-sidebar_bottom_actions {{
             position:absolute; right:0; bottom:4.7rem; left:0; z-index:2;
-        }}
-        .st-key-sidebar_bottom_actions [data-testid="stVerticalBlock"] {{
-            gap:.15rem !important;
-        }}
-        .st-key-sidebar_bottom_actions a,
-        .st-key-sidebar_bottom_actions button {{
-            width:100% !important; min-height:2.25rem; box-sizing:border-box;
-            justify-content:flex-start !important; padding:.375rem .5rem !important;
-            background:transparent !important; color:{accent_text} !important;
-            border:0 !important; border-radius:.5rem !important;
-            text-align:left !important; box-shadow:none !important;
-        }}
-        .st-key-sidebar_bottom_actions a:hover,
-        .st-key-sidebar_bottom_actions a:focus,
-        .st-key-sidebar_bottom_actions button:hover,
-        .st-key-sidebar_bottom_actions button:focus {{
-            background:{accent_text}14 !important; color:{accent_text} !important;
-            border:0 !important; box-shadow:none !important;
-        }}
-        .st-key-sidebar_bottom_actions a p,
-        .st-key-sidebar_bottom_actions button p {{
-            width:100%; margin:0; color:{accent_text} !important; text-align:left !important;
-        }}
-        .st-key-sidebar_bottom_actions button > div {{
-            width:100% !important; justify-content:flex-start !important;
-            text-align:left !important;
         }}
         .st-key-smartwatch_load button {{
             background-color:#FFFFFF !important; {garmin_logo_css}

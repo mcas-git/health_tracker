@@ -42,7 +42,10 @@ def load_data() -> pd.DataFrame:
     left = pd.DataFrame(daily_rows)
     right = pd.DataFrame(nutrition_rows)
     if left.empty:
-        left = pd.DataFrame(columns=["entry_date"])
+        # Keep the daily-measurement schema even when the database currently
+        # contains nutrition records only. Dashboard code can then treat those
+        # measurements as missing instead of failing on absent columns.
+        left = pd.DataFrame(columns=[column.name for column in DailyEntry.__table__.columns])
     if right.empty:
         return left
     return left.merge(right, on="entry_date", how="outer").sort_values("entry_date")
