@@ -65,34 +65,82 @@ st.set_page_config(
     page_icon="⚕️",
     layout="wide",
 )
-init_db()
 
-with Session(engine) as _theme_session:
-    _preferences = _theme_session.get(AppPreferences, 1)
-    _theme_values = ("dark", _preferences.accent, _preferences.font_family)
-    _palette_overrides = {
-        palette_key: color
-        for preference_key, palette_key in PALETTE_PREFERENCES.items()
-        if (color := getattr(_preferences, preference_key, None))
-    }
-    _smooth_charts = bool(_preferences.smooth_charts)
-    _success_matches_accent = bool(
-        getattr(_preferences, "success_matches_accent", False)
-    )
-    _show_placeholders = bool(getattr(_preferences, "show_placeholders", True))
-    _show_page_toggles = bool(getattr(_preferences, "show_page_toggles", True))
-    _profile = Profile(
-        age=getattr(_preferences, "age", DEFAULT_PROFILE.age),
-        sex=getattr(_preferences, "sex", DEFAULT_PROFILE.sex),
-        height_cm=getattr(_preferences, "height_cm", DEFAULT_PROFILE.height_cm),
-        start_weight_kg=getattr(
-            _preferences, "start_weight_kg", DEFAULT_PROFILE.start_weight_kg
-        ),
-        target_weight_kg=getattr(
-            _preferences, "target_weight_kg", DEFAULT_PROFILE.target_weight_kg
-        ),
-        target_date=getattr(_preferences, "target_date", DEFAULT_PROFILE.target_date),
-    )
+
+@st.cache_resource(show_spinner=False)
+def initialize_database() -> bool:
+    """Run schema creation and lightweight migrations once per app process."""
+    init_db()
+    return True
+
+
+@st.cache_data(ttl=45, show_spinner=False)
+def cached_load_data() -> pd.DataFrame:
+    """Reuse the journey dataset briefly while navigating between pages."""
+    return load_data()
+
+
+def invalidate_data_cache() -> None:
+    cached_load_data.clear()
+
+
+PREFERENCE_CACHE_KEY = "_startup_preferences"
+STARTUP_PREFERENCE_FIELDS = (
+    "accent",
+    "font_family",
+    "smooth_charts",
+    "success_matches_accent",
+    "show_placeholders",
+    "show_page_toggles",
+    "age",
+    "sex",
+    "height_cm",
+    "start_weight_kg",
+    "target_weight_kg",
+    "target_date",
+    *PALETTE_PREFERENCES,
+)
+
+
+def startup_preferences() -> dict[str, object]:
+    """Keep stable appearance/profile settings in this browser session."""
+    if PREFERENCE_CACHE_KEY not in st.session_state:
+        with Session(engine) as session:
+            preferences = session.get(AppPreferences, 1)
+            st.session_state[PREFERENCE_CACHE_KEY] = {
+                field: getattr(preferences, field, None) for field in STARTUP_PREFERENCE_FIELDS
+            }
+    return st.session_state[PREFERENCE_CACHE_KEY]
+
+
+def invalidate_preferences_cache() -> None:
+    st.session_state.pop(PREFERENCE_CACHE_KEY, None)
+
+
+initialize_database()
+_preferences = startup_preferences()
+_theme_values = (
+    "dark",
+    str(_preferences["accent"]),
+    str(_preferences["font_family"]),
+)
+_palette_overrides = {
+    palette_key: color
+    for preference_key, palette_key in PALETTE_PREFERENCES.items()
+    if (color := _preferences.get(preference_key))
+}
+_smooth_charts = bool(_preferences["smooth_charts"])
+_success_matches_accent = bool(_preferences["success_matches_accent"])
+_show_placeholders = bool(_preferences["show_placeholders"])
+_show_page_toggles = bool(_preferences["show_page_toggles"])
+_profile = Profile(
+    age=int(_preferences["age"] or DEFAULT_PROFILE.age),
+    sex=str(_preferences["sex"] or DEFAULT_PROFILE.sex),
+    height_cm=float(_preferences["height_cm"] or DEFAULT_PROFILE.height_cm),
+    start_weight_kg=float(_preferences["start_weight_kg"] or DEFAULT_PROFILE.start_weight_kg),
+    target_weight_kg=float(_preferences["target_weight_kg"] or DEFAULT_PROFILE.target_weight_kg),
+    target_date=_preferences["target_date"] or DEFAULT_PROFILE.target_date,
+)
 apply_theme(
     *_theme_values,
     _success_matches_accent,
@@ -106,9 +154,7 @@ def app_palette() -> dict[str, str | list[str]]:
 
 
 def reset_palette_controls() -> None:
-    generated = derived_palette(
-        "dark", normalize_color(st.session_state["base_palette_color"])
-    )
+    generated = derived_palette("dark", normalize_color(st.session_state["base_palette_color"]))
     for widget_key, palette_key in PALETTE_WIDGETS.items():
         st.session_state[widget_key] = str(generated[palette_key])
 
@@ -152,9 +198,9 @@ def status_heading(
         )
     st.markdown(
         f'<div class="status-heading status-heading-{level}">'
-        f'<h{level}>{safe_label}</h{level}>'
+        f"<h{level}>{safe_label}</h{level}>"
         f"{help_badge}{saved_badge}"
-        f'</div>',
+        f"</div>",
         unsafe_allow_html=True,
     )
 
@@ -402,16 +448,13 @@ def dashboard():
         f"One calm day at a time · Goal: {_profile.target_weight_kg:g} kg by "
         f"{_profile.target_date:%d %b %Y}"
     )
-    df = load_data()
+    df = cached_load_data()
     latest_weight = (
-        df.weight_kg.dropna().iloc[-1]
-        if "weight_kg" in df and df.weight_kg.notna().any()
-        else None
+        df.weight_kg.dropna().iloc[-1] if "weight_kg" in df and df.weight_kg.notna().any() else None
     )
     goal_range = _profile.start_weight_kg - _profile.target_weight_kg
     progress = (
-        (_profile.start_weight_kg - latest_weight)
-        / goal_range
+        (_profile.start_weight_kg - latest_weight) / goal_range
         if latest_weight is not None and goal_range > 0
         else 0
     )
@@ -456,9 +499,7 @@ def dashboard():
     journey_start = pd.Timestamp(df.entry_date.min()).normalize()
     journey_end = max(pd.Timestamp(_profile.target_date), journey_start)
     date_scale = alt.Scale(domain=[journey_start, journey_end])
-    month_ticks = list(
-        pd.date_range(journey_start, journey_end, freq=pd.DateOffset(months=2))
-    )
+    month_ticks = list(pd.date_range(journey_start, journey_end, freq=pd.DateOffset(months=2)))
     date_axis = alt.Axis(
         title=None,
         format="%b",
@@ -693,6 +734,8 @@ def dashboard():
         "text/csv",
         use_container_width=True,
     )
+
+
 def daily_entry():
     title_area = st.empty()
     error_area = st.empty()
@@ -726,9 +769,7 @@ def daily_entry():
                 smartwatch_data = sync_day(requested_date)
             st.session_state.garmin_sync = {"date": requested_date, "data": smartwatch_data}
             revision_key = f"garmin_sync_revision_{requested_date.isoformat()}"
-            st.session_state[revision_key] = int(
-                st.session_state.get(revision_key, 0)
-            ) + 1
+            st.session_state[revision_key] = int(st.session_state.get(revision_key, 0)) + 1
             smartwatch_confirmation = (
                 f"Smartwatch data loaded for {requested_date:%d %b %Y} · "
                 f"{len(smartwatch_data['activities'])} activities."
@@ -815,6 +856,7 @@ def daily_entry():
                         "diastolic": diastolic,
                     }
                 )
+                invalidate_data_cache()
             for morning_key in morning_keys.values():
                 st.session_state.pop(morning_key, None)
             st.rerun()
@@ -835,9 +877,7 @@ def daily_entry():
             resting_calories = synced.get("resting_calories")
             steps_label = "—" if synced.get("steps") is None else f"{synced['steps']:,}"
             sleep_label = (
-                "—"
-                if synced.get("sleep_hours") is None
-                else f"{synced['sleep_hours']:.2f}"
+                "—" if synced.get("sleep_hours") is None else f"{synced['sleep_hours']:.2f}"
             )
             heart_label = (
                 "—"
@@ -1016,10 +1056,12 @@ def daily_entry():
                         **circumstances,
                     }
                 )
+                invalidate_data_cache()
             st.session_state.pop("garmin_sync", None)
             for evening_key in evening_keys.values():
                 st.session_state.pop(evening_key, None)
             st.rerun()
+
 
 def weekly_coaching():
     weekly_saved_message = st.session_state.pop("weekly_plan_saved", None)
@@ -1027,7 +1069,7 @@ def weekly_coaching():
     st.caption("Review the trend, choose one focus, and plan around real-life barriers")
     today = datetime.now(LONDON).date()
     week_start = today - timedelta(days=today.weekday())
-    df = load_data()
+    df = cached_load_data()
     summary = weekly_coaching_summary(df, today, _profile)
 
     with st.container(border=True):
@@ -1036,9 +1078,7 @@ def weekly_coaching():
         cols[0].metric("Days logged", f"{summary['logged_days']}/7")
         cols[1].metric("Completion", f"{summary['completion']}%")
         change = summary.get("weight_change")
-        cols[2].metric(
-            "Weekly weight trend", f"{change:+.1f} kg" if change is not None else "—"
-        )
+        cols[2].metric("Weekly weight trend", f"{change:+.1f} kg" if change is not None else "—")
         cols[3].metric("Weight lost", f"{summary.get('loss_percent', 0):.1f}%")
         if summary.get("milestone"):
             st.success(f"Milestone reached: {summary['milestone']}% of starting weight lost.")
@@ -1194,6 +1234,7 @@ def food_log():
                 with st.spinner("Estimating meals and nutrition…"):
                     estimate, model = analyse_day(note)
                     save_estimate(selected, note, estimate, model)
+                    invalidate_data_cache()
                 st.session_state.food_journal_saved = (
                     f"Food journal and nutrition estimate saved for {selected:%d %b %Y}."
                 )
@@ -1231,10 +1272,11 @@ def food_log():
             unsafe_allow_html=True,
         )
 
+
 def nutrition_insights():
     st.title("Trends")
     st.caption("Daily estimates compared with targets")
-    df = load_data()
+    df = cached_load_data()
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)
         targets = {
@@ -1374,9 +1416,7 @@ def nutrition_insights():
                 color=alt.Color(
                     "Nutrient:N",
                     sort=list(fields),
-                    scale=alt.Scale(
-                        domain=list(fields), range=list(nutrient_colors.values())
-                    ),
+                    scale=alt.Scale(domain=list(fields), range=list(nutrient_colors.values())),
                     legend=None,
                 ),
                 tooltip=[
@@ -1404,9 +1444,7 @@ def nutrition_insights():
                 continue
             percent = values.mean() / targets[label] * 100
             status = "Low" if percent < 80 else "High" if percent > 120 else "On target"
-            period_average.append(
-                {"Nutrient": label, "% of target": percent, "Status": status}
-            )
+            period_average.append({"Nutrient": label, "% of target": percent, "Status": status})
         average_frame = pd.DataFrame(period_average)
         muted_bar = app_palette()["grid"]
         average_bars = (
@@ -1481,15 +1519,12 @@ def nutrition_insights():
                 text=alt.Text("Nutrient:N"),
             )
         )
-        combined_chart = (
-            alt.vconcat(
-                trend_chart + trend_target,
-                average_bars + average_target + average_labels,
-                spacing=48,
-                bounds="flush",
-            )
-            .resolve_scale(color="independent")
-        )
+        combined_chart = alt.vconcat(
+            trend_chart + trend_target,
+            average_bars + average_target + average_labels,
+            spacing=48,
+            bounds="flush",
+        ).resolve_scale(color="independent")
         with st.container(key="nutrition_charts"):
             st.altair_chart(
                 style_chart(combined_chart),
@@ -1503,6 +1538,8 @@ def nutrition_insights():
         "not medical advice.</div>",
         unsafe_allow_html=True,
     )
+
+
 def appearance_page():
     appearance_saved = st.session_state.pop("appearance_saved", False)
     status_heading(
@@ -1571,9 +1608,7 @@ def appearance_page():
             muted_color = palette_color_picker(
                 palette_columns[0], "Muted text", "muted", "palette_muted"
             )
-            link_color = palette_color_picker(
-                palette_columns[1], "Links", "link", "palette_link"
-            )
+            link_color = palette_color_picker(palette_columns[1], "Links", "link", "palette_link")
             border_color = palette_color_picker(
                 palette_columns[2], "Borders", "border", "palette_border"
             )
@@ -1607,8 +1642,7 @@ def appearance_page():
             "Smooth line graphs",
             value=bool(prefs.smooth_charts),
             help=(
-                "Use seven-entry rolling averages. Turn off to plot every recorded value "
-                "directly."
+                "Use seven-entry rolling averages. Turn off to plot every recorded value directly."
             ),
         )
         success_matches_accent = st.toggle(
@@ -1640,6 +1674,7 @@ def appearance_page():
                     for preference_key, color in palette_colors_to_save.items():
                         setattr(prefs, preference_key, normalize_color(color))
                 session.commit()
+                invalidate_preferences_cache()
                 st.session_state.appearance_saved = True
                 st.rerun()
             except ValueError as exc:
@@ -1718,6 +1753,7 @@ def settings_page():
                     preferences.target_date = goal_date
                     with st.spinner("Saving profile and goal…"):
                         session.commit()
+                    invalidate_preferences_cache()
                     st.session_state.targets_saved = "Profile and goal saved."
                     st.rerun()
         with st.form("goals"):
@@ -1732,12 +1768,8 @@ def settings_page():
             carbs = cols[2].number_input(
                 "Carbs (g)", 20, 600, goals.carbs_target_g, key="target_carbs"
             )
-            fat = cols[3].number_input(
-                "Fat (g)", 20, 300, goals.fat_target_g, key="target_fat"
-            )
-            fibre = st.number_input(
-                "Fibre (g)", 0, 100, goals.fibre_target_g, key="target_fibre"
-            )
+            fat = cols[3].number_input("Fat (g)", 20, 300, goals.fat_target_g, key="target_fat")
+            fibre = st.number_input("Fibre (g)", 0, 100, goals.fibre_target_g, key="target_fibre")
             if st.form_submit_button("Save targets", type="primary", use_container_width=True):
                 goals.calorie_target, goals.protein_target_g = calories, protein
                 goals.carbs_target_g, goals.fat_target_g = carbs, fat
@@ -1747,7 +1779,7 @@ def settings_page():
                 st.session_state.targets_saved = "Targets saved."
                 st.rerun()
     st.subheader("Export")
-    data = load_data()
+    data = cached_load_data()
     export = data.copy()
     if "fasted" in export:
         export["fasting_status"] = export.pop("fasted").map({True: "Fasted", False: "Did not fast"})
