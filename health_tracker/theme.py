@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from base64 import b64encode
 from pathlib import Path
@@ -81,39 +82,41 @@ def _force_dark_mobile_browser_chrome() -> None:
         }
         scheme.content = 'dark';
 
-        if (!documentRoot.documentElement.dataset.healthJourneyMenuAutoclose) {
-            documentRoot.documentElement.dataset.healthJourneyMenuAutoclose = 'true';
-            documentRoot.addEventListener('click', (event) => {
-                const target = event.target instanceof Element ? event.target : null;
-                const pageLink = target?.closest(
-                    '[data-testid="stSidebar"] [data-testid="stPageLink"] a, '
-                    + '[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"]'
-                );
-                if (!pageLink) return;
+        </script>
+        """,
+        unsafe_allow_javascript=True,
+    )
 
-                const destination = new URL(pageLink.href, window.location.href).pathname;
-                const startedAt = Date.now();
-                const closeMenu = () => {
-                    const collapseButton = documentRoot.querySelector(
-                        '[data-testid="stSidebarCollapseButton"] button, '
-                        + '[data-testid="stSidebarHeader"] button'
-                    );
-                    if (collapseButton) {
-                        collapseButton.click();
-                        return;
-                    }
-                    documentRoot.querySelector('[data-testid="stMain"]')?.click();
-                };
-                const closeAfterNavigation = () => {
-                    if (window.location.pathname === destination || Date.now() - startedAt > 5000) {
-                        closeMenu();
-                        return;
-                    }
-                    window.setTimeout(closeAfterNavigation, 100);
-                };
-                window.setTimeout(closeAfterNavigation, 100);
-            }, true);
-        }
+
+def collapse_sidebar_after_page_change(page_key: str) -> None:
+    """Collapse the sidebar after Streamlit has completed a page change."""
+    encoded_page_key = json.dumps(page_key)
+    st.html(
+        f"""
+        <script>
+        (() => {{
+        const currentPageKey = {encoded_page_key};
+        const pageStorageKey = 'health-journey-current-page';
+        const previousPageKey = window.sessionStorage.getItem(pageStorageKey);
+        window.sessionStorage.setItem(pageStorageKey, currentPageKey);
+
+        if (previousPageKey !== null && previousPageKey !== currentPageKey) {{
+            let attempts = 0;
+            const collapseAfterRender = () => {{
+                const collapseButton = document.querySelector(
+                    '[data-testid="stSidebarCollapseButton"] button, '
+                    + '[data-testid="stSidebarHeader"] button'
+                );
+                if (collapseButton) {{
+                    collapseButton.click();
+                    return;
+                }}
+                attempts += 1;
+                if (attempts < 20) window.setTimeout(collapseAfterRender, 50);
+            }};
+            window.setTimeout(collapseAfterRender, 50);
+        }}
+        }})();
         </script>
         """,
         unsafe_allow_javascript=True,
@@ -380,7 +383,7 @@ def apply_theme(
         }}
         .nutrition-metric-card {{
             min-height:132px; box-sizing:border-box;
-            background:color-mix(in srgb, var(--nutrient-color) 30%, {surface});
+            background:color-mix(in srgb, var(--nutrient-color) 36%, {surface});
             border:1px solid var(--nutrient-color); border-radius:16px;
             padding:16px; box-shadow:0 5px 20px #0000000d;
         }}
@@ -389,7 +392,10 @@ def apply_theme(
             color:{text}; font-size:2rem; font-weight:700; line-height:1.25; margin:.2rem 0;
         }}
         .nutrition-metric-status {{ color:{text}; font-size:.9rem; font-weight:650; }}
-        .st-key-nutrition_charts {{ margin:1rem 0 1.75rem; }}
+        .st-key-nutrition_visual_stack {{
+            width:min(100%, 960px); margin-left:auto;
+        }}
+        .st-key-nutrition_charts {{ margin:1rem 0 1.75rem; width:100%; }}
         [data-testid="stVegaLiteChart"],
         [data-testid="stVegaLiteChart"] > div,
         [data-testid="stVegaLiteChart"] .vega-embed {{

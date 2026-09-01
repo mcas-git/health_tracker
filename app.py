@@ -41,7 +41,13 @@ from health_tracker.models import AppPreferences, GoalSettings
 from health_tracker.nutrition import analyse_day, save_estimate
 from health_tracker.quotes import QUOTES, weekly_item
 from health_tracker.research import RESEARCH_INSIGHTS
-from health_tracker.theme import FONTS, apply_theme, derived_palette, normalize_color
+from health_tracker.theme import (
+    FONTS,
+    apply_theme,
+    collapse_sidebar_after_page_change,
+    derived_palette,
+    normalize_color,
+)
 
 PALETTE_PREFERENCES = {
     "background_color": "background",
@@ -1298,7 +1304,7 @@ def nutrition_insights():
         return
     nutrition = df[["entry_date", *fields.values()]].dropna(subset=["calories"]).copy()
     nutrition["entry_date"] = pd.to_datetime(nutrition["entry_date"])
-    yesterday = datetime.now(LONDON).date() - timedelta(days=1)
+    last_entry = nutrition["entry_date"].max().date()
     inspect_another_day = False
     if _show_page_toggles:
         inspect_another_day = st.toggle(
@@ -1310,13 +1316,13 @@ def nutrition_insights():
         if inspect_another_day:
             selected = st.date_input(
                 "Date to inspect",
-                value=yesterday,
+                value=last_entry,
                 max_value=datetime.now(LONDON).date(),
                 key="nutrition_inspect_date",
                 width="stretch",
             )
     if not inspect_another_day:
-        selected = yesterday
+        selected = last_entry
     period_options = ["Week", "Two weeks", "Month"]
     period_view = st.session_state.get("nutrition_period_view", "Week")
     if period_view not in period_options:
@@ -1335,7 +1341,7 @@ def nutrition_insights():
         "Fibre": "#4F8A55",
     }
     day = nutrition[nutrition.entry_date.dt.date == selected]
-    st.subheader("Yesterday" if selected == yesterday else "Selected day")
+    st.subheader("Last entry" if selected == last_entry else "Selected day")
     if day.empty:
         st.info("No food estimate exists for this day.")
     else:
@@ -1411,7 +1417,7 @@ def nutrition_insights():
                 y=alt.Y(
                     "% of target:Q",
                     title=None,
-                    axis=alt.Axis(minExtent=42, maxExtent=42),
+                    axis=alt.Axis(orient="right", minExtent=42, maxExtent=42),
                 ),
                 color=alt.Color(
                     "Nutrient:N",
@@ -1425,7 +1431,7 @@ def nutrition_insights():
                     alt.Tooltip("% of target:Q", title="Target", format=".0f"),
                 ],
             )
-            .properties(height=280)
+            .properties(height=280, width="container")
         )
         trend_target = (
             alt.Chart(pd.DataFrame({"target": [100]}))
@@ -1487,7 +1493,7 @@ def nutrition_insights():
                     alt.Tooltip("% of target:Q", title="Average", format=".0f"),
                 ],
             )
-            .properties(height=180)
+            .properties(height=180, width="container")
         )
         average_target = (
             alt.Chart(pd.DataFrame({"target": [100]}))
@@ -1525,19 +1531,21 @@ def nutrition_insights():
             spacing=48,
             bounds="flush",
         ).resolve_scale(color="independent")
-        with st.container(key="nutrition_charts"):
-            st.altair_chart(
-                style_chart(combined_chart),
-                width="stretch",
-                theme=None,
-            )
-    else:
-        st.info("No food estimates exist in the selected period.")
-    st.markdown(
-        "<div class='neutral-note'>Indicators use AI food estimates and are informational, "
-        "not medical advice.</div>",
-        unsafe_allow_html=True,
-    )
+    with st.container(key="nutrition_visual_stack"):
+        if period_rows:
+            with st.container(key="nutrition_charts"):
+                st.altair_chart(
+                    style_chart(combined_chart),
+                    width="stretch",
+                    theme=None,
+                )
+        else:
+            st.info("No food estimates exist in the selected period.")
+        st.markdown(
+            "<div class='neutral-note'>Indicators use AI food estimates and are informational, "
+            "not medical advice.</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def appearance_page():
@@ -1848,4 +1856,5 @@ with st.sidebar:
             icon=":material/logout:",
             use_container_width=True,
         )
+collapse_sidebar_after_page_change(page.url_path)
 page.run()
