@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -8,6 +8,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
     pass
+
+
+def utc_now() -> datetime:
+    """Return an aware UTC timestamp for SQLAlchemy defaults."""
+    return datetime.now(UTC)
 
 
 class DailyEntry(Base):
@@ -52,9 +57,9 @@ class DailyEntry(Base):
     fast_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     fasting_hours: Mapped[float | None] = mapped_column(Float)
     notes: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
 
 
@@ -74,7 +79,7 @@ class NutritionLog(Base):
     fibre_g: Mapped[float] = mapped_column(Float)
     confidence: Mapped[str] = mapped_column(String(20))
     model: Mapped[str] = mapped_column(String(100))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class GoalSettings(Base):
@@ -130,4 +135,4 @@ class WeeklyPlan(Base):
     anticipated_barrier: Mapped[str] = mapped_column(Text, default="")
     if_then_plan: Mapped[str] = mapped_column(Text, default="")
     maintenance_mode: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

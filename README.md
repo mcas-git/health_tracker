@@ -96,10 +96,10 @@ Google Auth Platform and Streamlit secrets instead.
 
 ## Email reminders and weekly report
 
-Daily reminders run at 05:00 and 21:00 Europe/London. The evening email is skipped when that day's
-check-in already exists. A weekly coaching report is sent each Sunday at 19:00 Europe/London. The
-workflows run at both possible UTC offsets and the Python scripts suppress the duplicate, so the
-times remain stable across GMT and BST.
+Daily reminders run at 05:00 and 21:00 Europe/London. The evening email is skipped only when that
+day's evening check-in is complete. A weekly coaching report is sent each Sunday at 19:00
+Europe/London. The workflows run at both possible UTC offsets and the Python scripts suppress the
+duplicate, so the times remain stable across GMT and BST.
 
 For a no-extra-service option, use a Gmail account with 2-step verification and an app password. Add
 these GitHub repository secrets:
@@ -135,5 +135,8 @@ regularly. Hosted Postgres providers usually also offer database backups, subjec
 
 ```bash
 uv run ruff check .
+uv run ruff format --check .
 uv run pytest
 ```
+
+The same checks run automatically in GitHub Actions for every push and pull request.

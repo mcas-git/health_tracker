@@ -18,45 +18,23 @@ from health_tracker.models import (
 
 engine = create_engine(database_url(), pool_pre_ping=True)
 
-
-def calculate_targets(weight_kg: float = PROFILE.start_weight_kg) -> dict[str, int]:
-    # Mifflin-St Jeor, sedentary baseline, moderate sustainable deficit.
-    bmr = 10 * weight_kg + 6.25 * PROFILE.height_cm - 5 * PROFILE.age + 5
-    calories = max(1500, round((bmr * 1.35 - 650) / 50) * 50)
-    protein = round(PROFILE.target_weight_kg * 1.8)
-    fat = round(PROFILE.target_weight_kg * 0.8)
-    carbs = max(50, round((calories - protein * 4 - fat * 9) / 4))
-    return {"calories": calories, "protein": protein, "carbs": carbs, "fat": fat}
-
-
-def init_db() -> None:
-    Base.metadata.create_all(engine)
-    existing_columns = {column["name"] for column in inspect(engine).get_columns("daily_entries")}
-    with engine.begin() as connection:
-        column_types = {
-            "morning_submitted": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "evening_submitted": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "physio": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "drugs": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "protein_powder": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "hunger": "INTEGER",
-            "cravings": "INTEGER",
-            "diet_satisfaction": "INTEGER",
-            "illness": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "injury": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "travel": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "unusual_day": "BOOLEAN NOT NULL DEFAULT FALSE",
-            "holiday": "BOOLEAN NOT NULL DEFAULT FALSE",
-        }
-        for column, sql_type in column_types.items():
-            if column not in existing_columns:
-                connection.execute(
-                    text(f"ALTER TABLE daily_entries ADD COLUMN {column} {sql_type}")
-                )
-    preference_columns = {
-        column["name"] for column in inspect(engine).get_columns("app_preferences")
-    }
-    preference_column_types = {
+SCHEMA_COLUMN_MIGRATIONS = {
+    "daily_entries": {
+        "morning_submitted": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "evening_submitted": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "physio": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "drugs": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "protein_powder": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "hunger": "INTEGER",
+        "cravings": "INTEGER",
+        "diet_satisfaction": "INTEGER",
+        "illness": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "injury": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "travel": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "unusual_day": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "holiday": "BOOLEAN NOT NULL DEFAULT FALSE",
+    },
+    "app_preferences": {
         "smooth_charts": "BOOLEAN NOT NULL DEFAULT TRUE",
         "success_matches_accent": "BOOLEAN NOT NULL DEFAULT FALSE",
         "show_placeholders": "BOOLEAN NOT NULL DEFAULT TRUE",
@@ -74,13 +52,36 @@ def init_db() -> None:
         "start_weight_kg": "FLOAT NOT NULL DEFAULT 105.0",
         "target_weight_kg": "FLOAT NOT NULL DEFAULT 77.0",
         "target_date": "DATE NOT NULL DEFAULT '2027-09-01'",
-    }
+    },
+}
+
+
+def calculate_targets(weight_kg: float = PROFILE.start_weight_kg) -> dict[str, int]:
+    # Mifflin-St Jeor, sedentary baseline, moderate sustainable deficit.
+    bmr = 10 * weight_kg + 6.25 * PROFILE.height_cm - 5 * PROFILE.age + 5
+    calories = max(1500, round((bmr * 1.35 - 650) / 50) * 50)
+    protein = round(PROFILE.target_weight_kg * 1.8)
+    fat = round(PROFILE.target_weight_kg * 0.8)
+    carbs = max(50, round((calories - protein * 4 - fat * 9) / 4))
+    return {"calories": calories, "protein": protein, "carbs": carbs, "fat": fat}
+
+
+def _apply_column_migrations() -> None:
+    """Apply the small, additive migrations supported by this single-user app."""
+    schema = inspect(engine)
     with engine.begin() as connection:
-        for column, sql_type in preference_column_types.items():
-            if column not in preference_columns:
-                connection.execute(
-                    text(f"ALTER TABLE app_preferences ADD COLUMN {column} {sql_type}")
-                )
+        for table_name, required_columns in SCHEMA_COLUMN_MIGRATIONS.items():
+            existing_columns = {column["name"] for column in schema.get_columns(table_name)}
+            for column_name, sql_type in required_columns.items():
+                if column_name not in existing_columns:
+                    connection.execute(
+                        text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {sql_type}")
+                    )
+
+
+def init_db() -> None:
+    Base.metadata.create_all(engine)
+    _apply_column_migrations()
     with Session(engine) as session:
         if session.get(GoalSettings, 1) is None:
             targets = calculate_targets()
@@ -94,18 +95,17 @@ def init_db() -> None:
                     fibre_target_g=30,
                 )
             )
-            session.commit()
-        if session.get(AppPreferences, 1) is None:
+        preferences = session.get(AppPreferences, 1)
+        if preferences is None:
             session.add(AppPreferences(id=1))
-            session.commit()
-        elif session.get(AppPreferences, 1).color_mode != "dark":
-            session.get(AppPreferences, 1).color_mode = "dark"
-            session.commit()
+        session.commit()
 
 
 @contextmanager
 def session_scope():
-    session = Session(engine)
+    # Several helpers return newly saved ORM objects. Keeping loaded attributes
+    # available after commit prevents surprising DetachedInstanceError failures.
+    session = Session(engine, expire_on_commit=False)
     try:
         yield session
         session.commit()

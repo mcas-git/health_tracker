@@ -18,9 +18,7 @@ GOOGLE_LOGO = Path(__file__).resolve().parents[1] / "assets" / "logo" / "google.
 GOOGLE_SIGN_IN_LABEL = "Sign in with Google"
 if GOOGLE_LOGO.is_file():
     google_logo_data = b64encode(GOOGLE_LOGO.read_bytes()).decode()
-    GOOGLE_SIGN_IN_LABEL = (
-        f"![](data:image/svg+xml;base64,{google_logo_data}) Sign in with Google"
-    )
+    GOOGLE_SIGN_IN_LABEL = f"![](data:image/svg+xml;base64,{google_logo_data}) Sign in with Google"
 
 
 def hash_password(password: str) -> str:
@@ -73,9 +71,7 @@ def valid_remember_token(token: str | None, password_hash: str) -> bool:
 
 
 def email_is_allowed(email: str, configured_emails: str) -> bool:
-    allowed = {
-        item.strip().casefold() for item in configured_emails.split(",") if item.strip()
-    }
+    allowed = {item.strip().casefold() for item in configured_emails.split(",") if item.strip()}
     return email.strip().casefold() in allowed
 
 
@@ -101,9 +97,7 @@ def sign_out(auth_context: AuthContext | stx.CookieManager) -> None:
         st.logout()
         return
     cookie_manager = (
-        auth_context.cookie_manager
-        if isinstance(auth_context, AuthContext)
-        else auth_context
+        auth_context.cookie_manager if isinstance(auth_context, AuthContext) else auth_context
     )
     if cookie_manager is not None:
         cookie_manager.delete(COOKIE_NAME, key="delete_auth_cookie")
@@ -168,12 +162,10 @@ def _require_password_login() -> AuthContext:
         with st.form("login", border=False):
             password = st.text_input("Password", type="password")
             remember = st.checkbox("Remember me on this device for 30 days", value=True)
-            submitted = st.form_submit_button(
-                "Sign in", type="primary", use_container_width=True
-            )
+            submitted = st.form_submit_button("Sign in", type="primary", use_container_width=True)
         st.markdown(
             '<p class="login-footnote">Your health data stays behind this private '
-            'access screen.</p>',
+            "access screen.</p>",
             unsafe_allow_html=True,
         )
     if submitted and hmac.compare_digest(hash_password(password), expected):

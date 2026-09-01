@@ -14,6 +14,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from health_tracker.config import LONDON, setting
 
 
+def evening_reminder_needed(item) -> bool:
+    """Return whether today's evening check-in still needs to be completed."""
+    from health_tracker.analytics import evening_checkin_complete
+
+    return not evening_checkin_complete(item)
+
+
 def should_send(now: datetime, event_name: str) -> bool:
     """Skip the duplicate UTC cron during the other UK daylight-saving season."""
     return event_name != "schedule" or now.astimezone(LONDON).hour in {5, 21}
@@ -82,15 +89,20 @@ def main() -> None:
         print(f"Skipping duplicate daylight-saving cron at {now:%H:%M %Z}.")
         return
     if now.hour >= 12 and setting("DATABASE_URL"):
-        from health_tracker.analytics import load_data
+        from sqlalchemy.exc import SQLAlchemyError
 
-        data = load_data()
-        if not data.empty and any(
-            datetime.fromisoformat(str(entry)).date() == now.date()
-            for entry in data.entry_date.dropna()
-        ):
-            print("Today's entry already exists; skipping the evening reminder.")
-            return
+        from health_tracker.db import get_daily
+
+        try:
+            daily_entry = get_daily(now.date())
+        except SQLAlchemyError as exc:
+            # The reminder is more useful than a failed workflow when the
+            # completion lookup is temporarily unavailable.
+            print(f"Completion check unavailable ({type(exc).__name__}); sending reminder.")
+        else:
+            if not evening_reminder_needed(daily_entry):
+                print("Today's evening check-in is complete; skipping the reminder.")
+                return
     message = build_message(now)
     host = setting("SMTP_HOST", "smtp.gmail.com")
     port = int(setting("SMTP_PORT", "587"))

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session
 
 from health_tracker import analytics, db, garmin
@@ -30,12 +30,12 @@ from health_tracker.auth import (
 )
 from health_tracker.config import PROFILE
 from health_tracker.db import calculate_targets
-from health_tracker.models import Base, DailyEntry, NutritionLog
+from health_tracker.models import AppPreferences, Base, DailyEntry, NutritionLog
 from health_tracker.nutrition import DailyNutritionEstimate, quality_assure_estimate
 from health_tracker.quotes import QUOTES, daily_item, quote_count, weekly_item
 from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import derived_palette, normalize_color
-from scripts.send_reminder import reminder_copy, should_send
+from scripts.send_reminder import evening_reminder_needed, reminder_copy, should_send
 from scripts.send_weekly_report import build_weekly_message, should_send_weekly
 
 
@@ -121,6 +121,14 @@ def test_checkin_completion_requires_every_measurement():
     assert not evening_checkin_complete(missing_energy)
 
 
+def test_nan_submission_flags_do_not_mark_partial_checkins_complete():
+    partial_morning = pd.Series({"morning_submitted": float("nan"), "weight_kg": 101.2})
+    partial_evening = pd.Series({"evening_submitted": float("nan"), "mood": 7, "energy": 8})
+
+    assert not morning_checkin_complete(partial_morning)
+    assert not evening_checkin_complete(partial_evening)
+
+
 def test_profile_target_date_is_uk_interpretation():
     assert PROFILE.target_date == date(2027, 9, 1)
 
@@ -177,6 +185,57 @@ def test_latest_daily_before_uses_most_recent_earlier_entry(monkeypatch):
     assert latest is not None
     assert latest.entry_date == date(2026, 8, 22)
     assert latest.weight_kg == 100.8
+
+
+def test_saved_entry_remains_readable_after_commit(monkeypatch):
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    monkeypatch.setattr(db, "engine", test_engine)
+
+    saved = db.upsert_daily({"entry_date": date(2026, 8, 26), "weight_kg": 100.4})
+
+    assert saved.entry_date == date(2026, 8, 26)
+    assert saved.weight_kg == 100.4
+
+
+def test_init_db_is_idempotent_and_preserves_saved_appearance(monkeypatch):
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        session.add(AppPreferences(id=1, color_mode="light"))
+        session.commit()
+    monkeypatch.setattr(db, "engine", test_engine)
+
+    db.init_db()
+    db.init_db()
+
+    with Session(test_engine) as session:
+        assert session.get(AppPreferences, 1).color_mode == "light"
+
+
+def test_additive_migrations_upgrade_legacy_tables(monkeypatch):
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    with test_engine.begin() as connection:
+        connection.execute(
+            text("CREATE TABLE daily_entries (id INTEGER PRIMARY KEY, entry_date DATE NOT NULL)")
+        )
+        connection.execute(
+            text(
+                "CREATE TABLE app_preferences "
+                "(id INTEGER PRIMARY KEY, color_mode VARCHAR(20), "
+                "accent VARCHAR(20), font_family VARCHAR(40))"
+            )
+        )
+    monkeypatch.setattr(db, "engine", test_engine)
+
+    db._apply_column_migrations()
+    db._apply_column_migrations()
+
+    schema = inspect(test_engine)
+    daily_columns = {column["name"] for column in schema.get_columns("daily_entries")}
+    preference_columns = {column["name"] for column in schema.get_columns("app_preferences")}
+    assert set(db.SCHEMA_COLUMN_MIGRATIONS["daily_entries"]) <= daily_columns
+    assert set(db.SCHEMA_COLUMN_MIGRATIONS["app_preferences"]) <= preference_columns
 
 
 def test_load_data_keeps_daily_schema_when_only_nutrition_is_recorded(monkeypatch):
@@ -429,9 +488,7 @@ def test_uk_per_slice_label_reference_case():
 
     checked = quality_assure_estimate(reference)
 
-    nutrients = checked.model_dump(
-        include={"calories", "protein_g", "carbs_g", "fat_g", "fibre_g"}
-    )
+    nutrients = checked.model_dump(include={"calories", "protein_g", "carbs_g", "fat_g", "fibre_g"})
     assert nutrients == {
         "calories": 210,
         "protein_g": 6.8,
@@ -633,9 +690,7 @@ def test_health_journey_score_uses_all_history_and_is_deterministic():
 
 
 def test_health_journey_score_ignores_missing_domains_instead_of_scoring_zero():
-    history = pd.DataFrame(
-        [{"entry_date": date(2026, 8, 28), "sleep_hours": 8.0}]
-    )
+    history = pd.DataFrame([{"entry_date": date(2026, 8, 28), "sleep_hours": 8.0}])
 
     score = health_journey_score(history)
 
@@ -718,6 +773,18 @@ def test_morning_and_evening_reminders_are_distinct():
     assert "food note" in evening[2]
 
 
+def test_evening_reminder_waits_for_evening_submission():
+    morning_only = SimpleNamespace(
+        morning_submitted=True,
+        evening_submitted=False,
+        weight_kg=100.0,
+    )
+    completed = SimpleNamespace(evening_submitted=True)
+
+    assert evening_reminder_needed(morning_only)
+    assert not evening_reminder_needed(completed)
+
+
 def test_motivational_library_has_60_unique_short_entries():
     assert quote_count() == 60
     assert len(set(QUOTES)) == 60
@@ -732,8 +799,7 @@ def test_daily_quote_is_stable_for_the_day():
 def test_weekly_item_is_stable_monday_to_sunday_and_changes_next_week():
     monday = date(2026, 8, 24)
     assert all(
-        weekly_item(QUOTES, monday + timedelta(days=offset))
-        == weekly_item(QUOTES, monday)
+        weekly_item(QUOTES, monday + timedelta(days=offset)) == weekly_item(QUOTES, monday)
         for offset in range(7)
     )
     assert weekly_item(QUOTES, monday + timedelta(days=7)) != weekly_item(QUOTES, monday)
@@ -749,8 +815,7 @@ def test_every_research_note_has_a_source_and_motivation():
 def test_research_note_rotates_with_calendar_week():
     start = date(2026, 8, 24)
     weekly_notes = [
-        weekly_item(RESEARCH_INSIGHTS, start + timedelta(weeks=offset))
-        for offset in range(25)
+        weekly_item(RESEARCH_INSIGHTS, start + timedelta(weeks=offset)) for offset in range(25)
     ]
     assert len({item["insight"] for item in weekly_notes}) == 25
 

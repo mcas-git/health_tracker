@@ -93,7 +93,12 @@ def analyse_day(note: str) -> tuple[DailyNutritionEstimate, str]:
     return quality_assure_estimate(response.output_parsed), model
 
 
-def save_estimate(entry_date: date, note: str, estimate: DailyNutritionEstimate, model: str):
+def save_estimate(
+    entry_date: date,
+    note: str,
+    estimate: DailyNutritionEstimate,
+    model: str,
+) -> None:
     with session_scope() as session:
         item = session.scalar(select(NutritionLog).where(NutritionLog.entry_date == entry_date))
         if item is None:

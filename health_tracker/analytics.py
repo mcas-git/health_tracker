@@ -75,11 +75,7 @@ def recent_kpi_table(df: pd.DataFrame, limit: int = 14) -> pd.DataFrame:
     recorded_circumstances = [field for field in circumstance_fields if field in data]
     if recorded_circumstances:
         data["extenuating_circumstance"] = (
-            data[recorded_circumstances]
-            .fillna(False)
-            .astype(bool)
-            .any(axis=1)
-            .map({True: "Yes", False: "No"})
+            data[recorded_circumstances].eq(True).any(axis=1).map({True: "Yes", False: "No"})
         )
     export_fields = [
         "entry_date",
@@ -142,11 +138,10 @@ def morning_checkin_complete(item) -> bool:
     """
     if item is None:
         return False
-    if bool(getattr(item, "morning_submitted", False)):
+    if _finite_number(getattr(item, "morning_submitted", False)) == 1:
         return True
     return all(
-        (measurement := _finite_number(getattr(item, field, None))) is not None
-        and measurement > 0
+        (measurement := _finite_number(getattr(item, field, None))) is not None and measurement > 0
         for field in ("weight_kg", "systolic", "diastolic")
     )
 
@@ -155,18 +150,16 @@ def evening_checkin_complete(item) -> bool:
     """Return whether the evening section was submitted or all legacy fields exist."""
     if item is None:
         return False
-    if bool(getattr(item, "evening_submitted", False)):
+    if _finite_number(getattr(item, "evening_submitted", False)) == 1:
         return True
     positive_fields = ("resting_heart_rate", "sleep_hours", "steps", "calories_burned")
     ratings = ("mood", "energy", "cravings", "diet_satisfaction")
     measurements_complete = all(
-        (measurement := _finite_number(getattr(item, field, None))) is not None
-        and measurement >= 0
+        (measurement := _finite_number(getattr(item, field, None))) is not None and measurement >= 0
         for field in positive_fields
     )
     ratings_complete = all(
-        (rating := _finite_number(getattr(item, field, None))) is not None
-        and 0 <= rating <= 10
+        (rating := _finite_number(getattr(item, field, None))) is not None and 0 <= rating <= 10
         for field in ratings
     )
     return measurements_complete and ratings_complete
@@ -464,14 +457,12 @@ def weekly_coaching_summary(
         if field in current and current[field].notna().any():
             averages[field] = float(current[field].mean())
     habits = {
-        field: int(current[field].fillna(False).sum())
+        field: int(current[field].eq(True).sum())
         for field in ("gym", "cardio", "alcohol_free")
         if field in current
     }
     recent_weights = (
-        data.dropna(subset=["weight_kg"]).tail(28)
-        if "weight_kg" in data
-        else pd.DataFrame()
+        data.dropna(subset=["weight_kg"]).tail(28) if "weight_kg" in data else pd.DataFrame()
     )
     plateau = False
     if len(recent_weights) >= 14:

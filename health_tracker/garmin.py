@@ -25,9 +25,7 @@ def sync_day(day: date) -> dict:
     activities = client.get_activities_by_date(day_text, day_text)
     sleep_record = sleep.get("dailySleepDTO") or {}
     sleep_seconds = sleep_record.get("sleepTimeSeconds")
-    resting_hr = _first_value(
-        heart_rate.get("restingHeartRate"), stats.get("restingHeartRate")
-    )
+    resting_hr = _first_value(heart_rate.get("restingHeartRate"), stats.get("restingHeartRate"))
     total_calories = stats.get("totalKilocalories")
     active_calories = stats.get("activeKilocalories")
     resting_calories = stats.get("bmrKilocalories")
@@ -38,9 +36,7 @@ def sync_day(day: date) -> dict:
         "calories_burned": total_calories,
         "active_calories": active_calories,
         "resting_calories": resting_calories,
-        "sleep_hours": (
-            round(sleep_seconds / 3600, 2) if sleep_seconds is not None else None
-        ),
+        "sleep_hours": (round(sleep_seconds / 3600, 2) if sleep_seconds is not None else None),
         "resting_heart_rate": resting_hr,
         "source_date": stats.get("calendarDate") or day_text,
         "sleep_date": sleep_record.get("calendarDate") or day_text,

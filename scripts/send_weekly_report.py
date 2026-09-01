@@ -74,7 +74,9 @@ def main() -> None:
     summary = weekly_coaching_summary(load_data(), now.date())
     message = build_weekly_message(now, summary)
     with smtplib.SMTP(
-        setting("SMTP_HOST", "smtp.gmail.com"), int(setting("SMTP_PORT", "587"))
+        setting("SMTP_HOST", "smtp.gmail.com"),
+        int(setting("SMTP_PORT", "587")),
+        timeout=30,
     ) as smtp:
         smtp.starttls()
         smtp.login(setting("SMTP_USERNAME"), setting("SMTP_PASSWORD"))

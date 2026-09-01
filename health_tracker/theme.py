@@ -215,12 +215,7 @@ def apply_theme(
         if garmin_logo.is_file()
         else ""
     )
-    brand_mark = (
-        Path(__file__).resolve().parents[1]
-        / "assets"
-        / "logo"
-        / "health-journey-mark.svg"
-    )
+    brand_mark = Path(__file__).resolve().parents[1] / "assets" / "logo" / "health-journey-mark.svg"
     brand_mark_css = (
         'background-image:url("data:image/svg+xml;base64,'
         + b64encode(brand_mark.read_bytes()).decode()
