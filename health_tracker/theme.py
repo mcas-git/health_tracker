@@ -80,6 +80,40 @@ def _force_dark_mobile_browser_chrome() -> None:
             documentRoot.head.appendChild(scheme);
         }
         scheme.content = 'dark';
+
+        if (!documentRoot.documentElement.dataset.healthJourneyMenuAutoclose) {
+            documentRoot.documentElement.dataset.healthJourneyMenuAutoclose = 'true';
+            documentRoot.addEventListener('click', (event) => {
+                const target = event.target instanceof Element ? event.target : null;
+                const pageLink = target?.closest(
+                    '[data-testid="stSidebar"] [data-testid="stPageLink"] a, '
+                    + '[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"]'
+                );
+                if (!pageLink) return;
+
+                const destination = new URL(pageLink.href, window.location.href).pathname;
+                const startedAt = Date.now();
+                const closeMenu = () => {
+                    const collapseButton = documentRoot.querySelector(
+                        '[data-testid="stSidebarCollapseButton"] button, '
+                        + '[data-testid="stSidebarHeader"] button'
+                    );
+                    if (collapseButton) {
+                        collapseButton.click();
+                        return;
+                    }
+                    documentRoot.querySelector('[data-testid="stMain"]')?.click();
+                };
+                const closeAfterNavigation = () => {
+                    if (window.location.pathname === destination || Date.now() - startedAt > 5000) {
+                        closeMenu();
+                        return;
+                    }
+                    window.setTimeout(closeAfterNavigation, 100);
+                };
+                window.setTimeout(closeAfterNavigation, 100);
+            }, true);
+        }
         </script>
         """,
         unsafe_allow_javascript=True,
