@@ -3,11 +3,14 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-from sqlalchemy import create_engine, inspect, text
+import pytest
+from cryptography.fernet import Fernet
+from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.orm import Session
 
 from health_tracker import analytics, db, garmin
 from health_tracker.analytics import (
+    adaptive_target_review,
     bmi_status,
     current_streak,
     daily_health_score,
@@ -15,6 +18,7 @@ from health_tracker.analytics import (
     evening_measurement_status,
     excel_safe_data,
     health_journey_score,
+    monthly_weight_goal,
     morning_checkin_complete,
     morning_measurement_status,
     nutrition_period_bounds,
@@ -28,13 +32,19 @@ from health_tracker.auth import (
     hash_password,
     valid_remember_token,
 )
-from health_tracker.config import PROFILE
+from health_tracker.backups import (
+    create_encrypted_backup,
+    inspect_encrypted_backup,
+    restore_encrypted_backup,
+)
+from health_tracker.config import PROFILE, Profile
 from health_tracker.db import calculate_targets
-from health_tracker.models import AppPreferences, Base, DailyEntry, NutritionLog
+from health_tracker.models import AppPreferences, Base, DailyEntry, GoalSettings, NutritionLog
 from health_tracker.nutrition import DailyNutritionEstimate, quality_assure_estimate
 from health_tracker.quotes import QUOTES, daily_item, quote_count, weekly_item
 from health_tracker.research import RESEARCH_INSIGHTS
 from health_tracker.theme import derived_palette, normalize_color
+from scripts.send_monthly_backup import build_backup_message, should_send_monthly_backup
 from scripts.send_reminder import evening_reminder_needed, reminder_copy, should_send
 from scripts.send_weekly_report import build_weekly_message, should_send_weekly
 
@@ -226,6 +236,9 @@ def test_additive_migrations_upgrade_legacy_tables(monkeypatch):
                 "accent VARCHAR(20), font_family VARCHAR(40))"
             )
         )
+        connection.execute(
+            text("CREATE TABLE nutrition_logs (id INTEGER PRIMARY KEY, entry_date DATE NOT NULL)")
+        )
     monkeypatch.setattr(db, "engine", test_engine)
 
     db._apply_column_migrations()
@@ -234,8 +247,109 @@ def test_additive_migrations_upgrade_legacy_tables(monkeypatch):
     schema = inspect(test_engine)
     daily_columns = {column["name"] for column in schema.get_columns("daily_entries")}
     preference_columns = {column["name"] for column in schema.get_columns("app_preferences")}
+    nutrition_columns = {column["name"] for column in schema.get_columns("nutrition_logs")}
     assert set(db.SCHEMA_COLUMN_MIGRATIONS["daily_entries"]) <= daily_columns
     assert set(db.SCHEMA_COLUMN_MIGRATIONS["app_preferences"]) <= preference_columns
+    assert set(db.SCHEMA_COLUMN_MIGRATIONS["nutrition_logs"]) <= nutrition_columns
+
+
+def test_target_adjustment_is_applied_once_and_audited(monkeypatch):
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        session.add(
+            GoalSettings(
+                id=1,
+                calorie_target=2000,
+                protein_target_g=140,
+                carbs_target_g=220,
+                fat_target_g=70,
+                fibre_target_g=30,
+            )
+        )
+        session.commit()
+    monkeypatch.setattr(db, "engine", test_engine)
+
+    first = db.apply_target_adjustment(
+        week_start=date(2026, 8, 31),
+        recommended_calories=1850,
+        actual_weekly_loss_kg=0.2,
+        target_weekly_loss_kg=0.5,
+        usable_nutrition_days=6,
+        weight_measurements=12,
+    )
+    second = db.apply_target_adjustment(
+        week_start=date(2026, 8, 31),
+        recommended_calories=1700,
+        actual_weekly_loss_kg=0.1,
+        target_weekly_loss_kg=0.5,
+        usable_nutrition_days=7,
+        weight_measurements=14,
+    )
+
+    with Session(test_engine) as session:
+        goals = session.get(GoalSettings, 1)
+        assert goals.calorie_target == 1850
+        assert goals.carbs_target_g == 182
+    assert first.id == second.id
+    assert first.previous_calorie_target == 2000
+
+
+def test_encrypted_backup_round_trip_merges_without_deleting_newer_rows(monkeypatch):
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        session.add(DailyEntry(entry_date=date(2026, 8, 30), weight_kg=101.2))
+        session.add(
+            NutritionLog(
+                entry_date=date(2026, 8, 30),
+                raw_note="Complete day",
+                meals_json="[]",
+                calories=1900,
+                protein_g=140,
+                carbs_g=180,
+                fat_g=65,
+                fibre_g=28,
+                confidence="medium",
+                logging_status="complete",
+                model="test",
+            )
+        )
+        session.commit()
+    monkeypatch.setattr(db, "engine", test_engine)
+    key = Fernet.generate_key().decode()
+
+    encrypted = create_encrypted_backup(key)
+    summary = inspect_encrypted_backup(encrypted, key)
+    with Session(test_engine) as session:
+        saved = session.scalar(select(DailyEntry).where(DailyEntry.entry_date == date(2026, 8, 30)))
+        saved.weight_kg = 99.0
+        session.add(DailyEntry(entry_date=date(2026, 8, 31), weight_kg=100.8))
+        session.commit()
+    restored = restore_encrypted_backup(encrypted, key)
+
+    with Session(test_engine) as session:
+        restored_entry = session.scalar(
+            select(DailyEntry).where(DailyEntry.entry_date == date(2026, 8, 30))
+        )
+        retained_entry = session.scalar(
+            select(DailyEntry).where(DailyEntry.entry_date == date(2026, 8, 31))
+        )
+        assert restored_entry.weight_kg == 101.2
+        assert retained_entry.weight_kg == 100.8
+    assert summary["total_rows"] == 2
+    assert restored["updated"] == 2
+    assert restored["created"] == 0
+
+
+def test_encrypted_backup_rejects_the_wrong_key(monkeypatch):
+    test_engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    monkeypatch.setattr(db, "engine", test_engine)
+    encrypted = create_encrypted_backup(Fernet.generate_key().decode())
+
+    with pytest.raises(ValueError, match="could not be decrypted"):
+        inspect_encrypted_backup(encrypted, Fernet.generate_key().decode())
 
 
 def test_load_data_keeps_daily_schema_when_only_nutrition_is_recorded(monkeypatch):
@@ -264,6 +378,7 @@ def test_load_data_keeps_daily_schema_when_only_nutrition_is_recorded(monkeypatc
     assert "weight_kg" in data.columns
     assert data["weight_kg"].isna().all()
     assert data.loc[0, "calories"] == 450
+    assert data.loc[0, "logging_status"] == "complete"
 
 
 def test_nutrition_period_bounds_use_latest_available_record_and_clip_short_history():
@@ -370,6 +485,34 @@ def test_garmin_sync_reconstructs_total_calories_without_discarding_zero(monkeyp
     assert result["calories_burned"] == 2100
     assert result["sleep_hours"] == 0
     assert result["resting_heart_rate"] == 0
+
+
+def test_garmin_sync_accepts_alternate_overall_calorie_field(monkeypatch):
+    class FakeGarmin:
+        def __init__(self, email, password):
+            pass
+
+        def login(self):
+            pass
+
+        def get_stats(self, day):
+            return {"totalCaloriesBurned": 2345, "totalSteps": 7500}
+
+        def get_sleep_data(self, day):
+            return {"dailySleepDTO": {}}
+
+        def get_heart_rates(self, day):
+            return {}
+
+        def get_activities_by_date(self, start, end):
+            return []
+
+    monkeypatch.setattr(garmin, "Garmin", FakeGarmin)
+    monkeypatch.setattr(garmin, "setting", lambda name: f"test-{name.lower()}")
+
+    result = garmin.sync_day(date(2026, 8, 25))
+
+    assert result["calories_burned"] == 2345
 
 
 def test_password_hash_is_deterministic_and_not_plaintext():
@@ -860,6 +1003,82 @@ def test_weekly_coaching_handles_nutrition_before_weight_entries():
     assert summary["weight_change"] is None
 
 
+def test_adaptive_target_review_excludes_partial_days_and_caps_change():
+    end = date(2026, 8, 31)
+    rows = []
+    for offset in range(21):
+        day = end - timedelta(days=20 - offset)
+        row = {
+            "entry_date": day,
+            "weight_kg": 105 - offset * 0.02,
+            "calories": None,
+            "logging_status": None,
+        }
+        if offset >= 14:
+            row["calories"] = 2000
+            row["logging_status"] = "partial" if offset == 20 else "complete"
+        rows.append(row)
+    profile = Profile(
+        age=39,
+        sex="male",
+        height_cm=177,
+        start_weight_kg=105,
+        target_weight_kg=77,
+        target_date=date(2027, 9, 1),
+    )
+
+    review = adaptive_target_review(pd.DataFrame(rows), 2000, end, profile)
+
+    assert review["status"] == "ready"
+    assert review["usable_nutrition_days"] == 6
+    assert review["calorie_adjustment"] == -150
+    assert review["recommended_calories"] == 1850
+
+
+def test_adaptive_target_review_holds_when_journals_are_partial():
+    end = date(2026, 8, 31)
+    rows = [
+        {
+            "entry_date": end - timedelta(days=offset),
+            "weight_kg": 100 + offset * 0.05,
+            "calories": 1800,
+            "logging_status": "partial",
+        }
+        for offset in range(14)
+    ]
+
+    review = adaptive_target_review(pd.DataFrame(rows), 1900, end)
+
+    assert review["status"] == "holding"
+    assert review["usable_nutrition_days"] == 0
+    assert review["recommended_calories"] == 1900
+
+
+def test_monthly_weight_goal_links_checkpoint_to_final_plan():
+    profile = Profile(
+        age=39,
+        sex="male",
+        height_cm=177,
+        start_weight_kg=105,
+        target_weight_kg=77,
+        target_date=date(2027, 9, 1),
+    )
+    data = pd.DataFrame(
+        {
+            "entry_date": [date(2026, 8, 1), date(2026, 9, 15)],
+            "weight_kg": [105.0, 102.0],
+        }
+    )
+
+    checkpoint = monthly_weight_goal(data, date(2026, 9, 15), profile)
+
+    assert checkpoint is not None
+    assert checkpoint["month_label"] == "September"
+    assert checkpoint["goal_date"] == date(2026, 9, 30)
+    assert profile.target_weight_kg < checkpoint["target_weight_kg"] < profile.start_weight_kg
+    assert 0 <= checkpoint["progress"] <= 1
+
+
 def test_weight_milestones_follow_a_sustainable_plan_pace():
     milestones, pace = weight_milestones(date(2026, 8, 23))
 
@@ -902,3 +1121,24 @@ def test_weekly_report_contains_summary(monkeypatch):
     assert (
         "https://example.streamlit.app" in message.get_body(preferencelist=("html",)).get_content()
     )
+
+
+def test_monthly_backup_schedule_handles_daylight_saving():
+    london = ZoneInfo("Europe/London")
+    assert should_send_monthly_backup(datetime(2026, 7, 1, 19, tzinfo=london), "schedule")
+    assert not should_send_monthly_backup(datetime(2026, 7, 1, 18, tzinfo=london), "schedule")
+    assert not should_send_monthly_backup(datetime(2026, 7, 2, 19, tzinfo=london), "schedule")
+    assert should_send_monthly_backup(datetime(2026, 7, 2, 18, tzinfo=london), "workflow_dispatch")
+
+
+def test_monthly_backup_email_contains_encrypted_attachment(monkeypatch):
+    monkeypatch.setenv("REMINDER_FROM", "sender@example.com")
+    monkeypatch.setenv("REMINDER_TO", "receiver@example.com")
+
+    message = build_backup_message(datetime(2026, 9, 1), b"encrypted-backup")
+    attachments = list(message.iter_attachments())
+
+    assert "September 2026" in message["Subject"]
+    assert len(attachments) == 1
+    assert attachments[0].get_filename().endswith(".healthbackup")
+    assert attachments[0].get_payload(decode=True) == b"encrypted-backup"

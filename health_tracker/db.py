@@ -13,6 +13,7 @@ from health_tracker.models import (
     DailyEntry,
     GoalSettings,
     NutritionLog,
+    TargetAdjustment,
     WeeklyPlan,
 )
 
@@ -52,6 +53,9 @@ SCHEMA_COLUMN_MIGRATIONS = {
         "start_weight_kg": "FLOAT NOT NULL DEFAULT 105.0",
         "target_weight_kg": "FLOAT NOT NULL DEFAULT 77.0",
         "target_date": "DATE NOT NULL DEFAULT '2027-09-01'",
+    },
+    "nutrition_logs": {
+        "logging_status": "VARCHAR(20) NOT NULL DEFAULT 'complete'",
     },
 }
 
@@ -156,6 +160,13 @@ def get_weekly_plan(week_start: date) -> WeeklyPlan | None:
         return session.scalar(select(WeeklyPlan).where(WeeklyPlan.week_start == week_start))
 
 
+def get_target_adjustment(week_start: date) -> TargetAdjustment | None:
+    with Session(engine) as session:
+        return session.scalar(
+            select(TargetAdjustment).where(TargetAdjustment.week_start == week_start)
+        )
+
+
 def upsert_weekly_plan(values: dict) -> WeeklyPlan:
     with session_scope() as session:
         item = session.scalar(
@@ -169,3 +180,45 @@ def upsert_weekly_plan(values: dict) -> WeeklyPlan:
         session.flush()
         session.refresh(item)
         return item
+
+
+def apply_target_adjustment(
+    *,
+    week_start: date,
+    recommended_calories: int,
+    actual_weekly_loss_kg: float,
+    target_weekly_loss_kg: float,
+    usable_nutrition_days: int,
+    weight_measurements: int,
+) -> TargetAdjustment:
+    """Apply one reviewed calorie adjustment per week and retain an audit record."""
+    with session_scope() as session:
+        existing = session.scalar(
+            select(TargetAdjustment).where(TargetAdjustment.week_start == week_start)
+        )
+        if existing is not None:
+            return existing
+        goals = session.get(GoalSettings, 1)
+        if goals is None:
+            raise RuntimeError("Daily targets have not been initialised.")
+        previous_calories = goals.calorie_target
+        previous_carbs = goals.carbs_target_g
+        calorie_change = recommended_calories - previous_calories
+        new_carbs = max(20, previous_carbs + round(calorie_change / 4))
+        goals.calorie_target = recommended_calories
+        goals.carbs_target_g = new_carbs
+        adjustment = TargetAdjustment(
+            week_start=week_start,
+            previous_calorie_target=previous_calories,
+            new_calorie_target=recommended_calories,
+            previous_carbs_target_g=previous_carbs,
+            new_carbs_target_g=new_carbs,
+            actual_weekly_loss_kg=actual_weekly_loss_kg,
+            target_weekly_loss_kg=target_weekly_loss_kg,
+            usable_nutrition_days=usable_nutrition_days,
+            weight_measurements=weight_measurements,
+        )
+        session.add(adjustment)
+        session.flush()
+        session.refresh(adjustment)
+        return adjustment

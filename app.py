@@ -12,11 +12,13 @@ import streamlit as st
 from sqlalchemy.orm import Session
 
 from health_tracker.analytics import (
+    adaptive_target_review,
     bmi_status,
     evening_checkin_complete,
     excel_safe_data,
     health_journey_score,
     load_data,
+    monthly_weight_goal,
     morning_checkin_complete,
     nutrition_period_bounds,
     projected_target_date,
@@ -25,12 +27,20 @@ from health_tracker.analytics import (
     weight_milestones,
 )
 from health_tracker.auth import require_login, sign_out
+from health_tracker.backups import (
+    backup_filename,
+    create_encrypted_backup,
+    inspect_encrypted_backup,
+    restore_encrypted_backup,
+)
 from health_tracker.config import LONDON, Profile, setting
 from health_tracker.config import PROFILE as DEFAULT_PROFILE
 from health_tracker.db import (
+    apply_target_adjustment,
     engine,
     get_daily,
     get_nutrition,
+    get_target_adjustment,
     get_weekly_plan,
     init_db,
     upsert_daily,
@@ -64,6 +74,11 @@ PALETTE_WIDGETS = {
     "palette_muted": "muted",
     "palette_link": "link",
     "palette_border": "border",
+}
+JOURNAL_STATUS_LABELS = {
+    "Complete day": "complete",
+    "Estimated complete day": "estimated",
+    "Partial day": "partial",
 }
 
 st.set_page_config(
@@ -480,6 +495,19 @@ def dashboard():
     c.metric("7-day completion", f"{recent_completion}%")
     d.metric("Projected goal", projection_label)
     st.progress(max(0.0, min(1.0, progress)))
+    month_goal = monthly_weight_goal(df, dashboard_today, _profile)
+    if month_goal:
+        with st.container(border=True):
+            st.subheader(f"{month_goal['month_label']} checkpoint")
+            month_cols = st.columns(3)
+            month_cols[0].metric("End-of-month goal", f"{month_goal['target_weight_kg']:.1f} kg")
+            month_cols[1].metric("Monthly progress", f"{month_goal['progress'] * 100:.0f}%")
+            month_cols[2].metric("Remaining", f"{month_goal['remaining_kg']:.1f} kg")
+            st.progress(month_goal["progress"])
+            st.caption(
+                f"On-plan checkpoint for {month_goal['goal_date']:%d %b %Y} · "
+                f"{month_goal['days_left']} days remaining."
+            )
     latest_measurements = (
         df.dropna(subset=["bmi"]).sort_values("entry_date").iloc[-1]
         if "bmi" in df and df["bmi"].notna().any()
@@ -1077,6 +1105,10 @@ def weekly_coaching():
     week_start = today - timedelta(days=today.weekday())
     df = cached_load_data()
     summary = weekly_coaching_summary(df, today, _profile)
+    with Session(engine) as session:
+        coaching_goals = session.get(GoalSettings, 1)
+        current_calorie_target = coaching_goals.calorie_target
+    target_review = adaptive_target_review(df, current_calorie_target, today, _profile)
 
     with st.container(border=True):
         st.subheader("This week's evidence")
@@ -1112,6 +1144,54 @@ def weekly_coaching():
             "at least five logged days, protein averaging 1.5 g per kg of goal weight, "
             "7,000 daily steps, then seven hours of sleep. A sustained four-week weight "
             "plateau takes priority and prompts a review before calorie targets are changed."
+        )
+
+    target_update_message = st.session_state.pop("target_adjustment_saved", None)
+    with st.container(border=True):
+        status_heading("Adaptive target review", target_update_message, level=2)
+        review_metrics = st.columns(4)
+        review_metrics[0].metric("Usable food days", f"{target_review['usable_nutrition_days']}/7")
+        review_metrics[1].metric("Weight entries", target_review["weight_measurements"])
+        actual_loss = target_review["actual_weekly_loss_kg"]
+        target_loss = target_review["target_weekly_loss_kg"]
+        review_metrics[2].metric(
+            "Weight-loss pace", f"{actual_loss:+.2f} kg/week" if actual_loss is not None else "—"
+        )
+        review_metrics[3].metric(
+            "Planned weekly pace", f"{target_loss:.2f} kg/week" if target_loss is not None else "—"
+        )
+        st.markdown(
+            f"<div class='neutral-note'><strong>{target_review['confidence']} confidence.</strong> "
+            f"{target_review['message']}</div>",
+            unsafe_allow_html=True,
+        )
+        applied_adjustment = get_target_adjustment(week_start)
+        if applied_adjustment:
+            st.caption(
+                f"Applied this week: {applied_adjustment.previous_calorie_target:,} → "
+                f"{applied_adjustment.new_calorie_target:,} kcal/day."
+            )
+        elif target_review["status"] == "ready":
+            if st.button(
+                f"Apply {target_review['recommended_calories']:,} kcal/day target",
+                type="primary",
+                use_container_width=True,
+            ):
+                with st.spinner("Updating reviewed targets…"):
+                    apply_target_adjustment(
+                        week_start=week_start,
+                        recommended_calories=target_review["recommended_calories"],
+                        actual_weekly_loss_kg=target_review["actual_weekly_loss_kg"],
+                        target_weekly_loss_kg=target_review["target_weekly_loss_kg"],
+                        usable_nutrition_days=target_review["usable_nutrition_days"],
+                        weight_measurements=target_review["weight_measurements"],
+                    )
+                st.session_state.target_adjustment_saved = "Weekly target update applied."
+                st.rerun()
+        st.caption(
+            "Partial journals are excluded. Suggestions are capped at 150 kcal/day per week "
+            "with a 1,500 kcal/day floor, and are never applied automatically. The estimate "
+            "uses your recent complete-day intake and 21-day weight trend."
         )
 
     saved = get_weekly_plan(week_start)
@@ -1208,6 +1288,26 @@ def food_log():
     if not update_another_day:
         selected = today
     existing = get_nutrition(selected)
+    saved_status = value(existing, "logging_status", "complete")
+    saved_status_label = next(
+        (
+            label
+            for label, status_value in JOURNAL_STATUS_LABELS.items()
+            if status_value == saved_status
+        ),
+        "Complete day",
+    )
+    journal_status_label = st.selectbox(
+        "Journal completeness",
+        list(JOURNAL_STATUS_LABELS),
+        index=list(JOURNAL_STATUS_LABELS).index(saved_status_label),
+        help=(
+            "Complete and estimated-complete days can inform weekly target suggestions. "
+            "Partial days remain visible but are excluded from that calculation."
+        ),
+        key=f"food_completeness_{selected.isoformat()}",
+    )
+    journal_status = JOURNAL_STATUS_LABELS[journal_status_label]
     food_note_key = f"food_note_{selected.isoformat()}"
     note = st.text_area(
         "Full-day food journal",
@@ -1239,7 +1339,7 @@ def food_log():
             try:
                 with st.spinner("Estimating meals and nutrition…"):
                     estimate, model = analyse_day(note)
-                    save_estimate(selected, note, estimate, model)
+                    save_estimate(selected, note, estimate, model, journal_status)
                     invalidate_data_cache()
                 st.session_state.food_journal_saved = (
                     f"Food journal and nutrition estimate saved for {selected:%d %b %Y}."
@@ -1264,7 +1364,15 @@ def food_log():
             strict=True,
         ):
             col.metric(label, amount)
-        st.caption(f"Confidence: {existing.confidence.title()} · {existing.summary}")
+        completeness_label = {
+            "complete": "Complete day",
+            "estimated": "Estimated complete day",
+            "partial": "Partial day",
+        }.get(value(existing, "logging_status", "complete"), "Complete day")
+        st.caption(
+            f"{completeness_label} · AI confidence: {existing.confidence.title()} · "
+            f"{existing.summary}"
+        )
         for meal in json.loads(existing.meals_json):
             with st.expander(f"{meal['label']} · {meal['calories']} kcal"):
                 st.write(", ".join(meal["foods"]))
@@ -1692,9 +1800,12 @@ def appearance_page():
 
 
 def settings_page():
+    targets_message = st.session_state.pop("targets_saved", None)
+    backup_message = st.session_state.pop("backup_restored", None)
+    settings_message = targets_message or backup_message
     status_heading(
         "Targets, backup and privacy",
-        st.session_state.pop("targets_saved", None),
+        settings_message,
     )
     with Session(engine) as session:
         goals = session.get(GoalSettings, 1)
@@ -1810,6 +1921,56 @@ def settings_page():
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
+    st.subheader("Encrypted backup and restore")
+    backup_key = setting("BACKUP_ENCRYPTION_KEY")
+    if backup_key:
+        try:
+            encrypted_backup = create_encrypted_backup(backup_key)
+            st.download_button(
+                "Download encrypted full backup",
+                encrypted_backup,
+                backup_filename(datetime.now(LONDON).date()),
+                "application/octet-stream",
+                use_container_width=True,
+            )
+        except ValueError as exc:
+            st.error(str(exc))
+        uploaded_backup = st.file_uploader(
+            "Restore from an encrypted Health Journey backup",
+            help="The restore merges the backup into the database; unrelated newer records remain.",
+        )
+        if uploaded_backup is not None:
+            try:
+                uploaded_bytes = uploaded_backup.getvalue()
+                backup_summary = inspect_encrypted_backup(uploaded_bytes, backup_key)
+                st.caption(
+                    f"Valid encrypted backup · {backup_summary['total_rows']} records · "
+                    f"created {backup_summary['created_at']}."
+                )
+                confirm_restore = st.checkbox(
+                    "I understand that matching dates and settings will be replaced"
+                )
+                if st.button(
+                    "Merge this backup",
+                    disabled=not confirm_restore,
+                    use_container_width=True,
+                ):
+                    with st.spinner("Validating and restoring backup…"):
+                        restored = restore_encrypted_backup(uploaded_bytes, backup_key)
+                    invalidate_data_cache()
+                    invalidate_preferences_cache()
+                    st.session_state.backup_restored = (
+                        f"Backup restored: {restored['created']} added, "
+                        f"{restored['updated']} updated."
+                    )
+                    st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
+    else:
+        st.caption(
+            "Add BACKUP_ENCRYPTION_KEY to enable full encrypted downloads, restore, and the "
+            "monthly emailed backup. CSV and Excel exports remain available above."
+        )
     st.markdown(
         "<div class='neutral-note'>BMI, calorie targets, and AI nutrition estimates are "
         "informational only—not medical advice.</div>",

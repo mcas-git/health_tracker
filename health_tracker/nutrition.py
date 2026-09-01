@@ -98,7 +98,10 @@ def save_estimate(
     note: str,
     estimate: DailyNutritionEstimate,
     model: str,
+    logging_status: str = "complete",
 ) -> None:
+    if logging_status not in {"complete", "estimated", "partial"}:
+        raise ValueError("Unsupported journal completeness status.")
     with session_scope() as session:
         item = session.scalar(select(NutritionLog).where(NutritionLog.entry_date == entry_date))
         if item is None:
@@ -113,4 +116,5 @@ def save_estimate(
         item.fat_g = estimate.fat_g
         item.fibre_g = estimate.fibre_g
         item.confidence = estimate.confidence.lower()
+        item.logging_status = logging_status
         item.model = model

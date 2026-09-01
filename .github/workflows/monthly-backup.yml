@@ -1,0 +1,28 @@
+name: Monthly encrypted backup
+
+on:
+  schedule:
+    # First day of each month at 19:00 Europe/London across GMT and BST.
+    - cron: "0 18,19 1 * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v9.0.0
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: uv run python scripts/send_monthly_backup.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          REMINDER_FROM: ${{ secrets.REMINDER_FROM }}
+          REMINDER_FROM_NAME: ${{ secrets.REMINDER_FROM_NAME }}
+          REMINDER_TO: ${{ secrets.REMINDER_TO }}

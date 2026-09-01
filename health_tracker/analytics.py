@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import math
 from datetime import date, datetime, timedelta
 
@@ -36,6 +37,8 @@ def load_data() -> pd.DataFrame:
             "carbs_g": row.carbs_g,
             "fat_g": row.fat_g,
             "fibre_g": row.fibre_g,
+            "logging_status": row.logging_status,
+            "nutrition_confidence": row.confidence,
         }
         for row in nutrition
     ]
@@ -504,6 +507,164 @@ def weekly_coaching_summary(
         "recommendation": recommendation,
         "loss_percent": loss_percent,
         "milestone": milestone,
+    }
+
+
+def adaptive_target_review(
+    df: pd.DataFrame,
+    current_calories: int,
+    end_date: date,
+    profile: Profile = PROFILE,
+) -> dict:
+    """Return a conservative calorie suggestion when recent data is sufficient.
+
+    Partial food days are excluded. The result is advisory: callers must require an
+    explicit user action before changing a stored target.
+    """
+    result = {
+        "status": "holding",
+        "message": "More complete journal and weight entries are needed.",
+        "usable_nutrition_days": 0,
+        "weight_measurements": 0,
+        "current_calories": int(current_calories),
+        "recommended_calories": int(current_calories),
+        "calorie_adjustment": 0,
+        "actual_weekly_loss_kg": None,
+        "target_weekly_loss_kg": None,
+        "average_logged_calories": None,
+        "confidence": "Low",
+    }
+    if df.empty or "entry_date" not in df:
+        return result
+    data = df.copy()
+    data["entry_date"] = pd.to_datetime(data["entry_date"], errors="coerce")
+    data = data.dropna(subset=["entry_date"])
+    if not {"logging_status", "calories", "weight_kg"} <= set(data.columns):
+        return result
+    end = pd.Timestamp(end_date)
+    week = data[(data.entry_date >= end - pd.Timedelta(6, unit="D")) & (data.entry_date <= end)]
+    if "logging_status" in week and "calories" in week:
+        usable = week[
+            week["logging_status"].fillna("complete").isin({"complete", "estimated"})
+            & week["calories"].notna()
+        ]
+        result["usable_nutrition_days"] = int(usable.entry_date.dt.date.nunique())
+    recent = data[(data.entry_date >= end - pd.Timedelta(20, unit="D")) & (data.entry_date <= end)]
+    weights = recent[["entry_date", "weight_kg"]].dropna().sort_values("entry_date")
+    result["weight_measurements"] = len(weights)
+    if result["usable_nutrition_days"] < 4:
+        result["message"] = "Log at least four complete or estimated-complete food days this week."
+        return result
+    usable_recent = recent[
+        recent["logging_status"].fillna("complete").isin({"complete", "estimated"})
+        & recent["calories"].notna()
+    ]
+    average_logged_calories = float(usable_recent["calories"].mean())
+    result["average_logged_calories"] = round(average_logged_calories)
+    if len(weights) < 4 or (weights.entry_date.max() - weights.entry_date.min()).days < 10:
+        result["message"] = "Add at least four weights spanning ten days before adapting targets."
+        return result
+    weight_days = (weights.entry_date - weights.entry_date.min()).dt.days.astype(float)
+    variance = weight_days.var()
+    if not variance or pd.isna(variance):
+        return result
+    slope = weight_days.cov(weights.weight_kg.astype(float)) / variance
+    actual_weekly_loss = float(-slope * 7)
+    latest_weight = float(weights.weight_kg.iloc[-1])
+    if latest_weight <= profile.target_weight_kg:
+        result.update(
+            status="goal_reached",
+            message="The final weight goal has been reached; keep the current target stable.",
+            actual_weekly_loss_kg=actual_weekly_loss,
+            target_weekly_loss_kg=0.0,
+            confidence="High",
+        )
+        return result
+    weeks_remaining = max((profile.target_date - end_date).days / 7, 1)
+    target_weekly_loss = (latest_weight - profile.target_weight_kg) / weeks_remaining
+    target_weekly_loss = min(
+        max(target_weekly_loss, 0.25),
+        min(1.0, latest_weight * 0.01),
+        latest_weight - profile.target_weight_kg,
+    )
+    estimated_expenditure = average_logged_calories + actual_weekly_loss * 7700 / 7
+    desired_intake = estimated_expenditure - target_weekly_loss * 7700 / 7
+    desired_change = round((desired_intake - int(current_calories)) / 50) * 50
+    adjustment = int(max(-150, min(150, desired_change)))
+    recommended = max(1500, min(5000, int(current_calories) + adjustment))
+    adjustment = recommended - int(current_calories)
+    confidence = (
+        "High" if result["usable_nutrition_days"] >= 6 and len(weights) >= 6 else "Moderate"
+    )
+    if adjustment:
+        direction = "increase" if adjustment > 0 else "reduce"
+        message = (
+            f"Consider a {abs(adjustment)} kcal/day {direction}. "
+            "Protein and fat stay unchanged; the difference is applied to carbohydrates."
+        )
+        status = "ready"
+    else:
+        message = "Your current calorie target is aligned with the recent weight trend."
+        status = "steady"
+    result.update(
+        status=status,
+        message=message,
+        recommended_calories=recommended,
+        calorie_adjustment=adjustment,
+        actual_weekly_loss_kg=round(actual_weekly_loss, 2),
+        target_weekly_loss_kg=round(target_weekly_loss, 2),
+        confidence=confidence,
+    )
+    return result
+
+
+def monthly_weight_goal(
+    df: pd.DataFrame,
+    as_of: date,
+    profile: Profile = PROFILE,
+) -> dict | None:
+    """Return progress towards the on-plan weight at the end of the current month."""
+    if df.empty or "entry_date" not in df or "weight_kg" not in df:
+        return None
+    weights = df[["entry_date", "weight_kg"]].dropna().copy()
+    if weights.empty:
+        return None
+    weights["entry_date"] = pd.to_datetime(weights["entry_date"], errors="coerce")
+    weights = weights.dropna(subset=["entry_date"]).sort_values("entry_date")
+    weights = weights[weights.entry_date.dt.date <= as_of]
+    if weights.empty:
+        return None
+    journey_start = weights.entry_date.iloc[0].date()
+    latest_weight = float(weights.weight_kg.iloc[-1])
+    month_start = as_of.replace(day=1)
+    month_end = as_of.replace(day=calendar.monthrange(as_of.year, as_of.month)[1])
+    goal_date = min(month_end, profile.target_date)
+    if goal_date < journey_start:
+        return None
+
+    def planned_weight(day: date) -> float:
+        total_days = max((profile.target_date - journey_start).days, 1)
+        elapsed_days = max(0, min((day - journey_start).days, total_days))
+        fraction = elapsed_days / total_days
+        return (
+            profile.start_weight_kg
+            - (profile.start_weight_kg - profile.target_weight_kg) * fraction
+        )
+
+    progress_start = max(month_start, journey_start)
+    planned_start = planned_weight(progress_start)
+    target_weight = planned_weight(goal_date)
+    planned_loss = max(planned_start - target_weight, 0.1)
+    progress = max(0.0, min(1.0, (planned_start - latest_weight) / planned_loss))
+    remaining = max(0.0, latest_weight - target_weight)
+    return {
+        "month_label": goal_date.strftime("%B"),
+        "goal_date": goal_date,
+        "target_weight_kg": round(target_weight, 1),
+        "latest_weight_kg": round(latest_weight, 1),
+        "remaining_kg": round(remaining, 1),
+        "progress": progress,
+        "days_left": max(0, (goal_date - as_of).days),
     }
 
 

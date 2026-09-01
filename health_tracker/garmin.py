@@ -26,7 +26,11 @@ def sync_day(day: date) -> dict:
     sleep_record = sleep.get("dailySleepDTO") or {}
     sleep_seconds = sleep_record.get("sleepTimeSeconds")
     resting_hr = _first_value(heart_rate.get("restingHeartRate"), stats.get("restingHeartRate"))
-    total_calories = stats.get("totalKilocalories")
+    total_calories = _first_value(
+        stats.get("totalKilocalories"),
+        stats.get("totalCalories"),
+        stats.get("totalCaloriesBurned"),
+    )
     active_calories = stats.get("activeKilocalories")
     resting_calories = stats.get("bmrKilocalories")
     if total_calories is None and active_calories is not None and resting_calories is not None:

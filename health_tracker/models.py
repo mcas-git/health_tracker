@@ -78,6 +78,7 @@ class NutritionLog(Base):
     fat_g: Mapped[float] = mapped_column(Float)
     fibre_g: Mapped[float] = mapped_column(Float)
     confidence: Mapped[str] = mapped_column(String(20))
+    logging_status: Mapped[str] = mapped_column(String(20), default="complete")
     model: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
@@ -135,4 +136,21 @@ class WeeklyPlan(Base):
     anticipated_barrier: Mapped[str] = mapped_column(Text, default="")
     if_then_plan: Mapped[str] = mapped_column(Text, default="")
     maintenance_mode: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class TargetAdjustment(Base):
+    __tablename__ = "target_adjustments"
+    __table_args__ = (UniqueConstraint("week_start", name="uq_target_adjustment_week"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    week_start: Mapped[date] = mapped_column(Date, index=True)
+    previous_calorie_target: Mapped[int] = mapped_column(Integer)
+    new_calorie_target: Mapped[int] = mapped_column(Integer)
+    previous_carbs_target_g: Mapped[int] = mapped_column(Integer)
+    new_carbs_target_g: Mapped[int] = mapped_column(Integer)
+    actual_weekly_loss_kg: Mapped[float] = mapped_column(Float)
+    target_weekly_loss_kg: Mapped[float] = mapped_column(Float)
+    usable_nutrition_days: Mapped[int] = mapped_column(Integer)
+    weight_measurements: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

@@ -2,7 +2,9 @@
 
 A private, mobile-friendly Streamlit app for a one-year health and dieting journey. It records
 measurements, habits and fasting; converts one full-day food note into nutrition estimates with the
-OpenAI API; manually syncs selected Garmin data; displays progress KPIs; and exports CSV/Excel backups.
+OpenAI API; distinguishes complete from partial journals; manually syncs selected Garmin data;
+displays monthly checkpoints and progress KPIs; offers reviewed weekly calorie adjustments; and
+exports CSV, Excel, and encrypted full backups.
 
 > This application provides informational estimates only. It is not medical advice, and it is not a
 > substitute for a clinician or registered dietitian. Seek professional care before making major
@@ -20,6 +22,8 @@ OpenAI API; manually syncs selected Garmin data; displays progress KPIs; and exp
   as a local-development fallback when Google authentication is not configured.
 - **Reminders and report:** scheduled GitHub Actions emails over SMTP, independent of Streamlit
   uptime.
+- **Backups:** encrypted full-database downloads, safe merge-restore, and an optional monthly
+  encrypted email attachment.
 - **Timezone:** Europe/London. Target date is interpreted as 1 September 2027.
 
 SQLite is intentionally limited to local development. Streamlit Community Cloud does not provide a
@@ -57,6 +61,7 @@ APP_PASSWORD_HASH = "..."
 DATABASE_URL = "postgresql://USER:PASSWORD@HOST:5432/postgres?sslmode=require"
 GARMIN_EMAIL = "..."
 GARMIN_PASSWORD = "..."
+BACKUP_ENCRYPTION_KEY = "..."
 ALLOWED_EMAIL = "your-google-email@gmail.com"
 
 [auth]
@@ -74,6 +79,15 @@ such as local development.
 
 Never commit API, database, email, or Garmin credentials. The OpenAI key remains on the Streamlit
 server and is never sent to browser code.
+
+Generate the backup encryption key once with:
+
+```bash
+uv run python scripts/make_backup_key.py
+```
+
+Store the printed value in local `.env`, Streamlit secrets, GitHub Actions secrets, and a separate
+password manager. Existing encrypted backups cannot be restored if this key is lost or replaced.
 
 ## Deploy for phone access
 
@@ -114,10 +128,13 @@ these GitHub repository secrets:
 | `REMINDER_TO` | destination email |
 | `APP_URL` | deployed Streamlit URL |
 | `DATABASE_URL` | the same hosted Postgres URL used by Streamlit |
+| `BACKUP_ENCRYPTION_KEY` | the key printed by `scripts/make_backup_key.py` |
 
-Run **Actions → Daily health reminder → Run workflow** and **Actions → Weekly health report → Run
-workflow** once to test both. For GitHub Actions, use a Supabase connection URL that is reachable
-over IPv4 (normally the session pooler URL) if the direct database hostname is IPv6-only.
+Run **Actions → Daily health reminder → Run workflow**, **Actions → Weekly health report → Run
+workflow**, and **Actions → Monthly encrypted backup → Run workflow** once to test them. The monthly
+backup is sent on the first day of each month at 19:00 Europe/London and is skipped harmlessly until
+`BACKUP_ENCRYPTION_KEY` is configured. For GitHub Actions, use a Supabase connection URL that is
+reachable over IPv4 (normally the session pooler URL) if the direct database hostname is IPv6-only.
 
 ## Garmin limitations
 
@@ -128,8 +145,10 @@ visible in the check-in before saving.
 
 ## Data and backups
 
-The Targets & export page downloads a complete flattened CSV or Excel workbook. Download a backup
-regularly. Hosted Postgres providers usually also offer database backups, subject to their plan.
+The Targets, backup and privacy page downloads flattened CSV/Excel data and a complete encrypted
+backup. Encrypted restores are validated and merged transactionally: matching dates and settings are
+replaced while unrelated records are retained. Hosted Postgres providers may also offer database
+backups, subject to their plan.
 
 ## Developer checks
 
