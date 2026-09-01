@@ -1471,6 +1471,7 @@ def nutrition_insights():
                     sort=list(fields),
                     title=None,
                     axis=alt.Axis(
+                        orient="right",
                         labels=False,
                         ticks=False,
                         domain=False,
@@ -1515,6 +1516,7 @@ def nutrition_insights():
                     "Nutrient:N",
                     sort=list(fields),
                     axis=alt.Axis(
+                        orient="right",
                         labels=False,
                         ticks=False,
                         domain=False,
