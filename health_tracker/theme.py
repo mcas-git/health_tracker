@@ -109,6 +109,12 @@ def collapse_sidebar_after_page_change(page_key: str) -> None:
                 );
                 if (collapseButton) {{
                     collapseButton.click();
+                    // Responsive charts and column layouts can measure themselves before
+                    // Streamlit's sidebar transition has released the available width.
+                    // Notify them again during and after the transition.
+                    [100, 250, 450].forEach((delay) => {{
+                        window.setTimeout(() => window.dispatchEvent(new Event('resize')), delay);
+                    }});
                     return;
                 }}
                 attempts += 1;
@@ -388,7 +394,7 @@ def apply_theme(
         }}
         .nutrition-metric-status {{ color:{text}; font-size:.9rem; font-weight:650; }}
         .st-key-nutrition_visual_stack {{
-            width:min(100%, 960px); margin-left:auto;
+            width:100%; max-width:none; margin-left:0;
         }}
         .st-key-nutrition_charts {{ margin:1rem 0 1.75rem; width:100%; }}
         [data-testid="stVegaLiteChart"],

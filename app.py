@@ -1507,6 +1507,11 @@ def nutrition_insights():
     st.caption(f"{period_start:%d %b %Y}–{period_end:%d %b %Y}")
     if period_rows:
         period_frame = pd.DataFrame(period_rows)
+        trend_ceiling = max(
+            120,
+            int(math.ceil(period_frame["% of target"].max() / 40) * 40),
+        )
+        trend_tick_values = list(range(0, trend_ceiling + 1, 40))
         trend_chart = (
             alt.Chart(period_frame)
             .mark_line(point=False, strokeWidth=3)
@@ -1525,7 +1530,13 @@ def nutrition_insights():
                 y=alt.Y(
                     "% of target:Q",
                     title=None,
-                    axis=alt.Axis(orient="right", minExtent=42, maxExtent=42),
+                    scale=alt.Scale(domain=[0, trend_ceiling], nice=False),
+                    axis=alt.Axis(
+                        orient="right",
+                        values=trend_tick_values,
+                        minExtent=42,
+                        maxExtent=42,
+                    ),
                 ),
                 color=alt.Color(
                     "Nutrient:N",
