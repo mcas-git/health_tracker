@@ -1077,6 +1077,58 @@ def test_monthly_weight_goal_links_checkpoint_to_final_plan():
     assert checkpoint["goal_date"] == date(2026, 9, 30)
     assert profile.target_weight_kg < checkpoint["target_weight_kg"] < profile.start_weight_kg
     assert 0 <= checkpoint["progress"] <= 1
+    assert checkpoint["rolled_forward"] is False
+
+
+def test_completed_monthly_weight_goal_advances_at_conservative_nhs_pace():
+    profile = Profile(
+        age=39,
+        sex="male",
+        height_cm=177,
+        start_weight_kg=105,
+        target_weight_kg=77,
+        target_date=date(2027, 9, 1),
+    )
+    data = pd.DataFrame(
+        {
+            "entry_date": [date(2026, 8, 1), date(2026, 9, 1), date(2026, 9, 15)],
+            "weight_kg": [105.0, 100.5, 100.3],
+        }
+    )
+
+    checkpoint = monthly_weight_goal(data, date(2026, 9, 15), profile)
+
+    assert checkpoint is not None
+    assert checkpoint["rolled_forward"] is True
+    assert checkpoint["completed_month_label"] == "September"
+    assert checkpoint["month_label"] == "October"
+    assert checkpoint["goal_date"] == date(2026, 10, 31)
+    assert checkpoint["weekly_pace_kg"] == 0.5
+    assert profile.target_weight_kg <= checkpoint["target_weight_kg"] < 100.5
+    assert 0 <= checkpoint["progress"] <= 1
+
+
+def test_monthly_checkpoint_completion_matches_displayed_weight_precision():
+    profile = Profile(
+        age=39,
+        sex="male",
+        height_cm=177,
+        start_weight_kg=105,
+        target_weight_kg=77,
+        target_date=date(2027, 9, 1),
+    )
+    data = pd.DataFrame(
+        {
+            "entry_date": [date(2026, 8, 20), date(2026, 9, 15)],
+            "weight_kg": [105.0, 101.97],
+        }
+    )
+
+    checkpoint = monthly_weight_goal(data, date(2026, 9, 15), profile)
+
+    assert checkpoint is not None
+    assert checkpoint["rolled_forward"] is True
+    assert checkpoint["month_label"] == "October"
 
 
 def test_weight_milestones_follow_a_sustainable_plan_pace():

@@ -494,19 +494,35 @@ def dashboard():
     b.metric("Goal progress", f"{max(0, min(100, progress * 100)):.0f}%")
     c.metric("7-day completion", f"{recent_completion}%")
     d.metric("Projected goal", projection_label)
-    st.progress(max(0.0, min(1.0, progress)))
+    overall_progress = max(0.0, min(1.0, progress))
+    overall_remaining = (
+        max(0.0, latest_weight - _profile.target_weight_kg)
+        if latest_weight is not None
+        else goal_range
+    )
+    st.progress(overall_progress)
+    st.caption(
+        f"Overall goal · Goal: {_profile.target_weight_kg:.1f} kg. "
+        f"Progress: {overall_progress * 100:.0f}% "
+        f"(remaining {overall_remaining:.1f} kg)"
+    )
     month_goal = monthly_weight_goal(df, dashboard_today, _profile)
     if month_goal:
-        with st.container(border=True):
-            st.subheader(f"{month_goal['month_label']} checkpoint")
-            month_cols = st.columns(3)
-            month_cols[0].metric("End-of-month goal", f"{month_goal['target_weight_kg']:.1f} kg")
-            month_cols[1].metric("Monthly progress", f"{month_goal['progress'] * 100:.0f}%")
-            month_cols[2].metric("Remaining", f"{month_goal['remaining_kg']:.1f} kg")
-            st.progress(month_goal["progress"])
+        st.subheader("Monthly checkpoint")
+        st.progress(month_goal["progress"])
+        st.caption(
+            f"{month_goal['month_label']} checkpoint · "
+            f"Goal: {month_goal['target_weight_kg']:.1f} kg. "
+            f"Progress: {month_goal['progress'] * 100:.0f}% "
+            f"(remaining {month_goal['remaining_kg']:.1f} kg)"
+        )
+        if month_goal["rolled_forward"]:
             st.caption(
-                f"On-plan checkpoint for {month_goal['goal_date']:%d %b %Y} · "
-                f"{month_goal['days_left']} days remaining."
+                f"Advanced after the {month_goal['completed_month_label']} checkpoint was "
+                f"completed. The next target uses {month_goal['weekly_pace_kg']:.1f} kg/week "
+                "for the available time, consistent with "
+                "[NHS guidance](https://www.nhs.uk/live-well/healthy-weight/"
+                "managing-your-weight/tips-to-help-you-lose-weight/)."
             )
     latest_measurements = (
         df.dropna(subset=["bmi"]).sort_values("entry_date").iloc[-1]

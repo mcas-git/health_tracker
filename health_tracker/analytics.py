@@ -623,7 +623,7 @@ def monthly_weight_goal(
     as_of: date,
     profile: Profile = PROFILE,
 ) -> dict | None:
-    """Return progress towards the on-plan weight at the end of the current month."""
+    """Return the active month-end checkpoint, advancing safely when completed early."""
     if df.empty or "entry_date" not in df or "weight_kg" not in df:
         return None
     weights = df[["entry_date", "weight_kg"]].dropna().copy()
@@ -654,6 +654,35 @@ def monthly_weight_goal(
     progress_start = max(month_start, journey_start)
     planned_start = planned_weight(progress_start)
     target_weight = planned_weight(goal_date)
+    displayed_checkpoint_reached = round(latest_weight, 1) <= round(target_weight, 1)
+    final_goal_remaining = latest_weight > profile.target_weight_kg
+    rolled_forward = (
+        displayed_checkpoint_reached and final_goal_remaining and goal_date < profile.target_date
+    )
+    completed_month_label = None
+    weekly_pace = None
+    if rolled_forward:
+        completed_month_label = goal_date.strftime("%B")
+        achieved = weights[weights.weight_kg.round(1) <= round(target_weight, 1)]
+        achievement_date = (
+            achieved.entry_date.iloc[0].date()
+            if not achieved.empty
+            else weights.entry_date.iloc[-1].date()
+        )
+        next_month_start = month_end + timedelta(days=1)
+        next_month_end = next_month_start.replace(
+            day=calendar.monthrange(next_month_start.year, next_month_start.month)[1]
+        )
+        goal_date = min(next_month_end, profile.target_date)
+        total_weeks = max((profile.target_date - journey_start).days / 7, 1)
+        required_weekly_pace = (profile.start_weight_kg - profile.target_weight_kg) / total_weeks
+        weekly_pace = min(1.0, max(0.5, required_weekly_pace))
+        available_weeks = max((goal_date - achievement_date).days / 7, 0)
+        planned_start = target_weight
+        target_weight = max(
+            profile.target_weight_kg,
+            target_weight - weekly_pace * available_weeks,
+        )
     planned_loss = max(planned_start - target_weight, 0.1)
     progress = max(0.0, min(1.0, (planned_start - latest_weight) / planned_loss))
     remaining = max(0.0, latest_weight - target_weight)
@@ -665,6 +694,9 @@ def monthly_weight_goal(
         "remaining_kg": round(remaining, 1),
         "progress": progress,
         "days_left": max(0, (goal_date - as_of).days),
+        "rolled_forward": rolled_forward,
+        "completed_month_label": completed_month_label,
+        "weekly_pace_kg": round(weekly_pace, 2) if weekly_pace is not None else None,
     }
 
 
